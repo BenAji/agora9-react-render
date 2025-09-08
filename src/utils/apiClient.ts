@@ -230,7 +230,7 @@ class SupabaseApiClient implements ApiClient {
       // Transform the data to match CalendarEvent format
       const events: CalendarEvent[] = (eventsData || []).map((event: any) => {
         console.log('🔄 Processing event:', event);
-        return {
+      return {
           id: event.event_id,
           title: event.title,
           description: event.description || '',
@@ -256,13 +256,13 @@ class SupabaseApiClient implements ApiClient {
       updated_at: new Date()
           },
           color_code: this.getEventColor(event.user_response || 'pending')
-        };
-      });
+      };
+    });
 
       console.log('✅ SupabaseApiClient: Processed events:', events.length);
       console.log('📊 Events details:', events);
-      
-      return this.success({
+    
+    return this.success({
         events,
         total_count: events.length
       });
@@ -323,7 +323,7 @@ class SupabaseApiClient implements ApiClient {
       console.log('📋 SupabaseApiClient: User subscribed to:', subscribedSubsectors);
 
       if (subscribedSubsectors.length === 0) {
-        return this.success({
+    return this.success({
           companies: [],
           total_count: 0
         });
@@ -406,16 +406,8 @@ class SupabaseApiClient implements ApiClient {
     throw new ApiClientError({ message: 'Create user not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
   }
 
-  async updateUser(): Promise<ApiResponse<User>> {
-    throw new ApiClientError({ message: 'Update user not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
-  }
-
   async getUser(): Promise<ApiResponse<UserWithSubscriptions>> {
     throw new ApiClientError({ message: 'Get user not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
-  }
-
-  async getUserSubscriptions(): Promise<ApiResponse<UserSubscription[]>> {
-    throw new ApiClientError({ message: 'User subscriptions not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
   }
 
   async getSubscriptionSummary(): Promise<ApiResponse<SubscriptionSummaryResponse>> {
@@ -478,36 +470,358 @@ class SupabaseApiClient implements ApiClient {
     throw new ApiClientError({ message: 'Weather not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
   }
 
-  async createRSVP(): Promise<ApiResponse<UserEventResponse>> {
-    throw new ApiClientError({ message: 'Create RSVP not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
+  async createRSVP(data: { user_id: string; event_id: string; response_status: 'accepted' | 'declined' | 'pending'; notes?: string }): Promise<ApiResponse<UserEventResponse>> {
+    try {
+      console.log('📝 SupabaseApiClient: Creating RSVP:', data);
+
+      const { data: rsvpData, error } = await supabaseService
+        .from('user_event_responses')
+        .insert({
+          user_id: data.user_id,
+          event_id: data.event_id,
+          response_status: data.response_status,
+          notes: data.notes || null,
+          response_date: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ SupabaseApiClient: Create RSVP error:', error);
+        throw new ApiClientError({
+          message: `Failed to create RSVP: ${error.message}`,
+          code: 'RSVP_CREATE_ERROR',
+          details: { originalError: error }
+        });
+      }
+
+      const userEventResponse: UserEventResponse = {
+        id: rsvpData.id,
+        user_id: rsvpData.user_id,
+        event_id: rsvpData.event_id,
+        response_status: rsvpData.response_status as 'accepted' | 'declined' | 'pending',
+        response_date: new Date(rsvpData.response_date),
+        notes: rsvpData.notes || '',
+        created_at: new Date(rsvpData.created_at),
+        updated_at: new Date(rsvpData.created_at)
+      };
+
+      console.log('✅ SupabaseApiClient: RSVP created successfully');
+      return this.success(userEventResponse);
+
+    } catch (error: any) {
+      console.error('💥 SupabaseApiClient: Create RSVP failed:', error);
+      if (error instanceof ApiClientError) throw error;
+      return this.handleSupabaseError(error, 'create RSVP');
+    }
   }
 
-  async updateRSVP(): Promise<ApiResponse<UserEventResponse>> {
-    throw new ApiClientError({ message: 'Update RSVP not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
+  async updateRSVP(id: string, data: Partial<CreateRSVPRequest>): Promise<ApiResponse<UserEventResponse>> {
+    try {
+      console.log('📝 SupabaseApiClient: Updating RSVP:', { id, data });
+
+      const { data: rsvpData, error } = await supabaseService
+        .from('user_event_responses')
+        .update({
+          response_status: data.response_status,
+          response_date: new Date().toISOString(),
+          notes: data.notes || null
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ SupabaseApiClient: Update RSVP error:', error);
+        throw new ApiClientError({
+          message: `Failed to update RSVP: ${error.message}`,
+          code: 'RSVP_UPDATE_ERROR',
+          details: { originalError: error }
+        });
+      }
+
+      const userEventResponse: UserEventResponse = {
+        id: rsvpData.id,
+        user_id: rsvpData.user_id,
+        event_id: rsvpData.event_id,
+        response_status: rsvpData.response_status as 'accepted' | 'declined' | 'pending',
+        response_date: new Date(rsvpData.response_date),
+        notes: rsvpData.notes || '',
+        created_at: new Date(rsvpData.created_at),
+        updated_at: new Date()
+      };
+
+      console.log('✅ SupabaseApiClient: RSVP updated successfully');
+      return this.success(userEventResponse);
+
+    } catch (error: any) {
+      console.error('💥 SupabaseApiClient: Update RSVP failed:', error);
+      if (error instanceof ApiClientError) throw error;
+      return this.handleSupabaseError(error, 'update RSVP');
+    }
   }
 
-  async deleteRSVP(): Promise<ApiResponse<null>> {
-    throw new ApiClientError({ message: 'Delete RSVP not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
+  // Helper method for updating RSVP by event and user
+  async updateRSVPByEventAndUser(eventId: string, userId: string, responseStatus: 'accepted' | 'declined' | 'pending', notes?: string): Promise<ApiResponse<UserEventResponse>> {
+    try {
+      console.log('📝 SupabaseApiClient: Updating RSVP by event and user:', { eventId, userId, responseStatus });
+
+      // First try to update existing RSVP
+      const { data: rsvpData, error } = await supabaseService
+        .from('user_event_responses')
+        .update({
+          response_status: responseStatus,
+          response_date: new Date().toISOString(),
+          notes: notes || null
+        })
+        .eq('user_id', userId)
+        .eq('event_id', eventId)
+        .select()
+        .single();
+
+      if (error) {
+        // If update fails (no existing record), create new one
+        if (error.code === 'PGRST116') {
+          console.log('🔄 No existing RSVP found, creating new one...');
+          return await this.createRSVP({
+            user_id: userId,
+            event_id: eventId,
+            response_status: responseStatus,
+            notes: notes
+          });
+        }
+
+        console.error('❌ SupabaseApiClient: Update RSVP error:', error);
+      throw new ApiClientError({
+          message: `Failed to update RSVP: ${error.message}`,
+          code: 'RSVP_UPDATE_ERROR',
+        details: { originalError: error }
+      });
+      }
+
+      const userEventResponse: UserEventResponse = {
+        id: rsvpData.id,
+        user_id: rsvpData.user_id,
+        event_id: rsvpData.event_id,
+        response_status: rsvpData.response_status as 'accepted' | 'declined' | 'pending',
+        response_date: new Date(rsvpData.response_date),
+        notes: rsvpData.notes || '',
+        created_at: new Date(rsvpData.created_at),
+        updated_at: new Date()
+      };
+
+      console.log('✅ SupabaseApiClient: RSVP updated successfully');
+      return this.success(userEventResponse);
+
+    } catch (error: any) {
+      console.error('💥 SupabaseApiClient: Update RSVP failed:', error);
+      if (error instanceof ApiClientError) throw error;
+      return this.handleSupabaseError(error, 'update RSVP');
+    }
+  }
+
+  async deleteRSVP(id: string): Promise<ApiResponse<null>> {
+    try {
+      console.log('🗑️ SupabaseApiClient: Deleting RSVP:', { id });
+
+      const { error } = await supabaseService
+        .from('user_event_responses')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('❌ SupabaseApiClient: Delete RSVP error:', error);
+        throw new ApiClientError({
+          message: `Failed to delete RSVP: ${error.message}`,
+          code: 'RSVP_DELETE_ERROR',
+          details: { originalError: error }
+        });
+      }
+
+      console.log('✅ SupabaseApiClient: RSVP deleted successfully');
+      return this.success(null);
+
+    } catch (error: any) {
+      console.error('💥 SupabaseApiClient: Delete RSVP failed:', error);
+      if (error instanceof ApiClientError) throw error;
+      return this.handleSupabaseError(error, 'delete RSVP');
+    }
   }
 
   async getUserEventResponse(): Promise<ApiResponse<UserEventResponse | null>> {
     throw new ApiClientError({ message: 'Get user event response not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
   }
 
+  // User Subscription Management  
+  async createSubscription(data: CreateSubscriptionRequest): Promise<ApiResponse<UserSubscription>> {
+    return await this.createUserSubscription({
+      user_id: data.user_id,
+      subsector: (data as any).gics_subsector || '',
+      payment_status: 'paid' // Match the filter in getCompanies
+    }) as any;
+  }
+
+  async deleteSubscription(id: string): Promise<ApiResponse<null>> {
+    return await this.deleteUserSubscription(id);
+  }
+
+  async getUserSubscriptions(userId: string): Promise<ApiResponse<UserSubscription[]>> {
+    try {
+      console.log('📋 SupabaseApiClient: Getting user subscriptions for:', userId);
+
+      const { data: subscriptions, error } = await supabaseService
+        .from('user_subscriptions')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_active', true);
+
+      if (error) {
+        console.error('❌ SupabaseApiClient: Get subscriptions error:', error);
+        throw new ApiClientError({
+          message: `Failed to get user subscriptions: ${error.message}`,
+          code: 'SUBSCRIPTIONS_FETCH_ERROR',
+          details: { originalError: error }
+        });
+      }
+
+      // Convert to proper UserSubscription format
+      const userSubscriptions: UserSubscription[] = (subscriptions || []).map(sub => ({
+        id: sub.id,
+        user_id: sub.user_id,
+        subsector: sub.subsector,
+        gics_subsector: sub.subsector,
+        payment_status: (sub.payment_status === 'active' ? 'paid' : sub.payment_status) as 'pending' | 'paid' | 'failed' | 'cancelled',
+        subscription_start_date: new Date(sub.created_at),
+        subscription_end_date: null,
+        is_active: sub.is_active,
+        created_at: new Date(sub.created_at),
+        updated_at: new Date(sub.created_at)
+      }));
+
+      console.log('✅ SupabaseApiClient: User subscriptions loaded:', userSubscriptions.length);
+      return this.success(userSubscriptions);
+
+    } catch (error: any) {
+      console.error('💥 SupabaseApiClient: Get user subscriptions failed:', error);
+      if (error instanceof ApiClientError) throw error;
+      return this.handleSupabaseError(error, 'get user subscriptions');
+    }
+  }
+
+  async createUserSubscription(data: { user_id: string; subsector: string; payment_status?: string; is_active?: boolean }): Promise<ApiResponse<any>> {
+    try {
+      console.log('📝 SupabaseApiClient: Creating user subscription:', data);
+
+      const { data: subscription, error } = await supabaseService
+        .from('user_subscriptions')
+        .insert({
+          user_id: data.user_id,
+          subsector: data.subsector,
+          payment_status: data.payment_status || 'paid', // Default to 'paid' to match filters
+          is_active: data.is_active !== false
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ SupabaseApiClient: Create subscription error:', error);
+        throw new ApiClientError({
+          message: `Failed to create subscription: ${error.message}`,
+          code: 'SUBSCRIPTION_CREATE_ERROR',
+          details: { originalError: error }
+        });
+      }
+
+      console.log('✅ SupabaseApiClient: User subscription created successfully');
+      return this.success(subscription);
+
+    } catch (error: any) {
+      console.error('💥 SupabaseApiClient: Create subscription failed:', error);
+      if (error instanceof ApiClientError) throw error;
+      return this.handleSupabaseError(error, 'create user subscription');
+    }
+  }
+
+  async deleteUserSubscription(subscriptionId: string): Promise<ApiResponse<null>> {
+    try {
+      console.log('🗑️ SupabaseApiClient: Deleting subscription:', subscriptionId);
+
+      const { error } = await supabaseService
+        .from('user_subscriptions')
+        .delete()
+        .eq('id', subscriptionId);
+
+      if (error) {
+        console.error('❌ SupabaseApiClient: Delete subscription error:', error);
+        throw new ApiClientError({
+          message: `Failed to delete subscription: ${error.message}`,
+          code: 'SUBSCRIPTION_DELETE_ERROR',
+          details: { originalError: error }
+        });
+      }
+
+      console.log('✅ SupabaseApiClient: Subscription deleted successfully');
+      return this.success(null);
+
+    } catch (error: any) {
+      console.error('💥 SupabaseApiClient: Delete subscription failed:', error);
+      if (error instanceof ApiClientError) throw error;
+      return this.handleSupabaseError(error, 'delete subscription');
+    }
+  }
+
+  async updateUser(userId: string, data: { full_name?: string }): Promise<ApiResponse<UserWithSubscriptions>> {
+    try {
+      console.log('📝 SupabaseApiClient: Updating user:', userId, data);
+
+      const { data: user, error } = await supabaseService
+        .from('users')
+        .update(data)
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ SupabaseApiClient: Update user error:', error);
+        throw new ApiClientError({
+          message: `Failed to update user: ${error.message}`,
+          code: 'USER_UPDATE_ERROR',
+          details: { originalError: error }
+        });
+      }
+
+      // Get user subscriptions
+      const subscriptionsResponse = await this.getUserSubscriptions(userId);
+      const subscriptions = subscriptionsResponse.success ? subscriptionsResponse.data : [];
+
+      const userWithSubscriptions: UserWithSubscriptions = {
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role as 'investment_analyst' | 'executive_assistant',
+        is_active: user.is_active,
+        created_at: new Date(user.created_at),
+        updated_at: new Date(),
+        preferences: {},
+        subscriptions: subscriptions
+      };
+
+      console.log('✅ SupabaseApiClient: User updated successfully');
+      return this.success(userWithSubscriptions);
+
+    } catch (error: any) {
+      console.error('💥 SupabaseApiClient: Update user failed:', error);
+      if (error instanceof ApiClientError) throw error;
+      return this.handleSupabaseError(error, 'update user');
+    }
+  }
+
   async getUserRSVPs(): Promise<ApiResponse<UserEventResponse[]>> {
     throw new ApiClientError({ message: 'Get user RSVPs not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
   }
 
-  async createSubscription(): Promise<ApiResponse<UserSubscription>> {
-    throw new ApiClientError({ message: 'Create subscription not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
-  }
-
   async updateSubscription(): Promise<ApiResponse<UserSubscription>> {
     throw new ApiClientError({ message: 'Update subscription not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
-  }
-
-  async deleteSubscription(): Promise<ApiResponse<null>> {
-    throw new ApiClientError({ message: 'Delete subscription not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
   }
 
   async getUserOrderedCompanies(): Promise<ApiResponse<Company[]>> {

@@ -18,6 +18,7 @@ import { apiClient } from './utils/apiClient';
 // mockData imports removed - using Supabase API only
 import { UserWithSubscriptions } from './types/database';
 import SubscriptionPage from './pages/SubscriptionPage';
+import UserProfile from './components/UserProfile';
 
 interface AppState {
   currentDate: Date;
@@ -38,6 +39,7 @@ interface AppState {
   isExecutiveAssistant: boolean;
   managedUsers: UserWithSubscriptions[];
   selectedManagedUser: UserWithSubscriptions | null;
+  showUserProfile: boolean;
 }
 
 // Sortable Company Calendar Row Component
@@ -145,7 +147,8 @@ const App: React.FC = () => {
     currentPage: 'calendar',
     isExecutiveAssistant: false,
     managedUsers: [],
-    selectedManagedUser: null
+    selectedManagedUser: null,
+    showUserProfile: false
   });
 
   const sensors = useSensors(
@@ -156,10 +159,15 @@ const App: React.FC = () => {
   );
 
   // TODO: Replace with real current user from API
-  const currentUser = { 
-    id: 'temp-user', 
+  const currentUser: UserWithSubscriptions = { 
+    id: '550e8400-e29b-41d4-a716-446655440001', // analyst1 actual ID
+    email: 'analyst1@agora.com',
     role: 'investment_analyst' as const,
-    full_name: 'Demo User',
+    full_name: 'John Smith',
+    is_active: true,
+    created_at: new Date(),
+    updated_at: new Date(),
+    preferences: {},
     subscriptions: []
   };
   
@@ -167,8 +175,13 @@ const App: React.FC = () => {
   // Temporarily disabled to test events functionality
 
   const reloadData = () => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    // Trigger useEffect by updating a dependency
+    setState(prev => ({ 
+      ...prev, 
+      loading: true, 
+      error: null,
+      // Force re-render by updating currentDate slightly
+      currentDate: new Date(prev.currentDate.getTime() + 1)
+    }));
   };
 
   // Load data on component mount and when dependencies change
@@ -271,20 +284,80 @@ const App: React.FC = () => {
     }));
   };
 
+  const getEventColor = (responseStatus: string): string => {
+    switch (responseStatus) {
+      case 'accepted': return 'green';
+      case 'declined': return 'yellow';
+      case 'pending': return 'grey';
+      default: return 'grey';
+    }
+  };
+
+  const handleOpenUserProfile = () => {
+    setState(prev => ({ ...prev, showUserProfile: true }));
+  };
+
+  const handleCloseUserProfile = () => {
+    setState(prev => ({ ...prev, showUserProfile: false }));
+  };
+
+  const handleUserUpdate = (updatedUser: UserWithSubscriptions) => {
+    // Update the current user and refresh events if subscriptions changed
+    console.log('🔄 User updated, reloading calendar data to show new subscriptions...');
+    
+    // Force a complete reload by resetting the loading state and updating dependencies
+    setState(prev => ({ 
+      ...prev, 
+      showUserProfile: false,
+      loading: true,
+      error: null,
+      // Clear current data to force fresh fetch
+      events: [],
+      companies: [],
+      // Increment date by 1ms to trigger useEffect dependency
+      currentDate: new Date(prev.currentDate.getTime() + 1)
+    }));
+  };
+
   const handleRSVPUpdate = async (eventId: string, status: 'accepted' | 'declined' | 'pending') => {
     try {
-      if (!currentUser) return;
+      if (!currentUser) {
+        console.error('No current user found for RSVP update');
+        return;
+      }
 
-      await apiClient.createRSVP({
-        user_id: currentUser.id,
-        event_id: eventId,
-        response_status: status
-      });
-
-      // Reload data to reflect changes by updating state
-      setState(prev => ({ ...prev, loading: true }));
+      console.log(`🎯 Updating RSVP for event ${eventId} to ${status}`);
       
-      setState(prev => ({ ...prev, selectedEvent: null }));
+      // Use updateRSVPByEventAndUser which handles both update and create scenarios
+      const response = await (apiClient as any).updateRSVPByEventAndUser(eventId, currentUser.id, status);
+      
+      if (response.success) {
+        console.log('✅ RSVP updated successfully');
+        
+        // Update the selected event's user_response in state
+        setState(prev => ({
+          ...prev,
+          selectedEvent: prev.selectedEvent ? {
+            ...prev.selectedEvent,
+            user_response: response.data
+          } : null,
+          events: prev.events.map(event => 
+            event.id === eventId 
+              ? {
+                  ...event,
+                  user_response: response.data,
+                  color_code: getEventColor(status)
+                }
+              : event
+          )
+        }));
+
+        // Show success message briefly
+        setState(prev => ({ ...prev, error: null }));
+        
+      } else {
+        throw new Error(typeof response.error === 'string' ? response.error : 'Failed to update RSVP');
+      }
     } catch (error) {
       console.error('Failed to update RSVP:', error);
     }
@@ -790,6 +863,15 @@ const App: React.FC = () => {
               />
             </div>
             
+            {/* User Profile Button */}
+            <button
+              className="btn btn-ghost"
+              onClick={handleOpenUserProfile}
+              title="User Profile"
+            >
+              <Settings size={16} />
+            </button>
+            
             {/* Executive Assistant User Switcher */}
             {state.isExecutiveAssistant && state.managedUsers.length > 0 && (
               <div className="ea-user-switcher" style={{ 
@@ -1102,16 +1184,22 @@ const App: React.FC = () => {
                     
                     <div className="flex gap-2">
                       <button 
-                        className="btn btn-sm btn-primary"
+                        className={`btn btn-sm ${state.selectedEvent?.user_response?.response_status === 'accepted' ? 'btn-primary' : 'btn-outline'}`}
                         onClick={() => handleRSVPUpdate(state.selectedEvent!.id, 'accepted')}
                       >
-                        Accept
+                        ✓ Accept
                       </button>
                       <button 
-                        className="btn btn-sm btn-secondary"
+                        className={`btn btn-sm ${state.selectedEvent?.user_response?.response_status === 'declined' ? 'btn-secondary' : 'btn-outline'}`}
                         onClick={() => handleRSVPUpdate(state.selectedEvent!.id, 'declined')}
                       >
-                        Decline
+                        ✗ Decline
+                      </button>
+                      <button 
+                        className={`btn btn-sm ${state.selectedEvent?.user_response?.response_status === 'pending' ? 'btn-accent' : 'btn-outline'}`}
+                        onClick={() => handleRSVPUpdate(state.selectedEvent!.id, 'pending')}
+                      >
+                        ? Pending
                       </button>
                     </div>
                   </div>
@@ -1122,6 +1210,14 @@ const App: React.FC = () => {
         </div>
       </main>
       )}
+
+      {/* User Profile Modal */}
+      <UserProfile
+        user={currentUser}
+        isOpen={state.showUserProfile}
+        onClose={handleCloseUserProfile}
+        onUserUpdate={handleUserUpdate}
+      />
 
     </div>
   );
