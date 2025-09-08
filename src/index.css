@@ -1,13 +1,1040 @@
-body {
+/**
+ * AGORA Investment Calendar - Bloomberg-Style Dark Theme
+ * 
+ * Professional, high-contrast dark theme inspired by Bloomberg Terminal
+ * Custom CSS (no Tailwind initially as specified)
+ */
+
+/* ===================================================================================== */
+/* CSS VARIABLES - Bloomberg-Style Color Palette */
+/* ===================================================================================== */
+
+:root {
+  /* Background Colors */
+  --primary-bg: #000000;        /* Pure black */
+  --secondary-bg: #0a0a0a;      /* Very dark black */
+  --tertiary-bg: #111111;       /* Dark grey */
+  --quaternary-bg: #1a1a1a;     /* Slightly lighter dark */
+  --accent-bg: #d4af37;         /* Brownish gold */
+  --hover-bg: #1f1f1f;          /* Hover state background */
+  
+  /* Text Colors */
+  --primary-text: #ffffff;      /* Pure white */
+  --secondary-text: #d4af37;    /* Gold text */
+  --muted-text: #cccccc;        /* Light grey */
+  --faded-text: #888888;        /* Darker grey for less important text */
+  
+  /* Border Colors */
+  --border-color: #222222;      /* Dark borders */
+  --border-light: #333333;      /* Slightly lighter borders */
+  --border-accent: #d4af37;     /* Gold accent borders */
+  
+  /* Status Colors - Matching Database Constraint Values */
+  --status-accepted: #28a745;   /* Green - matches DB 'accepted' */
+  --status-declined: #ffc107;   /* Yellow - matches DB 'declined' */
+  --status-pending: #6c757d;    /* Grey - matches DB 'pending' */
+  
+  /* Interactive Colors */
+  --button-primary: #d4af37;
+  --button-primary-hover: #b8941e;
+  --button-secondary: #333333;
+  --button-secondary-hover: #444444;
+  
+  /* Calendar Specific Colors */
+  --calendar-header: #111111;
+  --calendar-cell: #1a1a1a;
+  --calendar-cell-hover: #222222;
+  --calendar-today: #d4af37;
+  
+  /* Sizing */
+  --header-height: 60px;
+  --sidebar-width: 200px;
+  --border-radius: 4px;
+  --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* ===================================================================================== */
+/* GLOBAL RESET AND BASE STYLES */
+/* ===================================================================================== */
+
+* {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+body {
+  font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  background-color: var(--primary-bg);
+  color: var(--primary-text);
+  font-size: 14px;
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* ===================================================================================== */
+/* TYPOGRAPHY */
+/* ===================================================================================== */
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--primary-text);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.1rem; }
+h5 { font-size: 1rem; }
+h6 { font-size: 0.9rem; }
+
+p {
+  margin-bottom: 1rem;
+  color: var(--muted-text);
+}
+
+strong {
+  color: var(--primary-text);
+  font-weight: 600;
+}
+
+.text-accent {
+  color: var(--secondary-text);
+}
+
+.text-muted {
+  color: var(--muted-text);
+}
+
+.text-faded {
+  color: var(--faded-text);
+}
+
+/* ===================================================================================== */
+/* LAYOUT COMPONENTS */
+/* ===================================================================================== */
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--primary-bg);
+  font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+}
+
+.header {
+  height: var(--header-height);
+  background-color: var(--secondary-bg);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--secondary-text);
+  text-decoration: none;
+}
+
+.header-nav {
+  display: flex;
+  gap: 2rem;
+}
+
+.header-nav button {
+  background: none;
+  border: none;
+  color: var(--muted-text);
+  font-weight: 500;
+  font-size: inherit;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  padding: 0.5rem 1rem;
+}
+
+.header-nav button:hover,
+.header-nav button.active {
+  color: var(--secondary-text);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background-color: var(--tertiary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--accent-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-bg);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  background-color: var(--primary-bg);
+  overflow: hidden;
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  background-color: var(--secondary-bg);
+  border-right: 1px solid var(--border-color);
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.content-area {
+  flex: 1;
+  padding: 1rem;
+  overflow: hidden;
+}
+
+/* ===================================================================================== */
+/* BUTTONS */
+/* ===================================================================================== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 36px;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: var(--button-primary);
+  color: var(--primary-bg);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--button-primary-hover);
+}
+
+.btn-secondary {
+  background-color: var(--button-secondary);
+  color: var(--primary-text);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--button-secondary-hover);
+  border-color: var(--border-light);
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--muted-text);
+  border: 1px solid transparent;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background-color: var(--hover-bg);
+  color: var(--primary-text);
+}
+
+.btn-sm {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  min-height: 28px;
+}
+
+.btn-lg {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  min-height: 44px;
+}
+
+/* ===================================================================================== */
+/* CALENDAR STYLES */
+/* ===================================================================================== */
+
+.calendar-container {
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.calendar-layout {
+  display: flex;
+  gap: 1rem;
+  flex: 1;
+  overflow: hidden;
+}
+
+.calendar-main {
+  flex: 1;
+  overflow: auto;
+}
+
+.event-details-sidebar {
+  width: 400px;
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+.event-details-sidebar-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 400px;
+  height: 100vh;
+  background-color: var(--secondary-bg);
+  border-left: 1px solid var(--border-color);
+  padding: 1rem;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.3);
+  transform: translateX(0);
+  transition: transform 0.3s ease-in-out;
+}
+
+.event-details-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  backdrop-filter: blur(2px);
+}
+
+.calendar-header {
+  background-color: var(--calendar-header);
+  border-bottom: 1px solid var(--border-color);
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.calendar-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--primary-text);
+}
+
+.calendar-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.calendar-grid {
+  display: grid;
+  background-color: var(--primary-bg);
+  border: 1px solid var(--border-color);
+}
+
+.grid {
+  display: grid;
+}
+
+.grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.calendar-cell {
+  background-color: var(--calendar-cell);
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.5rem;
+  min-height: 80px;
+  transition: background-color 0.2s ease;
+}
+
+.calendar-cell:last-child {
+  border-right: none;
+}
+
+.calendar-cell:hover {
+  background-color: var(--calendar-cell-hover);
+}
+
+.calendar-cell.today {
+  background-color: rgba(212, 175, 55, 0.1);
+  border: 2px solid var(--accent-color);
+  border-color: var(--calendar-today);
+}
+
+.calendar-cell.other-month {
+  background-color: var(--secondary-bg);
+  opacity: 0.3;
+}
+
+.event-badge {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  font-size: 0.625rem;
+  color: white;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-weight: bold;
+  z-index: 10;
+}
+
+.day-number {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  font-weight: bold;
+  font-size: 0.875rem;
+  z-index: 5;
+}
+
+.calendar-day-number {
+  font-weight: 600;
+  color: var(--primary-text);
+  margin-bottom: 0.5rem;
+}
+
+.calendar-events {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* ===================================================================================== */
+/* EVENT BLOCKS */
+/* ===================================================================================== */
+
+.event-block {
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+}
+
+.event-block:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--box-shadow);
+}
+
+/* RSVP Status Colors - Matching Database Constraint Values */
+.event-block.status-accepted {
+  background-color: rgba(40, 167, 69, 0.2);
+  border-left-color: var(--status-accepted);
+  color: var(--status-accepted);
+}
+
+.event-block.status-declined {
+  background-color: rgba(255, 193, 7, 0.2);
+  border-left-color: var(--status-declined);
+  color: var(--status-declined);
+}
+
+.event-block.status-pending {
+  background-color: rgba(108, 117, 125, 0.2);
+  border-left-color: var(--status-pending);
+  color: var(--status-pending);
+}
+
+.event-title {
+  font-weight: 600;
+  margin-bottom: 0.125rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event-time {
+  font-size: 0.625rem;
+  opacity: 0.8;
+}
+
+/* ===================================================================================== */
+/* COMPANY ROWS */
+/* ===================================================================================== */
+
+.company-list {
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+.company-row {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: var(--secondary-bg);
+}
+
+.company-row:last-child {
+  border-bottom: none;
+}
+
+.company-row:hover {
+  background-color: var(--hover-bg);
+  border-left: 3px solid var(--secondary-text);
+  transform: translateX(2px);
+}
+
+.company-row.dragging,
+.calendar-grid.dragging {
+  opacity: 0.7;
+  transform: rotate(2deg) scale(1.02);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+  z-index: 1000;
+}
+
+.company-ticker {
+  font-weight: 700;
+  color: var(--secondary-text);
+  min-width: 60px;
+  margin-right: 1rem;
+}
+
+.company-name {
+  flex: 1;
+  font-weight: 500;
+  color: var(--primary-text);
+}
+
+.company-sector {
+  font-size: 0.75rem;
+  color: var(--muted-text);
+  text-align: right;
+}
+
+.drag-handle {
+  color: var(--faded-text);
+  margin-right: 0.75rem;
+  cursor: grab;
+  font-size: 1.2rem;
+  padding: 0.25rem;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+}
+
+.drag-handle:hover {
+  color: var(--secondary-text);
+  background-color: var(--hover-bg);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+  color: var(--primary-text);
+}
+
+/* ===================================================================================== */
+/* FORMS AND INPUTS */
+/* ===================================================================================== */
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--primary-text);
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background-color: var(--tertiary-bg);
+  color: var(--primary-text);
+  font-size: 0.875rem;
+  transition: border-color 0.2s ease;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--secondary-text);
+  box-shadow: 0 0 0 1px var(--secondary-text);
+}
+
+.form-input::placeholder {
+  color: var(--faded-text);
+}
+
+.form-error {
+  color: #dc3545;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+/* ===================================================================================== */
+/* CARDS AND PANELS */
+/* ===================================================================================== */
+
+.card {
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--tertiary-bg);
+}
+
+.card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--primary-text);
+}
+
+.card-body {
+  padding: 1rem;
+}
+
+.card-footer {
+  padding: 1rem;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--tertiary-bg);
+}
+
+/* ===================================================================================== */
+/* MOBILE & RESPONSIVE DESIGN */
+/* ===================================================================================== */
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .header-nav {
+    order: -1;
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .header-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+  }
+  
+  .user-info {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .calendar-layout {
+    flex-direction: column !important;
+  }
+  
+  .event-details-sidebar-overlay {
+    width: 100% !important;
+    height: 60vh !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    border-radius: 1rem 1rem 0 0 !important;
+    z-index: 1000 !important;
+  }
+  
+  .calendar-grid {
+    grid-template-columns: repeat(7, 1fr) !important;
+    font-size: 0.75rem;
+  }
+  
+  .calendar-cell {
+    min-height: 60px !important;
+    padding: 0.25rem !important;
+  }
+  
+  .event-block {
+    font-size: 0.625rem !important;
+    padding: 0.125rem 0.25rem !important;
+  }
+  
+  .company-row {
+    padding: 0.5rem !important;
+  }
+  
+  .form-select,
+  .form-input {
+    font-size: 0.75rem;
+    padding: 0.375rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .calendar-grid {
+    font-size: 0.625rem;
+  }
+  
+  .calendar-cell {
+    min-height: 50px !important;
+    padding: 0.125rem !important;
+  }
+  
+  .event-title {
+    display: none;
+  }
+  
+  .event-block {
+    height: 8px;
+    border-radius: 2px;
+    margin-bottom: 1px;
+  }
+  
+  .day-number {
+    font-size: 0.625rem !important;
+  }
+}
+
+/* Touch-friendly interactions */
+@media (hover: none) and (pointer: coarse) {
+  .btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .calendar-cell {
+    min-height: 80px;
+  }
+  
+  .event-block {
+    min-height: 32px;
+    padding: 0.5rem;
+  }
+  
+  .drag-handle {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* ===================================================================================== */
+/* UTILITY CLASSES */
+/* ===================================================================================== */
+
+.hidden {
+  display: none !important;
+}
+
+.visible {
+  display: block !important;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-1 { gap: 0.25rem; }
+.gap-2 { gap: 0.5rem; }
+.gap-3 { gap: 0.75rem; }
+.gap-4 { gap: 1rem; }
+
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 0.75rem; }
+.mb-4 { margin-bottom: 1rem; }
+.mt-1 { margin-top: 0.25rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-4 { margin-top: 1rem; }
+.ml-2 { margin-left: 0.5rem; }
+
+.font-semibold { font-weight: 600; }
+.text-lg { font-size: 1.125rem; }
+.text-sm { font-size: 0.875rem; }
+
+.p-1 { padding: 0.25rem; }
+.p-2 { padding: 0.5rem; }
+.p-3 { padding: 0.75rem; }
+.p-4 { padding: 1rem; }
+
+.m-1 { margin: 0.25rem; }
+.m-2 { margin: 0.5rem; }
+.m-3 { margin: 0.75rem; }
+.m-4 { margin: 1rem; }
+
+.rounded { border-radius: var(--border-radius); }
+.shadow { box-shadow: var(--box-shadow); }
+
+/* ===================================================================================== */
+/* RESPONSIVE DESIGN */
+/* ===================================================================================== */
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+  }
+  
+  .main-content {
+    flex-direction: column;
+  }
+  
+  .header-nav {
+    display: none;
+  }
+  
+  .calendar-cell {
+    min-height: 60px;
+    padding: 0.25rem;
+  }
+  
+  .company-row {
+    padding: 0.5rem;
+  }
+  
+  .company-sector {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 0 0.5rem;
+  }
+  
+  .content-area {
+    padding: 0.5rem;
+  }
+  
+  .event-block {
+    font-size: 0.625rem;
+    padding: 0.125rem 0.25rem;
+  }
+}
+
+/* ===================================================================================== */
+/* ACCESSIBILITY */
+/* ===================================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus indicators */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--secondary-text);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --border-color: #ffffff;
+    --primary-text: #ffffff;
+    --secondary-text: #ffff00;
+  }
+}
+
+/* ===================================================================================== */
+/* LOGIN FORM STYLES */
+/* ===================================================================================== */
+
+.login-form-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: var(--primary-bg);
+  padding: 1rem;
+}
+
+.login-form {
+  background: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.login-header h1 {
+  color: var(--accent-color);
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.login-header h2 {
+  color: var(--primary-text);
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  color: var(--primary-text);
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--tertiary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--primary-text);
+  font-size: 1rem;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.form-group input::placeholder {
+  color: var(--muted-text);
+}
+
+.btn-full {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.form-footer {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.error-message {
+  background: rgba(220, 53, 69, 0.1);
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  color: #dc3545;
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.demo-credentials {
+  background: var(--tertiary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.demo-credentials h4 {
+  color: var(--accent-color);
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.demo-credentials p {
+  color: var(--muted-text);
+  font-size: 0.8rem;
+  margin: 0.25rem 0;
+}
+
+.btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+/* Login form responsive */
+@media (max-width: 480px) {
+  .login-form {
+    padding: 1rem;
+  }
+
+  .login-form-container {
+    padding: 0.5rem;
+  }
 }
