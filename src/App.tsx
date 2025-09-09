@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { format, startOfWeek, endOfWeek, addDays, isSameDay, addWeeks, getWeek } from 'date-fns';
-import { Calendar, ChevronLeft, ChevronRight, Filter, Search, Settings, GripVertical, LogOut, ChevronDown, User } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Filter, Search, Settings, GripVertical, LogOut, ChevronDown, User, Bell } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
@@ -18,7 +18,9 @@ import { apiClient } from './utils/apiClient';
 // mockData imports removed - using Supabase API only
 import { UserWithSubscriptions } from './types/database';
 import SubscriptionManagementPage from './pages/SubscriptionManagementPage';
+import EventsPage from './pages/EventsPage';
 import UserProfile from './components/UserProfile';
+import NotificationsDrawer from './components/NotificationsDrawer';
 
 interface AppProps {
   authUser?: {
@@ -56,6 +58,7 @@ interface AppState {
   showEventsDropdown: boolean;
   showFiltersDropdown: boolean;
   showViewDropdown: boolean;
+  showNotificationsDrawer: boolean;
 }
 
 // Sortable Company Calendar Row Component
@@ -170,10 +173,10 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
     showUserProfile: false,
     showProfileDropdown: false,
     currentUser: {
-      id: '550e8400-e29b-41d4-a716-446655440001', // analyst1 actual ID
-      email: 'analyst1@agora.com',
+      id: '550e8400-e29b-41d4-a716-446655440002', // analyst2 actual ID
+      email: 'analyst2@agora.com',
       role: 'investment_analyst' as const,
-      full_name: 'John Smith',
+      full_name: 'Sarah Johnson',
       is_active: true,
       created_at: new Date(),
       updated_at: new Date(),
@@ -183,7 +186,8 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
     subscriptionCount: 0,
     showEventsDropdown: false,
     showFiltersDropdown: false,
-    showViewDropdown: false
+    showViewDropdown: false,
+    showNotificationsDrawer: false
   });
 
   const sensors = useSensors(
@@ -1016,9 +1020,18 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
     <div className="app">
       {/* Header */}
       <header className="header">
-        <div className="flex items-center gap-4">
+        {/* Left: Logo */}
+        <div className="flex items-center">
           <a href="/" className="header-logo">AGORA</a>
-          <nav className="header-nav">
+        </div>
+        
+        {/* Center: Navigation */}
+        <nav className="header-nav" style={{
+          display: 'flex',
+          justifyContent: 'center',
+          flex: 1
+        }}>
+          <div style={{ display: 'flex', gap: '2rem' }}>
             <button 
               className={state.currentPage === 'calendar' ? 'active' : ''}
               onClick={() => setState(prev => ({ ...prev, currentPage: 'calendar', showCompanyCalendar: false }))}
@@ -1037,24 +1050,12 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
             >
               Subscriptions
             </button>
-          </nav>
-        </div>
+          </div>
+        </nav>
         
+        {/* Right: Profile */}
         <div className="header-actions">
-          <div className="flex items-center gap-4">
-            {/* Search */}
-            <div className="flex items-center gap-2">
-              <Search size={16} />
-              <input 
-                type="text" 
-                placeholder="Search events, companies..." 
-                className="form-input"
-                style={{ width: '200px' }}
-                value={state.searchQuery}
-                onChange={(e) => setState(prev => ({ ...prev, searchQuery: e.target.value }))}
-              />
-            </div>
-            
+          <div className="flex items-center">
             {/* Profile Dropdown */}
             <div style={{ position: 'relative' }} ref={dropdownRef}>
               <button
@@ -1208,6 +1209,45 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
                         }}>View and modify your subscriptions</div>
                       </div>
                     </button>
+
+                    {/* Notifications */}
+                    <button
+                      onClick={() => {
+                        setState(prev => ({ 
+                          ...prev, 
+                          showNotificationsDrawer: true, 
+                          showProfileDropdown: false 
+                        }));
+                      }}
+                      style={{ 
+                        width: '100%', 
+                        padding: '0.75rem 1rem', 
+                        textAlign: 'left', 
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        color: 'var(--primary-text)',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem'
+                      }}
+                      onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)'}
+                      onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'transparent'}
+                    >
+                      <Bell size={16} style={{ color: 'var(--muted-text)' }} />
+                      <div>
+                        <div style={{ 
+                          fontSize: '0.875rem', 
+                          fontWeight: '500', 
+                          color: 'var(--primary-text)' 
+                        }}>Notifications</div>
+                        <div style={{ 
+                          fontSize: '0.75rem', 
+                          color: 'var(--muted-text)' 
+                        }}>Manage notification preferences</div>
+                      </div>
+                    </button>
                     
                     <div style={{ 
                       borderTop: '1px solid var(--border-color)', 
@@ -1290,10 +1330,7 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
       {state.currentPage === 'subscriptions' ? (
         <SubscriptionManagementPage />
       ) : state.currentPage === 'events' ? (
-        <div className="events-page" style={{ padding: '2rem', textAlign: 'center' }}>
-          <h2 className="text-xl text-primary-text">Events Page</h2>
-          <p className="text-muted">Coming soon - comprehensive event management and search</p>
-        </div>
+        <EventsPage />
       ) : (
         <main className="main-content" style={{ 
           flexDirection: 'column', 
@@ -1301,14 +1338,15 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
           minHeight: '100vh',
           overflow: 'hidden'
         }}>
-        {/* Calendar Controls - Compact Dropdown Groups */}
+        {/* Calendar Controls - Centered Layout */}
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
-          justifyContent: 'space-between', 
+          justifyContent: 'center', 
           marginBottom: '1rem',
           flexWrap: 'wrap',
-          gap: '0.5rem'
+          gap: '0.5rem',
+          padding: '0 2rem'
         }}>
           <div style={{ 
             display: 'flex', 
@@ -1737,6 +1775,35 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
                   </div>
                 )}
               </div>
+
+              {/* Search */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 1rem',
+                backgroundColor: 'var(--tertiary-bg)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '6px',
+                transition: 'all 0.2s ease'
+              }}>
+                <Search size={16} style={{ color: 'var(--muted-text)' }} />
+                <input 
+                  type="text" 
+                  placeholder="Search events, companies..." 
+                  value={state.searchQuery}
+                  onChange={(e) => setState(prev => ({ ...prev, searchQuery: e.target.value }))}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    color: 'var(--primary-text)',
+                    fontSize: '0.875rem',
+                    width: '200px',
+                    padding: '0.25rem 0'
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -2138,6 +2205,12 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
           onUserUpdate={handleUserUpdate}
         />
       )}
+
+      {/* Drawer Components */}
+      <NotificationsDrawer
+        isOpen={state.showNotificationsDrawer}
+        onClose={() => setState(prev => ({ ...prev, showNotificationsDrawer: false }))}
+      />
 
     </div>
   );

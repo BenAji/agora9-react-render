@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ChevronDown, ChevronUp, Check, Building2, Target, BarChart3 } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
+import { supabaseService } from '../lib/supabase';
 import { UserSubscription } from '../types/database';
 
-// Current user ID (analyst1)
-const CURRENT_USER_ID = '550e8400-e29b-41d4-a716-446655440001';
+// Current user ID (analyst2)
+const CURRENT_USER_ID = '550e8400-e29b-41d4-a716-446655440002';
 
 interface Company {
   id: string;
@@ -57,6 +58,8 @@ const SubscriptionManagementPage: React.FC = () => {
     totalSubsectors: 0,
     subscribedSubsectors: 0
   });
+  const [activeTab, setActiveTab] = useState<'view' | 'add'>('view');
+  const [currentSubscriptionsExpanded, setCurrentSubscriptionsExpanded] = useState(false);
 
   // Load subscription data
   const loadSubscriptionData = async () => {
@@ -71,12 +74,18 @@ const SubscriptionManagementPage: React.FC = () => {
       }
       setSubscriptions(userSubsResponse.data);
 
-      // Get all companies
-      const companiesResponse = await apiClient.getCompanies();
-      if (!companiesResponse.success) {
+      // Get ALL companies (not filtered by subscription) for the subscription management page
+      // We need to see all companies to build the complete list of available subsectors
+      const { data: allCompanies, error: companiesError } = await supabaseService
+        .from('companies')
+        .select('id, company_name, ticker_symbol, gics_sector, gics_subsector')
+        .eq('is_active', true);
+
+      if (companiesError) {
+        console.error('❌ Failed to load companies:', companiesError);
         throw new Error('Failed to load companies');
       }
-      const companies = companiesResponse.data.companies || [];
+      const companies = allCompanies || [];
 
       // Group companies by sector and subsector
       const sectorMap: { [key: string]: { [key: string]: Company[] } } = {};
@@ -223,22 +232,47 @@ const SubscriptionManagementPage: React.FC = () => {
     ));
   };
 
-  // Filter sectors based on search and filters
-  const filteredSectors = sectors.filter(sector => {
-    const matchesSearch = searchQuery === '' || 
-      sector.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sector.subsectors.some(sub => 
-        sub.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        sub.companies.some(company => 
-          company.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          company.ticker_symbol.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      );
+  // Filter sectors based on search and filters - SEPARATE LOGIC FOR EACH TAB
+  const getFilteredSectorsForTab = (tabType: 'view' | 'add') => {
+    return sectors.filter(sector => {
+      const matchesSearch = searchQuery === '' || 
+        sector.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        sector.subsectors.some(sub => 
+          sub.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          sub.companies.some(company => 
+            company.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            company.ticker_symbol.toLowerCase().includes(searchQuery.toLowerCase())
+          )
+        );
 
-    const matchesSectorFilter = selectedSector === 'all' || sector.name === selectedSector;
-    
-    return matchesSearch && matchesSectorFilter;
-  });
+      const matchesSectorFilter = selectedSector === 'all' || sector.name === selectedSector;
+
+      // Tab-specific filtering
+      let hasRelevantSubsectors = false;
+      if (tabType === 'view') {
+        // View tab: only show sectors with subscribed subsectors
+        hasRelevantSubsectors = sector.subsectors.some(sub => sub.isSubscribed);
+      } else {
+        // Add tab: only show sectors with unsubscribed subsectors
+        hasRelevantSubsectors = sector.subsectors.some(sub => !sub.isSubscribed);
+      }
+
+      return matchesSearch && matchesSectorFilter && hasRelevantSubsectors;
+    }).map(sector => ({
+      ...sector,
+      subsectors: sector.subsectors.filter(sub => {
+        // Tab-specific subsector filtering
+        if (tabType === 'view') {
+          return sub.isSubscribed;
+        } else {
+          return !sub.isSubscribed;
+        }
+      })
+    })).filter(sector => sector.subsectors.length > 0); // Remove sectors with no relevant subsectors
+  };
+
+  // Use different filtered data for each tab
+  const filteredSectors = getFilteredSectorsForTab(activeTab);
 
   // Get available subsectors for filter dropdown
   const availableSubsectors = Array.from(new Set(
@@ -287,14 +321,131 @@ const SubscriptionManagementPage: React.FC = () => {
             fontWeight: 'bold', 
             color: 'var(--primary-text)', 
             marginBottom: '0.5rem' 
-          }}>GICS Companies</h1>
+          }}>Manage Subscriptions</h1>
           <p style={{ 
             color: 'var(--muted-text)', 
-            fontSize: '1.125rem' 
-          }}>Browse and subscribe to companies by sector and ticker symbol</p>
+            fontSize: '1.125rem',
+            marginBottom: '1rem'
+          }}>Subscribe to subsectors to see their companies' events in your calendar</p>
+          
+          {/* Helpful Instructions */}
+          <div style={{
+            backgroundColor: 'var(--tertiary-bg)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '8px',
+            padding: '1rem',
+            marginBottom: '1rem'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem',
+              marginBottom: '0.5rem'
+            }}>
+              <Target size={16} style={{ color: 'var(--accent-bg)' }} />
+              <span style={{ fontWeight: '600', color: 'var(--primary-text)' }}>
+                How to manage subscriptions:
+              </span>
+            </div>
+            <ul style={{ 
+              margin: 0, 
+              paddingLeft: '1.5rem', 
+              color: 'var(--muted-text)',
+              fontSize: '0.875rem',
+              lineHeight: '1.5'
+            }}>
+              <li>Click <strong style={{ color: 'var(--success-color)' }}>Subscribe</strong> to add a subsector to your calendar</li>
+              <li>Click <strong style={{ color: 'var(--error-color)' }}>Unsubscribe</strong> to remove a subsector from your calendar</li>
+              <li>Use checkboxes to select multiple subsectors for bulk actions</li>
+              <li>Only events from subscribed subsectors will appear in your calendar</li>
+            </ul>
+          </div>
         </div>
 
-        {/* Summary Statistics */}
+        {/* Tab Navigation */}
+        <div style={{
+          display: 'flex',
+          borderBottom: '1px solid var(--border-color)',
+          marginBottom: '2rem',
+          backgroundColor: 'var(--secondary-bg)',
+          borderRadius: '8px 8px 0 0'
+        }}>
+          <button
+            onClick={() => setActiveTab('view')}
+            style={{
+              flex: 1,
+              padding: '1rem 1.5rem',
+              fontSize: '1rem',
+              fontWeight: '500',
+              borderBottom: activeTab === 'view' ? '2px solid var(--accent-bg)' : '2px solid transparent',
+              color: activeTab === 'view' ? 'var(--accent-bg)' : 'var(--muted-text)',
+              backgroundColor: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              borderRadius: '8px 0 0 0'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== 'view') {
+                (e.target as HTMLButtonElement).style.color = 'var(--primary-text)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== 'view') {
+                (e.target as HTMLButtonElement).style.color = 'var(--muted-text)';
+              }
+            }}
+          >
+            View Subscriptions
+          </button>
+          <button
+            onClick={() => setActiveTab('add')}
+            style={{
+              flex: 1,
+              padding: '1rem 1.5rem',
+              fontSize: '1rem',
+              fontWeight: '500',
+              borderBottom: activeTab === 'add' ? '2px solid var(--accent-bg)' : '2px solid transparent',
+              color: activeTab === 'add' ? 'var(--accent-bg)' : 'var(--muted-text)',
+              backgroundColor: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              borderRadius: '0 8px 0 0'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== 'add') {
+                (e.target as HTMLButtonElement).style.color = 'var(--primary-text)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== 'add') {
+                (e.target as HTMLButtonElement).style.color = 'var(--muted-text)';
+              }
+            }}
+          >
+            Add Subscriptions
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'view' ? (
+          <div>
+            {/* View Subscriptions Tab Content */}
+            <div style={{ marginBottom: '2rem' }}>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontWeight: '600',
+                color: 'var(--primary-text)',
+                marginBottom: '1rem'
+              }}>Current Subscriptions</h2>
+              <p style={{
+                color: 'var(--muted-text)',
+                marginBottom: '1.5rem'
+              }}>Manage your active subscriptions and view detailed information</p>
+            </div>
+
+            {/* Summary Statistics */}
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
@@ -668,6 +819,59 @@ const SubscriptionManagementPage: React.FC = () => {
                                   }}>
                                     {subsector.companies.map(company => company.ticker_symbol).join(', ')}
                                   </div>
+                                  {/* Individual Subscribe/Unsubscribe Button */}
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        setLoading(true);
+                                        if (subsector.isSubscribed) {
+                                          // Unsubscribe
+                                          const subscription = subscriptions.find(sub => sub.subsector === subsector.name);
+                                          if (subscription) {
+                                            await apiClient.deleteSubscription(subscription.id);
+                                          }
+                                        } else {
+                                          // Subscribe
+                                          await apiClient.createSubscription({
+                                            user_id: CURRENT_USER_ID,
+                                            gics_subsector: subsector.name
+                                          } as any);
+                                        }
+                                        await loadSubscriptionData();
+                                      } catch (error) {
+                                        console.error('Failed to toggle subscription:', error);
+                                        setError(`Failed to ${subsector.isSubscribed ? 'unsubscribe from' : 'subscribe to'} ${subsector.name}`);
+                                      } finally {
+                                        setLoading(false);
+                                      }
+                                    }}
+                                    disabled={loading}
+                                    style={{
+                                      padding: '0.375rem 0.75rem',
+                                      backgroundColor: subsector.isSubscribed ? '#dc3545' : '#28a745',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '6px',
+                                      fontSize: '0.75rem',
+                                      fontWeight: '500',
+                                      cursor: loading ? 'not-allowed' : 'pointer',
+                                      opacity: loading ? 0.5 : 1,
+                                      transition: 'all 0.2s ease',
+                                      minWidth: '80px'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      if (!loading) {
+                                        (e.target as HTMLButtonElement).style.backgroundColor = subsector.isSubscribed ? '#c82333' : '#218838';
+                                      }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      if (!loading) {
+                                        (e.target as HTMLButtonElement).style.backgroundColor = subsector.isSubscribed ? '#dc3545' : '#28a745';
+                                      }
+                                    }}
+                                  >
+                                    {subsector.isSubscribed ? 'Unsubscribe' : 'Subscribe'}
+                                  </button>
                                 </div>
                               </div>
                             </div>
@@ -740,6 +944,471 @@ const SubscriptionManagementPage: React.FC = () => {
                   Unsubscribe
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+          </div>
+        ) : (
+          <div>
+            {/* Add Subscriptions Tab Content */}
+            <div style={{ marginBottom: '2rem' }}>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontWeight: '600',
+                color: 'var(--primary-text)',
+                marginBottom: '1rem'
+              }}>Manage Subscriptions</h2>
+              <p style={{
+                color: 'var(--muted-text)',
+                marginBottom: '1.5rem'
+              }}>Quick view of current subscriptions and discover new subsectors to add</p>
+            </div>
+
+            {/* Current Subscriptions - Collapsible */}
+            {subscriptions.length > 0 && (
+              <div style={{
+                marginBottom: '2rem',
+                backgroundColor: 'var(--secondary-bg)',
+                borderRadius: '8px',
+                border: '1px solid var(--border-color)',
+                overflow: 'hidden'
+              }}>
+                {/* Collapsible Header */}
+                <div 
+                  onClick={() => setCurrentSubscriptionsExpanded(!currentSubscriptionsExpanded)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '1rem 1.5rem',
+                    cursor: 'pointer',
+                    backgroundColor: 'var(--tertiary-bg)',
+                    borderBottom: currentSubscriptionsExpanded ? '1px solid var(--border-color)' : 'none',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => (e.target as HTMLDivElement).style.backgroundColor = 'var(--quaternary-bg)'}
+                  onMouseLeave={(e) => (e.target as HTMLDivElement).style.backgroundColor = 'var(--tertiary-bg)'}
+                >
+                  <h3 style={{
+                    fontSize: '1rem',
+                    fontWeight: '600',
+                    color: 'var(--primary-text)',
+                    margin: 0
+                  }}>Current Subscriptions ({subscriptions.filter(sub => sub.is_active && sub.payment_status === 'paid').length})</h3>
+                  <ChevronDown 
+                    size={20} 
+                    style={{ 
+                      color: 'var(--muted-text)',
+                      transform: currentSubscriptionsExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease'
+                    }} 
+                  />
+                </div>
+                
+                {/* Collapsible Content */}
+                {currentSubscriptionsExpanded && (
+                  <div style={{
+                    padding: '1rem 1.5rem'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.75rem'
+                    }}>
+                      {subscriptions.filter(sub => sub.is_active && sub.payment_status === 'paid').map((subscription) => {
+                        // Get company details for this subsector
+                        const subsectorCompanies = sectors
+                          .flatMap(sector => sector.subsectors)
+                          .find(sub => sub.name === subscription.subsector)?.companies || [];
+                        
+                        return (
+                          <div
+                            key={subscription.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '0.75rem 1rem',
+                              backgroundColor: 'var(--quaternary-bg)',
+                              borderRadius: '6px',
+                              border: '1px solid var(--border-light)'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <Check size={16} style={{ color: '#28a745' }} />
+                              <div>
+                                <div style={{
+                                  fontWeight: '500',
+                                  color: 'var(--primary-text)',
+                                  fontSize: '0.875rem',
+                                  marginBottom: '0.25rem'
+                                }}>
+                                  {subscription.subsector}
+                                </div>
+                                <div style={{
+                                  fontSize: '0.75rem',
+                                  color: 'var(--muted-text)'
+                                }}>
+                                  {subsectorCompanies.length} companies • {subsectorCompanies.map(c => c.ticker_symbol).join(', ')}
+                                </div>
+                              </div>
+                            </div>
+                            <div style={{
+                              padding: '0.25rem 0.75rem',
+                              fontSize: '0.7rem',
+                              borderRadius: '12px',
+                              backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                              color: '#28a745',
+                              fontWeight: '500'
+                            }}>
+                              Active
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Section Divider */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem',
+              marginBottom: '2rem'
+            }}>
+              <div style={{
+                flex: 1,
+                height: '1px',
+                backgroundColor: 'var(--border-color)'
+              }}></div>
+              <span style={{
+                fontSize: '1rem',
+                fontWeight: '500',
+                color: 'var(--muted-text)',
+                padding: '0 1rem'
+              }}>Available Subscriptions</span>
+              <div style={{
+                flex: 1,
+                height: '1px',
+                backgroundColor: 'var(--border-color)'
+              }}></div>
+            </div>
+
+            {/* Search and Filters */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+              marginBottom: '2rem',
+              padding: '1.5rem',
+              backgroundColor: 'var(--secondary-bg)',
+              borderRadius: '8px',
+              border: '1px solid var(--border-color)'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                flexWrap: 'wrap'
+              }}>
+                <div style={{ position: 'relative', flex: '1', minWidth: '300px' }}>
+                  <Search size={20} style={{
+                    position: 'absolute',
+                    left: '0.75rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--muted-text)'
+                  }} />
+                  <input
+                    type="text"
+                    placeholder="Search subsectors, companies, or sectors..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem 0.75rem 0.75rem 2.5rem',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '6px',
+                      backgroundColor: 'var(--primary-bg)',
+                      color: 'var(--primary-text)',
+                      fontSize: '0.875rem',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+                <select
+                  value={selectedSector}
+                  onChange={(e) => setSelectedSector(e.target.value)}
+                  style={{
+                    padding: '0.75rem',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '6px',
+                    backgroundColor: 'var(--primary-bg)',
+                    color: 'var(--primary-text)',
+                    fontSize: '0.875rem',
+                    outline: 'none',
+                    minWidth: '150px'
+                  }}
+                >
+                  <option value="all">All Sectors</option>
+                  {Array.from(new Set(sectors.map(s => s.name))).map(sector => (
+                    <option key={sector} value={sector}>{sector}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{
+                fontSize: '0.875rem',
+                color: 'var(--muted-text)'
+              }}>
+                {(() => {
+                  const unsubscribedSubsectors = sectors.flatMap(sector => 
+                    sector.subsectors.filter(sub => !sub.isSubscribed)
+                  ).filter(subsector => {
+                    const matchesSearch = searchQuery === '' || 
+                      subsector.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      subsector.sector.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      subsector.companies.some(company => 
+                        company.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        company.ticker_symbol.toLowerCase().includes(searchQuery.toLowerCase())
+                      );
+                    
+                    const matchesSectorFilter = selectedSector === 'all' || subsector.sector === selectedSector;
+                    
+                    return matchesSearch && matchesSectorFilter;
+                  });
+                  
+                  return `Showing ${unsubscribedSubsectors.length} available subsectors`;
+                })()
+              }
+              </div>
+            </div>
+
+            {/* Available Subsectors - Flat List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {(() => {
+                const unsubscribedSubsectors = sectors.flatMap(sector => 
+                  sector.subsectors.filter(sub => !sub.isSubscribed)
+                ).filter(subsector => {
+                  const matchesSearch = searchQuery === '' || 
+                    subsector.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subsector.sector.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subsector.companies.some(company => 
+                      company.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      company.ticker_symbol.toLowerCase().includes(searchQuery.toLowerCase())
+                    );
+                  
+                  const matchesSectorFilter = selectedSector === 'all' || subsector.sector === selectedSector;
+                  
+                  return matchesSearch && matchesSectorFilter;
+                });
+
+                if (unsubscribedSubsectors.length === 0) {
+                  return (
+                    <div style={{
+                      textAlign: 'center',
+                      padding: '3rem 2rem',
+                      backgroundColor: 'var(--secondary-bg)',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-color)'
+                    }}>
+                      <div style={{
+                        fontSize: '3rem',
+                        marginBottom: '1rem'
+                      }}>🎉</div>
+                      <h3 style={{
+                        fontSize: '1.25rem',
+                        fontWeight: '600',
+                        color: 'var(--primary-text)',
+                        marginBottom: '0.5rem'
+                      }}>You're subscribed to all available subsectors!</h3>
+                      <p style={{
+                        color: 'var(--muted-text)',
+                        margin: 0
+                      }}>Great job! You have access to events from all companies in our database.</p>
+                    </div>
+                  );
+                }
+
+                return unsubscribedSubsectors.map(subsector => {
+                  const pricingOptions = [25, 30, 35, 40, 45, 50, 55, 60];
+                  const randomPrice = pricingOptions[Math.floor(Math.random() * pricingOptions.length)];
+                  
+                  return (
+                    <div
+                      key={subsector.name}
+                      style={{
+                        padding: '1.5rem',
+                        backgroundColor: 'var(--secondary-bg)',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border-color)',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.target as HTMLDivElement).style.borderColor = 'var(--accent-bg)';
+                        (e.target as HTMLDivElement).style.boxShadow = '0 4px 12px rgba(218, 165, 32, 0.1)';
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.target as HTMLDivElement).style.borderColor = 'var(--border-color)';
+                        (e.target as HTMLDivElement).style.boxShadow = 'none';
+                      }}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '1rem'
+                      }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            marginBottom: '0.75rem'
+                          }}>
+                            <div style={{
+                              width: '40px',
+                              height: '40px',
+                              borderRadius: '8px',
+                              backgroundColor: 'var(--accent-bg)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: 'white',
+                              fontSize: '1.25rem',
+                              fontWeight: 'bold'
+                            }}>
+                              {subsector.name.charAt(0)}
+                            </div>
+                            <div>
+                              <h3 style={{
+                                fontSize: '1.125rem',
+                                fontWeight: '600',
+                                color: 'var(--primary-text)',
+                                margin: 0,
+                                marginBottom: '0.25rem'
+                              }}>{subsector.name}</h3>
+                              <div style={{
+                                fontSize: '0.875rem',
+                                color: 'var(--muted-text)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem'
+                              }}>
+                                <span>{subsector.sector}</span>
+                                <span>•</span>
+                                <span>{subsector.companyCount} companies</span>
+                                <span>•</span>
+                                <span style={{ color: 'var(--accent-bg)', fontWeight: '500' }}>${randomPrice}/month</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            marginBottom: '0.75rem'
+                          }}>
+                            <span style={{
+                              fontSize: '0.875rem',
+                              color: 'var(--muted-text)',
+                              fontWeight: '500'
+                            }}>Companies:</span>
+                            <div style={{
+                              fontSize: '0.875rem',
+                              color: 'var(--primary-text)',
+                              fontFamily: 'monospace'
+                            }}>
+                              {subsector.companies.map(company => company.ticker_symbol).join(', ')}
+                            </div>
+                          </div>
+
+                          <div style={{
+                            fontSize: '0.875rem',
+                            color: 'var(--muted-text)',
+                            lineHeight: '1.4'
+                          }}>
+                            Get access to earnings calls, investor meetings, and other corporate events from 
+                            {subsector.companyCount === 1 ? ' this company' : ` these ${subsector.companyCount} companies`} 
+                            in the {subsector.name} subsector.
+                          </div>
+                        </div>
+
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          minWidth: '120px'
+                        }}>
+                          <button
+                            onClick={async () => {
+                              try {
+                                setLoading(true);
+                                setError(null);
+                                await apiClient.createSubscription({
+                                  user_id: CURRENT_USER_ID,
+                                  gics_subsector: subsector.name
+                                } as any);
+                                await loadSubscriptionData();
+                                
+                                // Show success message
+                                setError(null);
+                              } catch (error) {
+                                console.error('Failed to subscribe:', error);
+                                setError('Failed to subscribe to ' + subsector.name);
+                              } finally {
+                                setLoading(false);
+                              }
+                            }}
+                            disabled={loading}
+                            style={{
+                              width: '100%',
+                              padding: '0.75rem 1rem',
+                              backgroundColor: 'var(--accent-bg)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '0.875rem',
+                              fontWeight: '600',
+                              cursor: loading ? 'not-allowed' : 'pointer',
+                              opacity: loading ? 0.5 : 1,
+                              transition: 'all 0.2s ease',
+                              textAlign: 'center'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!loading) {
+                                (e.target as HTMLButtonElement).style.backgroundColor = '#d4af37';
+                                (e.target as HTMLButtonElement).style.transform = 'translateY(-1px)';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!loading) {
+                                (e.target as HTMLButtonElement).style.backgroundColor = 'var(--accent-bg)';
+                                (e.target as HTMLButtonElement).style.transform = 'translateY(0)';
+                              }
+                            }}
+                          >
+                            {loading ? 'Subscribing...' : 'Subscribe'}
+                          </button>
+                          
+                          <div style={{
+                            fontSize: '0.75rem',
+                            color: 'var(--muted-text)',
+                            textAlign: 'center'
+                          }}>
+                            30-day free trial
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()
+            }
             </div>
           </div>
         )}

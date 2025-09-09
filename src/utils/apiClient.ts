@@ -374,6 +374,40 @@ class SupabaseApiClient implements ApiClient {
   }
 }
 
+  // Get All Available Subsectors
+  async getAllSubsectors(): Promise<ApiResponse<string[]>> {
+    try {
+      console.log('📋 SupabaseApiClient: Getting all available subsectors');
+
+      // Get all unique subsectors from companies table
+      const { data: companiesData, error } = await supabaseService
+        .from('companies')
+        .select('gics_subsector')
+        .eq('is_active', true);
+
+      if (error) {
+        console.error('❌ SupabaseApiClient: Subsectors query error:', error);
+        throw new ApiClientError({
+          message: `Failed to fetch subsectors: ${error.message}`,
+          code: 'SUBSECTORS_FETCH_ERROR',
+          details: { originalError: error }
+        });
+      }
+
+      const uniqueSubsectors = Array.from(
+        new Set(companiesData?.map(c => c.gics_subsector) || [])
+      ).sort();
+      
+      console.log('📋 SupabaseApiClient: Found subsectors:', uniqueSubsectors);
+      
+      return this.success(uniqueSubsectors);
+    } catch (error: any) {
+      console.error('💥 SupabaseApiClient: Get all subsectors failed:', error);
+      if (error instanceof ApiClientError) throw error;
+      return this.handleSupabaseError(error, 'get all subsectors');
+    }
+  }
+
 // =====================================================================================
   // PLACEHOLDER METHODS (Not implemented for minimal schema)
 // =====================================================================================

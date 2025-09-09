@@ -136,10 +136,11 @@ strong {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 1rem;
+  padding: 0 2rem;
   position: sticky;
   top: 0;
   z-index: 100;
+  gap: 2rem;
 }
 
 .header-logo {

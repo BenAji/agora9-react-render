@@ -225,6 +225,7 @@ export interface ApiClient {
   getUserSubscriptions(userId: string): Promise<ApiResponse<UserSubscription[]>>;
   getSubscriptionSummary(userId: string): Promise<ApiResponse<SubscriptionSummaryResponse>>;
   activateSubscription(stripeSubscriptionId: string): Promise<ApiResponse<UserSubscription>>;
+  getAllSubsectors(): Promise<ApiResponse<string[]>>;
   
   // Executive Assistant
   assignExecutiveAssistant(userId: string, assistantId: string, permissions: Record<string, boolean>): Promise<ApiResponse<ExecutiveAssistantAssignment>>;
