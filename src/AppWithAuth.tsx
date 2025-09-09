@@ -84,88 +84,133 @@ const AppWithAuth: React.FC = () => {
 
   if (authState.loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900">
-        <div className="text-white">Loading...</div>
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        minHeight: '100vh', 
+        backgroundColor: 'var(--primary-bg)' 
+      }}>
+        <div style={{ color: 'var(--primary-text)' }}>Loading...</div>
       </div>
     );
   }
 
   if (authState.showLogin) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-        <div className="w-full max-w-lg">
+      <div className="login-form-container">
+        <div style={{ width: '100%', maxWidth: '28rem' }}>
           {/* Header Section */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-yellow-500 rounded-full mb-6">
-              <span className="text-black font-bold text-2xl">A</span>
+          <div className="login-header">
+            <div style={{ 
+              width: '4rem', 
+              height: '4rem', 
+              backgroundColor: 'var(--accent-bg)', 
+              borderRadius: '50%', 
+              margin: '0 auto 1rem auto', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}>
+              <span style={{ color: 'var(--primary-bg)', fontWeight: 'bold', fontSize: '1.5rem' }}>A</span>
             </div>
-            <h1 className="text-white text-4xl font-bold mb-2">AGORA</h1>
-            <h2 className="text-yellow-500 text-lg font-medium tracking-wide">EVENT COORDINATION PLATFORM</h2>
-            <p className="text-gray-400 text-sm mt-2">Professional event coordination platform for investment analysts</p>
+            <h1>AGORA</h1>
+            <h2 style={{ color: 'var(--secondary-text)', fontSize: '1.125rem', fontWeight: '500', letterSpacing: '0.05em' }}>
+              EVENT COORDINATION PLATFORM
+            </h2>
+            <p style={{ color: 'var(--muted-text)', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+              Professional event coordination platform for investment analysts
+            </p>
           </div>
 
           {/* Login Form Container */}
-          <div className="bg-gray-800 rounded-lg shadow-xl">
+          <div className="login-form">
             {/* Tab Headers */}
-            <div className="flex">
-              <button className="flex-1 bg-yellow-500 text-black py-3 px-4 rounded-tl-lg font-medium">
+            <div style={{ display: 'flex', marginBottom: '2rem' }}>
+              <button style={{ 
+                flex: 1, 
+                backgroundColor: 'var(--accent-bg)', 
+                color: 'var(--primary-bg)', 
+                padding: '0.75rem 1rem', 
+                borderTopLeftRadius: '8px',
+                border: 'none',
+                fontWeight: '500'
+              }}>
                 Login
               </button>
-              <button className="flex-1 bg-gray-700 text-gray-300 py-3 px-4 rounded-tr-lg font-medium">
+              <button style={{ 
+                flex: 1, 
+                backgroundColor: 'var(--tertiary-bg)', 
+                color: 'var(--muted-text)', 
+                padding: '0.75rem 1rem', 
+                borderTopRightRadius: '8px',
+                border: 'none',
+                fontWeight: '500'
+              }}>
                 Sign Up
               </button>
             </div>
 
             {/* Form Content */}
-            <div className="p-8">
-              <h3 className="text-white text-xl font-medium mb-6">Welcome Back</h3>
+            <div>
+              <h3 style={{ color: 'var(--primary-text)', fontSize: '1.25rem', fontWeight: '500', marginBottom: '1.5rem' }}>Welcome Back</h3>
               
-              <form onSubmit={handleLogin} className="space-y-6">
+              <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 {loginError && (
-                  <div className="p-4 bg-red-900/50 border border-red-800 rounded-lg">
-                    <div className="flex items-center">
-                      <svg className="w-5 h-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="error-message">
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <svg style={{ width: '1.25rem', height: '1.25rem', color: '#dc3545', marginRight: '0.5rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      <span className="text-red-300 text-sm">{loginError}</span>
+                      <span style={{ color: '#dc3545', fontSize: '0.875rem' }}>{loginError}</span>
                     </div>
                   </div>
                 )}
 
-                <div>
-                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                <div className="form-group">
+                  <label className="form-label">
                     Email
                   </label>
                   <input
                     type="email"
                     value={loginForm.email}
                     onChange={(e) => setLoginForm(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all"
+                    className="form-input"
                     placeholder="Enter your email"
                     disabled={isLoggingIn}
                     required
                   />
                 </div>
 
-                <div>
-                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                <div className="form-group">
+                  <label className="form-label">
                     Password
                   </label>
-                  <div className="relative">
+                  <div style={{ position: 'relative' }}>
                     <input
                       type="password"
                       value={loginForm.password}
                       onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
-                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all pr-12"
+                      className="form-input"
+                      style={{ paddingRight: '3rem' }}
                       placeholder="Enter your password"
                       disabled={isLoggingIn}
                       required
                     />
                     <button
                       type="button"
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                      style={{ 
+                        position: 'absolute', 
+                        right: '0.75rem', 
+                        top: '50%', 
+                        transform: 'translateY(-50%)', 
+                        color: 'var(--faded-text)', 
+                        background: 'none', 
+                        border: 'none', 
+                        cursor: 'pointer' 
+                      }}
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg style={{ width: '1.25rem', height: '1.25rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                       </svg>
@@ -176,13 +221,24 @@ const AppWithAuth: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isLoggingIn}
-                  className="w-full bg-yellow-500 hover:bg-yellow-600 text-black py-3 px-4 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  className="btn btn-primary btn-full"
+                  style={{ 
+                    width: '100%', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    gap: '0.5rem'
+                  }}
                 >
                   {isLoggingIn ? (
                     <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <svg style={{ 
+                        width: '1.25rem', 
+                        height: '1.25rem', 
+                        animation: 'spin 1s linear infinite' 
+                      }} fill="none" viewBox="0 0 24 24">
+                        <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
                       Signing In...
                     </>
@@ -195,55 +251,99 @@ const AppWithAuth: React.FC = () => {
           </div>
 
           {/* Footer */}
-          <div className="text-center mt-8">
-            <div className="flex items-center justify-center text-gray-500 text-sm">
-              <div className="w-4 h-4 bg-yellow-500 rounded-full mr-2 flex items-center justify-center">
-                <span className="text-black font-bold text-xs">A</span>
+          <div className="form-footer">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--faded-text)', fontSize: '0.875rem' }}>
+              <div style={{ 
+                width: '1rem', 
+                height: '1rem', 
+                backgroundColor: 'var(--accent-bg)', 
+                borderRadius: '50%', 
+                marginRight: '0.5rem', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center' 
+              }}>
+                <span style={{ color: 'var(--primary-bg)', fontWeight: 'bold', fontSize: '0.75rem' }}>A</span>
               </div>
               © 2026 AGORA. All rights reserved.
             </div>
           </div>
 
           {/* Quick Login Section */}
-          <div className="mt-8 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-            <h4 className="text-yellow-500 font-medium mb-3 text-center">💻 Quick Login - Database Accounts</h4>
-            <div className="grid grid-cols-1 gap-2">
+          <div className="demo-credentials" style={{ marginTop: '2rem' }}>
+            <h4 style={{ color: 'var(--accent-bg)', fontWeight: '500', marginBottom: '0.75rem', textAlign: 'center' }}>
+              💻 Quick Login - Database Accounts
+            </h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <button
                 onClick={() => setLoginForm({ email: 'analyst1@agora.com', password: 'password123' })}
-                className="w-full text-left p-3 bg-gray-700/50 hover:bg-gray-700 rounded-lg border border-gray-600 transition-all"
+                style={{ 
+                  width: '100%', 
+                  textAlign: 'left', 
+                  padding: '0.75rem', 
+                  backgroundColor: 'var(--tertiary-bg)', 
+                  borderRadius: '8px', 
+                  border: '1px solid var(--border-color)', 
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)'}
+                onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--tertiary-bg)'}
               >
-                <div className="flex justify-between items-center">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <div className="text-white text-sm font-medium">👨‍💼 John Smith (Analyst)</div>
-                    <div className="text-gray-400 text-xs">analyst1@agora.com</div>
+                    <div style={{ color: 'var(--primary-text)', fontSize: '0.875rem', fontWeight: '500' }}>👨‍💼 John Smith (Analyst)</div>
+                    <div style={{ color: 'var(--muted-text)', fontSize: '0.75rem' }}>analyst1@agora.com</div>
                   </div>
-                  <div className="text-yellow-500 text-xs font-medium">Click to use</div>
+                  <div style={{ color: 'var(--accent-bg)', fontSize: '0.75rem', fontWeight: '500' }}>Click to use</div>
                 </div>
               </button>
               
               <button
                 onClick={() => setLoginForm({ email: 'analyst2@agora.com', password: 'password123' })}
-                className="w-full text-left p-3 bg-gray-700/50 hover:bg-gray-700 rounded-lg border border-gray-600 transition-all"
+                style={{ 
+                  width: '100%', 
+                  textAlign: 'left', 
+                  padding: '0.75rem', 
+                  backgroundColor: 'var(--tertiary-bg)', 
+                  borderRadius: '8px', 
+                  border: '1px solid var(--border-color)', 
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)'}
+                onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--tertiary-bg)'}
               >
-                <div className="flex justify-between items-center">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <div className="text-white text-sm font-medium">👩‍💼 Sarah Johnson (Analyst)</div>
-                    <div className="text-gray-400 text-xs">analyst2@agora.com</div>
+                    <div style={{ color: 'var(--primary-text)', fontSize: '0.875rem', fontWeight: '500' }}>👩‍💼 Sarah Johnson (Analyst)</div>
+                    <div style={{ color: 'var(--muted-text)', fontSize: '0.75rem' }}>analyst2@agora.com</div>
                   </div>
-                  <div className="text-yellow-500 text-xs font-medium">Click to use</div>
+                  <div style={{ color: 'var(--accent-bg)', fontSize: '0.75rem', fontWeight: '500' }}>Click to use</div>
                 </div>
               </button>
 
               <button
                 onClick={() => setLoginForm({ email: 'ea1@agora.com', password: 'password123' })}
-                className="w-full text-left p-3 bg-gray-700/50 hover:bg-gray-700 rounded-lg border border-gray-600 transition-all"
+                style={{ 
+                  width: '100%', 
+                  textAlign: 'left', 
+                  padding: '0.75rem', 
+                  backgroundColor: 'var(--tertiary-bg)', 
+                  borderRadius: '8px', 
+                  border: '1px solid var(--border-color)', 
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)'}
+                onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--tertiary-bg)'}
               >
-                <div className="flex justify-between items-center">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <div className="text-white text-sm font-medium">👩‍💻 Emma Wilson (EA)</div>
-                    <div className="text-gray-400 text-xs">ea1@agora.com</div>
+                    <div style={{ color: 'var(--primary-text)', fontSize: '0.875rem', fontWeight: '500' }}>👩‍💻 Emma Wilson (EA)</div>
+                    <div style={{ color: 'var(--muted-text)', fontSize: '0.75rem' }}>ea1@agora.com</div>
                   </div>
-                  <div className="text-yellow-500 text-xs font-medium">Click to use</div>
+                  <div style={{ color: 'var(--accent-bg)', fontSize: '0.75rem', fontWeight: '500' }}>Click to use</div>
                 </div>
               </button>
             </div>
@@ -255,20 +355,10 @@ const AppWithAuth: React.FC = () => {
 
   return (
     <div>
-      {authState.user && (
-        <div className="bg-gray-800 px-4 py-2 flex justify-between items-center">
-          <span className="text-white text-sm">
-            {authState.user.email === 'demo-mode' ? 'Demo Mode (Mock Data)' : `Logged in as: ${authState.user.email}`}
-          </span>
-          <button
-            onClick={authState.user.email === 'demo-mode' ? () => setAuthState(prev => ({ ...prev, showLogin: true, user: null })) : handleLogout}
-            className="text-red-400 hover:text-red-300 text-sm"
-          >
-            {authState.user.email === 'demo-mode' ? 'Back to Login' : 'Logout'}
-          </button>
-        </div>
-      )}
-      <App />
+      <App 
+        authUser={authState.user}
+        onLogout={handleLogout}
+      />
     </div>
   );
 };

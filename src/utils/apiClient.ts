@@ -116,7 +116,7 @@ class SupabaseApiClient implements ApiClient {
       };
 
       console.log('✅ SupabaseApiClient: Login successful for:', user.email);
-      return this.success({
+    return this.success({
         user,
         token: authData.session?.access_token || 'supabase-token'
       });
@@ -140,7 +140,7 @@ class SupabaseApiClient implements ApiClient {
         });
       }
 
-      return this.success(null);
+    return this.success(null);
     } catch (error: any) {
       if (error instanceof ApiClientError) throw error;
       return this.handleSupabaseError(error, 'logout');
@@ -241,7 +241,7 @@ class SupabaseApiClient implements ApiClient {
           virtual_details: undefined,
           weather_location: undefined,
           event_type: 'standard' as const,
-          is_active: true,
+      is_active: true,
           created_at: new Date(),
           updated_at: new Date(),
           companies: event.companies || [],
@@ -597,7 +597,7 @@ class SupabaseApiClient implements ApiClient {
           code: 'RSVP_UPDATE_ERROR',
         details: { originalError: error }
       });
-      }
+    }
 
       const userEventResponse: UserEventResponse = {
         id: rsvpData.id,

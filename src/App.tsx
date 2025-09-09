@@ -5,9 +5,9 @@
  * Uses database-aligned mock data that seamlessly transitions to real data
  */
 
-import React, { useState, useEffect } from 'react';
-import { format, startOfWeek, endOfWeek, addDays, isSameDay } from 'date-fns';
-import { Calendar, ChevronLeft, ChevronRight, Filter, Search, Settings, GripVertical, LogOut } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { format, startOfWeek, endOfWeek, addDays, isSameDay, addWeeks, getWeek } from 'date-fns';
+import { Calendar, ChevronLeft, ChevronRight, Filter, Search, Settings, GripVertical, LogOut, ChevronDown, User } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
@@ -17,12 +17,22 @@ import { CalendarEvent, CompanyWithEvents } from './types/database';
 import { apiClient } from './utils/apiClient';
 // mockData imports removed - using Supabase API only
 import { UserWithSubscriptions } from './types/database';
-import SubscriptionPage from './pages/SubscriptionPage';
+import SubscriptionManagementPage from './pages/SubscriptionManagementPage';
 import UserProfile from './components/UserProfile';
+
+interface AppProps {
+  authUser?: {
+    email: string;
+    full_name?: string;
+    role?: string;
+  } | null;
+  onLogout?: () => void;
+}
 
 interface AppState {
   currentDate: Date;
   selectedView: 'week' | 'month';
+  calendarView: 'week' | 'month';
   eventFilter: 'all' | 'my';
   events: CalendarEvent[];
   companies: CompanyWithEvents[];
@@ -40,6 +50,12 @@ interface AppState {
   managedUsers: UserWithSubscriptions[];
   selectedManagedUser: UserWithSubscriptions | null;
   showUserProfile: boolean;
+  showProfileDropdown: boolean;
+  currentUser: UserWithSubscriptions | null;
+  subscriptionCount: number;
+  showEventsDropdown: boolean;
+  showFiltersDropdown: boolean;
+  showViewDropdown: boolean;
 }
 
 // Sortable Company Calendar Row Component
@@ -128,10 +144,13 @@ const SortableCompanyCalendarRow: React.FC<{
   );
 };
 
-const App: React.FC = () => {
+const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const viewDropdownRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<AppState>({
     currentDate: new Date(),
     selectedView: 'week',
+    calendarView: 'week',
     eventFilter: 'all',
     events: [],
     companies: [],
@@ -148,7 +167,23 @@ const App: React.FC = () => {
     isExecutiveAssistant: false,
     managedUsers: [],
     selectedManagedUser: null,
-    showUserProfile: false
+    showUserProfile: false,
+    showProfileDropdown: false,
+    currentUser: {
+      id: '550e8400-e29b-41d4-a716-446655440001', // analyst1 actual ID
+      email: 'analyst1@agora.com',
+      role: 'investment_analyst' as const,
+      full_name: 'John Smith',
+      is_active: true,
+      created_at: new Date(),
+      updated_at: new Date(),
+      preferences: {},
+      subscriptions: []
+    },
+    subscriptionCount: 0,
+    showEventsDropdown: false,
+    showFiltersDropdown: false,
+    showViewDropdown: false
   });
 
   const sensors = useSensors(
@@ -158,21 +193,33 @@ const App: React.FC = () => {
     })
   );
 
-  // TODO: Replace with real current user from API
-  const currentUser: UserWithSubscriptions = { 
-    id: '550e8400-e29b-41d4-a716-446655440001', // analyst1 actual ID
-    email: 'analyst1@agora.com',
-    role: 'investment_analyst' as const,
-    full_name: 'John Smith',
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-    preferences: {},
-    subscriptions: []
-  };
+  // Get current user from state
+  const currentUser = state.currentUser;
   
   // TODO: Re-implement EA functionality with real API
   // Temporarily disabled to test events functionality
+
+  const loadSubscriptionCount = useCallback(async () => {
+    try {
+      if (!currentUser) return;
+      
+      const response = await apiClient.getUserSubscriptions(currentUser.id);
+      if (response.success) {
+        const activeSubscriptions = response.data.filter(sub => sub.is_active && sub.payment_status === 'paid');
+      setState(prev => ({
+        ...prev,
+          subscriptionCount: activeSubscriptions.length,
+          currentUser: prev.currentUser ? {
+            ...prev.currentUser,
+            subscriptions: response.data
+          } : null
+        }));
+        console.log(`📊 Updated subscription count: ${activeSubscriptions.length}`);
+      }
+    } catch (error) {
+      console.error('Failed to load subscription count:', error);
+    }
+  }, [currentUser]);
 
   const reloadData = () => {
     setState(prev => ({ 
@@ -182,6 +229,8 @@ const App: React.FC = () => {
       // Force re-render by updating currentDate slightly
       currentDate: new Date(prev.currentDate.getTime() + 1)
     }));
+    // Also reload subscription count
+    loadSubscriptionCount();
   };
 
   // Load data on component mount and when dependencies change
@@ -232,6 +281,50 @@ const App: React.FC = () => {
     loadCalendarData();
   }, [state.currentDate, state.eventFilter, currentUser?.id]);
 
+  // Load subscription count on mount
+  useEffect(() => {
+    if (currentUser) {
+      loadSubscriptionCount();
+    }
+  }, [currentUser, loadSubscriptionCount]);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      
+      // Check if click is outside profile dropdown
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
+        setState(prev => ({ 
+          ...prev, 
+          showProfileDropdown: false
+        }));
+      }
+      
+      // Check if click is outside view dropdown
+      if (viewDropdownRef.current && !viewDropdownRef.current.contains(target)) {
+        setState(prev => ({ 
+          ...prev, 
+          showViewDropdown: false
+        }));
+      }
+      
+      // Close other dropdowns if click is outside any dropdown area
+      if (!dropdownRef.current?.contains(target) && !viewDropdownRef.current?.contains(target)) {
+        setState(prev => ({ 
+          ...prev, 
+          showEventsDropdown: false,
+          showFiltersDropdown: false
+        }));
+      }
+    };
+
+    if (state.showProfileDropdown || state.showEventsDropdown || state.showFiltersDropdown || state.showViewDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [state.showProfileDropdown, state.showEventsDropdown, state.showFiltersDropdown, state.showViewDropdown]);
+
   const handlePreviousWeek = () => {
     setState(prev => ({
       ...prev,
@@ -243,6 +336,34 @@ const App: React.FC = () => {
     setState(prev => ({
       ...prev,
       currentDate: addDays(prev.currentDate, 7)
+    }));
+  };
+
+  const handlePreviousMonth = () => {
+    setState(prev => ({
+      ...prev,
+      currentDate: new Date(prev.currentDate.getFullYear(), prev.currentDate.getMonth() - 1, 1)
+    }));
+  };
+
+  const handleNextMonth = () => {
+    setState(prev => ({
+      ...prev,
+      currentDate: new Date(prev.currentDate.getFullYear(), prev.currentDate.getMonth() + 1, 1)
+    }));
+  };
+
+  const handleWeekNavigation = (weekStart: Date) => {
+    setState(prev => ({
+      ...prev,
+      currentDate: weekStart
+    }));
+  };
+
+  const handleToggleCalendarView = () => {
+    setState(prev => ({
+      ...prev,
+      calendarView: prev.calendarView === 'week' ? 'month' : 'week'
     }));
   };
 
@@ -293,12 +414,16 @@ const App: React.FC = () => {
     }
   };
 
-  const handleOpenUserProfile = () => {
-    setState(prev => ({ ...prev, showUserProfile: true }));
+  const handleCloseUserProfile = () => {
+    setState(prev => ({ ...prev, showUserProfile: false, showProfileDropdown: false }));
   };
 
-  const handleCloseUserProfile = () => {
-    setState(prev => ({ ...prev, showUserProfile: false }));
+  const handleToggleProfileDropdown = () => {
+    setState(prev => ({ ...prev, showProfileDropdown: !prev.showProfileDropdown }));
+  };
+
+  const handleOpenUserProfile = () => {
+    setState(prev => ({ ...prev, showUserProfile: true, showProfileDropdown: false }));
   };
 
   const handleUserUpdate = (updatedUser: UserWithSubscriptions) => {
@@ -318,6 +443,7 @@ const App: React.FC = () => {
       currentDate: new Date(prev.currentDate.getTime() + 1)
     }));
   };
+
 
   const handleRSVPUpdate = async (eventId: string, status: 'accepted' | 'declined' | 'pending') => {
     try {
@@ -454,24 +580,90 @@ const App: React.FC = () => {
 
   const weekDays = getWeekDays();
 
-  // Helper function to get month calendar days
+  // Helper function to generate week navigation data
+  const generateWeekNavigation = () => {
+    const currentWeekStart = startOfWeek(state.currentDate, { weekStartsOn: 1 });
+    const weeks = [];
+    
+    for (let i = 0; i < 4; i++) {
+      const weekStart = addWeeks(currentWeekStart, i);
+      const weekNumber = getWeek(weekStart);
+      const weekEnd = addDays(weekStart, 6);
+      
+      weeks.push({
+        start: weekStart,
+        end: weekEnd,
+        weekNumber: weekNumber,
+        label: `Week ${weekNumber}`,
+        month: format(weekStart, 'MMM'),
+        year: weekStart.getFullYear(),
+        isCurrentWeek: i === 0
+      });
+    }
+    
+    return weeks;
+  };
+
+  // Helper function to get month calendar days (only current month days)
   const getMonthDays = () => {
     const year = state.currentDate.getFullYear();
     const month = state.currentDate.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    const startDate = startOfWeek(firstDay, { weekStartsOn: 0 }); // Start on Sunday
-    const endDate = endOfWeek(lastDay, { weekStartsOn: 0 });
     
     const days = [];
-    let currentDate = startDate;
+    let currentDate = new Date(firstDay);
     
-    while (currentDate <= endDate) {
-      days.push(new Date(currentDate));
+    while (currentDate <= lastDay) {
+      const dayDate = new Date(currentDate);
+      days.push({
+        date: dayDate,
+        dayNumber: dayDate.getDate(),
+        weekNumber: getWeek(dayDate),
+        isToday: isSameDay(dayDate, new Date())
+      });
       currentDate = addDays(currentDate, 1);
     }
     
     return days;
+  };
+
+  // Helper function to get weeks of the current month
+  const getMonthWeeks = () => {
+    const year = state.currentDate.getFullYear();
+    const month = state.currentDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    
+    const weeks = [];
+    let currentWeekStart = startOfWeek(firstDay, { weekStartsOn: 1 }); // Start on Monday
+    
+    while (currentWeekStart <= lastDay) {
+      const weekEnd = addDays(currentWeekStart, 6);
+      const weekDays = [];
+      
+      for (let i = 0; i < 7; i++) {
+        const dayDate = addDays(currentWeekStart, i);
+        weekDays.push({
+          date: dayDate,
+          dayNumber: dayDate.getDate(),
+          weekNumber: getWeek(dayDate),
+          isToday: isSameDay(dayDate, new Date()),
+          isCurrentMonth: dayDate.getMonth() === month
+        });
+      }
+      
+      weeks.push({
+        start: currentWeekStart,
+        end: weekEnd,
+        weekNumber: getWeek(currentWeekStart),
+        days: weekDays
+      });
+      
+      currentWeekStart = addDays(currentWeekStart, 7);
+    }
+    
+    return weeks;
   };
 
   // Helper function to determine event badge type
@@ -530,13 +722,13 @@ const App: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <button className="btn btn-ghost" onClick={handlePreviousWeek}>
+                  <button className="btn btn-ghost" onClick={handlePreviousMonth}>
                     <ChevronLeft size={16} />
                   </button>
                   <h2 className="calendar-title">
                     {format(state.currentDate, 'MMMM yyyy')}
                   </h2>
-                  <button className="btn btn-ghost" onClick={handleNextWeek}>
+                  <button className="btn btn-ghost" onClick={handleNextMonth}>
                     <ChevronRight size={16} />
                   </button>
                 </div>
@@ -583,14 +775,14 @@ const App: React.FC = () => {
               >
                 {monthDays.map(day => {
                   const dayEvents = companyEvents.filter(event => 
-                    isSameDay(new Date(event.start_date), day)
+                    isSameDay(new Date(event.start_date), day.date)
                   );
-                  const isCurrentMonth = day.getMonth() === currentMonth;
-                  const isToday = isSameDay(day, new Date());
+                  const isCurrentMonth = day.date.getMonth() === currentMonth;
+                  const isToday = isSameDay(day.date, new Date());
                   
                   return (
                     <div 
-                      key={day.toISOString()} 
+                      key={day.date.toISOString()} 
                       className={`calendar-cell ${isToday ? 'today' : ''} ${!isCurrentMonth ? 'other-month' : ''}`}
                       style={{ 
                         minHeight: '120px',
@@ -607,7 +799,7 @@ const App: React.FC = () => {
                         fontSize: '0.875rem',
                         color: isToday ? 'var(--accent-color)' : 'var(--primary-text)'
                       }}>
-                        {format(day, 'd')}
+                        {format(day.date, 'd')}
                       </div>
                       
                       {/* Events */}
@@ -863,14 +1055,205 @@ const App: React.FC = () => {
               />
             </div>
             
-            {/* User Profile Button */}
-            <button
-              className="btn btn-ghost"
-              onClick={handleOpenUserProfile}
-              title="User Profile"
-            >
-              <Settings size={16} />
-            </button>
+            {/* Profile Dropdown */}
+            <div style={{ position: 'relative' }} ref={dropdownRef}>
+              <button
+                className="btn btn-ghost"
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.5rem',
+                  padding: '0.5rem',
+                  borderRadius: '8px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: 'var(--primary-text)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onClick={handleToggleProfileDropdown}
+                title="Profile Menu"
+                onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)'}
+                onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'transparent'}
+              >
+                <User size={16} />
+                <ChevronDown 
+                  size={12} 
+                  style={{ 
+                    transition: 'transform 0.2s ease',
+                    transform: state.showProfileDropdown ? 'rotate(180deg)' : 'rotate(0deg)'
+                  }} 
+                />
+              </button>
+              
+              {state.showProfileDropdown && currentUser && (
+                <div style={{ 
+                  position: 'absolute', 
+                  right: 0, 
+                  marginTop: '0.5rem', 
+                  width: '16rem', 
+                  backgroundColor: 'var(--secondary-bg)', 
+                  borderRadius: '8px', 
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', 
+                  border: '1px solid var(--border-color)', 
+                  zIndex: 50 
+                }}>
+                  <div style={{ 
+                    padding: '1rem', 
+                    borderBottom: '1px solid var(--border-color)' 
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ 
+                        width: '2.5rem', 
+                        height: '2.5rem', 
+                        backgroundColor: 'var(--accent-bg)', 
+                        borderRadius: '50%', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        color: 'var(--primary-bg)', 
+                        fontWeight: '600' 
+                      }}>
+                        {currentUser.full_name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ 
+                          fontWeight: '600', 
+                          color: 'var(--primary-text)' 
+                        }}>
+                          {currentUser.full_name}
+                        </div>
+                        <div style={{ 
+                          fontSize: '0.75rem', 
+                          color: 'var(--muted-text)' 
+                        }}>
+                          {currentUser.role} • {state.subscriptionCount} subscriptions
+                        </div>
+                        {authUser && (
+                          <div style={{ 
+                            fontSize: '0.7rem', 
+                            color: 'var(--faded-text)',
+                            marginTop: '0.25rem'
+                          }}>
+                            Logged in as: {authUser.email}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div style={{ padding: '0.5rem 0' }}>
+                    <button
+                      onClick={handleOpenUserProfile}
+                      style={{ 
+                        width: '100%', 
+                        padding: '0.75rem 1rem', 
+                        textAlign: 'left', 
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        color: 'var(--primary-text)',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem'
+                      }}
+                      onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)'}
+                      onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'transparent'}
+                    >
+                      <Settings size={16} style={{ color: 'var(--muted-text)' }} />
+                      <div>
+                        <div style={{ 
+                          fontSize: '0.875rem', 
+                          fontWeight: '500', 
+                          color: 'var(--primary-text)' 
+                        }}>Profile Settings</div>
+                        <div style={{ 
+                          fontSize: '0.75rem', 
+                          color: 'var(--muted-text)' 
+                        }}>Manage your account</div>
+                      </div>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setState(prev => ({ ...prev, currentPage: 'subscriptions', showProfileDropdown: false }));
+                      }}
+                      style={{ 
+                        width: '100%', 
+                        padding: '0.75rem 1rem', 
+                        textAlign: 'left', 
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        color: 'var(--primary-text)',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem'
+                      }}
+                      onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)'}
+                      onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'transparent'}
+                    >
+                      <Calendar size={16} style={{ color: 'var(--muted-text)' }} />
+                      <div>
+                        <div style={{ 
+                          fontSize: '0.875rem', 
+                          fontWeight: '500', 
+                          color: 'var(--primary-text)' 
+                        }}>Manage Subscriptions</div>
+                        <div style={{ 
+                          fontSize: '0.75rem', 
+                          color: 'var(--muted-text)' 
+                        }}>View and modify your subscriptions</div>
+                      </div>
+                    </button>
+                    
+                    <div style={{ 
+                      borderTop: '1px solid var(--border-color)', 
+                      margin: '0.5rem 0' 
+                    }}></div>
+                    
+                    <button
+                      onClick={() => {
+                        console.log('Logout clicked');
+                        setState(prev => ({ ...prev, showProfileDropdown: false }));
+                        if (onLogout) {
+                          onLogout();
+                        }
+                      }}
+                      style={{ 
+                        width: '100%', 
+                        padding: '0.75rem 1rem', 
+                        textAlign: 'left', 
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        color: '#dc3545',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem'
+                      }}
+                      onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'rgba(220, 53, 69, 0.1)'}
+                      onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'transparent'}
+                    >
+                      <LogOut size={16} />
+                      <div>
+                        <div style={{ 
+                          fontSize: '0.875rem', 
+                          fontWeight: '500' 
+                        }}>Sign Out</div>
+                        <div style={{ 
+                          fontSize: '0.75rem', 
+                          color: 'var(--muted-text)' 
+                        }}>Log out of your account</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             
             {/* Executive Assistant User Switcher */}
             {state.isExecutiveAssistant && state.managedUsers.length > 0 && (
@@ -899,124 +1282,482 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {/* User Info */}
-            {currentUser && (
-              <div className="user-info">
-                <div className="text-sm">
-                  <div className="text-primary-text font-semibold">
-                    {currentUser.full_name}
-                    {state.isExecutiveAssistant && (
-                      <span className="ml-2 px-2 py-1 rounded text-xs bg-blue-600 text-white">EA</span>
-                    )}
-                  </div>
-                  <div className="text-muted text-xs">
-                    {currentUser.role} • {currentUser.subscriptions?.length || 0} subscriptions
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="user-avatar">
-                    {currentUser.full_name.charAt(0).toUpperCase()}
-                  </div>
-                  <button className="btn btn-ghost btn-sm" title="Logout">
-                    <LogOut size={14} />
-                  </button>
-                </div>
-              </div>
-            )}
-            
-            {/* Settings */}
-            <button className="btn btn-ghost">
-              <Settings size={16} />
-            </button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       {state.currentPage === 'subscriptions' ? (
-        <SubscriptionPage />
+        <SubscriptionManagementPage />
       ) : state.currentPage === 'events' ? (
         <div className="events-page" style={{ padding: '2rem', textAlign: 'center' }}>
           <h2 className="text-xl text-primary-text">Events Page</h2>
           <p className="text-muted">Coming soon - comprehensive event management and search</p>
         </div>
       ) : (
-        <main className="main-content" style={{ flexDirection: 'column', padding: '1rem' }}>
-        {/* Calendar Controls */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <button className="btn btn-ghost" onClick={handlePreviousWeek}>
+        <main className="main-content" style={{ 
+          flexDirection: 'column', 
+          padding: '1rem',
+          minHeight: '100vh',
+          overflow: 'hidden'
+        }}>
+        {/* Calendar Controls - Compact Dropdown Groups */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between', 
+          marginBottom: '1rem',
+          flexWrap: 'wrap',
+          gap: '0.5rem'
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '1rem',
+            flexWrap: 'wrap'
+          }}>
+            {/* Navigation with Arrows */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem'
+            }}>
+              {/* Previous Arrow */}
+              <button 
+                className="btn btn-ghost" 
+                onClick={state.calendarView === 'week' ? handlePreviousWeek : handlePreviousMonth}
+                style={{ 
+                  padding: '0.5rem',
+                  borderRadius: '6px',
+                  backgroundColor: 'var(--tertiary-bg)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--primary-text)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)'}
+                onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--tertiary-bg)'}
+              >
                 <ChevronLeft size={16} />
               </button>
-              <h2 className="calendar-title">
-                {format(state.currentDate, 'MMMM yyyy')}
-              </h2>
-              <button className="btn btn-ghost" onClick={handleNextWeek}>
+
+              {/* Navigation Content */}
+              {state.calendarView === 'week' ? (
+                /* Week Navigation Buttons */
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.5rem',
+                  backgroundColor: 'var(--tertiary-bg)',
+                  borderRadius: '8px',
+                  padding: '0.5rem'
+                }}>
+                {generateWeekNavigation().map((week, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleWeekNavigation(week.start)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      borderRadius: '6px',
+                      border: 'none',
+                      backgroundColor: week.isCurrentWeek ? 'var(--accent-bg)' : 'transparent',
+                      color: week.isCurrentWeek ? 'var(--primary-bg)' : 'var(--primary-text)',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      minWidth: '80px',
+                      textAlign: 'center'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!week.isCurrentWeek) {
+                        (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!week.isCurrentWeek) {
+                        (e.target as HTMLButtonElement).style.backgroundColor = 'transparent';
+                      }
+                    }}
+                  >
+                    <div style={{ fontSize: '0.875rem', fontWeight: '600' }}>
+                      {week.label}
+                    </div>
+                    <div style={{ 
+                      fontSize: '0.75rem', 
+                      opacity: 0.8,
+                      marginTop: '0.125rem'
+                    }}>
+                      {week.month} {week.year}
+                    </div>
+                  </button>
+                ))}
+                </div>
+              ) : (
+                /* Month Name and Year */
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  backgroundColor: 'var(--tertiary-bg)',
+                  borderRadius: '8px',
+                  padding: '0.75rem 1.5rem',
+                  textAlign: 'center'
+                }}>
+                  <div>
+                    <div style={{ 
+                      fontSize: '1.25rem', 
+                      fontWeight: '600',
+                      color: 'var(--primary-text)',
+                      lineHeight: '1.2'
+                    }}>
+                      {format(state.currentDate, 'MMMM')}
+                    </div>
+                    <div style={{ 
+                      fontSize: '0.75rem', 
+                      fontStyle: 'italic',
+                      color: 'var(--muted-text)',
+                      marginTop: '0.125rem'
+                    }}>
+                      {format(state.currentDate, 'yyyy')}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Next Arrow */}
+              <button 
+                className="btn btn-ghost" 
+                onClick={state.calendarView === 'week' ? handleNextWeek : handleNextMonth}
+                style={{ 
+                  padding: '0.5rem',
+                  borderRadius: '6px',
+                  backgroundColor: 'var(--tertiary-bg)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--primary-text)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)'}
+                onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--tertiary-bg)'}
+              >
                 <ChevronRight size={16} />
               </button>
             </div>
-            
-            <div className="flex items-center gap-2">
-              <button 
-                className={`btn ${state.eventFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setState(prev => ({ ...prev, eventFilter: 'all' }))}
-              >
-                All Events
-              </button>
-              <button 
-                className={`btn ${state.eventFilter === 'my' ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setState(prev => ({ ...prev, eventFilter: 'my' }))}
-              >
-                My Events
-              </button>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2">
-              <Filter size={16} />
-              <select 
-                className="form-select"
-                value={state.eventTypeFilter}
-                onChange={(e) => setState(prev => ({ ...prev, eventTypeFilter: e.target.value as any }))}
-              >
-                <option value="all">All Types</option>
-                <option value="standard">Standard</option>
-                <option value="catalyst">Catalyst</option>
-              </select>
-              
-              <select 
-                className="form-select"
-                value={state.locationTypeFilter}
-                onChange={(e) => setState(prev => ({ ...prev, locationTypeFilter: e.target.value as any }))}
-              >
-                <option value="all">All Locations</option>
-                <option value="physical">Physical</option>
-                <option value="virtual">Virtual</option>
-                <option value="hybrid">Hybrid</option>
-              </select>
-              
-              <select 
-                className="form-select"
-                value={state.rsvpStatusFilter}
-                onChange={(e) => setState(prev => ({ ...prev, rsvpStatusFilter: e.target.value as any }))}
-              >
-                <option value="all">All RSVP</option>
-                <option value="accepted">Accepted</option>
-                <option value="declined">Declined</option>
-                <option value="pending">Pending</option>
-              </select>
+            {/* Compact Dropdown Groups */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem',
+              flexWrap: 'wrap'
+            }}>
+              {/* Events Dropdown */}
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setState(prev => ({ ...prev, showEventsDropdown: !prev.showEventsDropdown }))}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 1rem',
+                    backgroundColor: 'var(--tertiary-bg)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '6px',
+                    color: 'var(--primary-text)',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)'}
+                  onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--tertiary-bg)'}
+                >
+                  <Calendar size={14} />
+                  {state.eventFilter === 'all' ? 'All Events' : 'My Events'}
+                  <ChevronDown size={12} />
+                </button>
+                
+                {state.showEventsDropdown && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    marginTop: '0.25rem',
+                    backgroundColor: 'var(--secondary-bg)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '6px',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                    zIndex: 50,
+                    minWidth: '140px'
+                  }}>
+                    <button
+                      onClick={() => {
+                        setState(prev => ({ ...prev, eventFilter: 'all', showEventsDropdown: false }));
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        textAlign: 'left',
+                        backgroundColor: state.eventFilter === 'all' ? 'var(--accent-bg)' : 'transparent',
+                        color: state.eventFilter === 'all' ? 'var(--primary-bg)' : 'var(--primary-text)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.875rem',
+                        transition: 'background-color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (state.eventFilter !== 'all') {
+                          (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (state.eventFilter !== 'all') {
+                          (e.target as HTMLButtonElement).style.backgroundColor = 'transparent';
+                        }
+                      }}
+                    >
+                      All Events
+                    </button>
+                    <button
+                      onClick={() => {
+                        setState(prev => ({ ...prev, eventFilter: 'my', showEventsDropdown: false }));
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        textAlign: 'left',
+                        backgroundColor: state.eventFilter === 'my' ? 'var(--accent-bg)' : 'transparent',
+                        color: state.eventFilter === 'my' ? 'var(--primary-bg)' : 'var(--primary-text)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.875rem',
+                        transition: 'background-color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (state.eventFilter !== 'my') {
+                          (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (state.eventFilter !== 'my') {
+                          (e.target as HTMLButtonElement).style.backgroundColor = 'transparent';
+                        }
+                      }}
+                    >
+                      My Events
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Filters Dropdown */}
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setState(prev => ({ ...prev, showFiltersDropdown: !prev.showFiltersDropdown }))}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 1rem',
+                    backgroundColor: 'var(--tertiary-bg)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '6px',
+                    color: 'var(--primary-text)',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)'}
+                  onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--tertiary-bg)'}
+                >
+                  <Filter size={14} />
+                  Filters
+                  <ChevronDown size={12} />
+                </button>
+                
+                {state.showFiltersDropdown && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    marginTop: '0.25rem',
+                    backgroundColor: 'var(--secondary-bg)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '6px',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                    zIndex: 50,
+                    minWidth: '200px',
+                    padding: '0.5rem'
+                  }}>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem', display: 'block' }}>
+                        Event Type
+                      </label>
+                      <select 
+                        className="form-select"
+                        value={state.eventTypeFilter}
+                        onChange={(e) => setState(prev => ({ ...prev, eventTypeFilter: e.target.value as any }))}
+                        style={{ width: '100%', fontSize: '0.875rem' }}
+                      >
+                        <option value="all">All Types</option>
+                        <option value="standard">Standard</option>
+                        <option value="catalyst">Catalyst</option>
+                      </select>
+                    </div>
+                    
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem', display: 'block' }}>
+                        Location
+                      </label>
+                      <select 
+                        className="form-select"
+                        value={state.locationTypeFilter}
+                        onChange={(e) => setState(prev => ({ ...prev, locationTypeFilter: e.target.value as any }))}
+                        style={{ width: '100%', fontSize: '0.875rem' }}
+                      >
+                        <option value="all">All Locations</option>
+                        <option value="physical">Physical</option>
+                        <option value="virtual">Virtual</option>
+                        <option value="hybrid">Hybrid</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem', display: 'block' }}>
+                        RSVP Status
+                      </label>
+                      <select 
+                        className="form-select"
+                        value={state.rsvpStatusFilter}
+                        onChange={(e) => setState(prev => ({ ...prev, rsvpStatusFilter: e.target.value as any }))}
+                        style={{ width: '100%', fontSize: '0.875rem' }}
+                      >
+                        <option value="all">All RSVP</option>
+                        <option value="accepted">Accepted</option>
+                        <option value="declined">Declined</option>
+                        <option value="pending">Pending</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* View Dropdown */}
+              <div style={{ position: 'relative' }} ref={viewDropdownRef}>
+                <button
+                  onClick={() => setState(prev => ({ ...prev, showViewDropdown: !prev.showViewDropdown }))}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 1rem',
+                    backgroundColor: 'var(--tertiary-bg)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '6px',
+                    color: 'var(--primary-text)',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)'}
+                  onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = 'var(--tertiary-bg)'}
+                >
+                  {state.calendarView === 'week' ? 'Week' : 'Month'}
+                  <ChevronDown size={12} />
+                </button>
+                
+                {state.showViewDropdown && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    marginTop: '0.25rem',
+                    backgroundColor: 'var(--secondary-bg)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '6px',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                    zIndex: 50,
+                    minWidth: '100px'
+                  }}>
+                    <button
+                      onClick={() => {
+                        setState(prev => ({ ...prev, calendarView: 'week', showViewDropdown: false }));
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        textAlign: 'left',
+                        backgroundColor: state.calendarView === 'week' ? 'var(--accent-bg)' : 'transparent',
+                        color: state.calendarView === 'week' ? 'var(--primary-bg)' : 'var(--primary-text)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.875rem',
+                        transition: 'background-color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (state.calendarView !== 'week') {
+                          (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (state.calendarView !== 'week') {
+                          (e.target as HTMLButtonElement).style.backgroundColor = 'transparent';
+                        }
+                      }}
+                    >
+                      Week
+                    </button>
+                    <button
+                      onClick={() => {
+                        setState(prev => ({ ...prev, calendarView: 'month', showViewDropdown: false }));
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        textAlign: 'left',
+                        backgroundColor: state.calendarView === 'month' ? 'var(--accent-bg)' : 'transparent',
+                        color: state.calendarView === 'month' ? 'var(--primary-bg)' : 'var(--primary-text)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.875rem',
+                        transition: 'background-color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (state.calendarView !== 'month') {
+                          (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (state.calendarView !== 'month') {
+                          (e.target as HTMLButtonElement).style.backgroundColor = 'transparent';
+                        }
+                      }}
+                    >
+                      Month
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Company-Centric Calendar Grid Layout */}
-        <div className="calendar-layout" style={{ position: 'relative', flex: 1 }}>
+        <div className="calendar-layout" style={{ 
+          position: 'relative', 
+          flex: 1,
+          height: 'calc(100vh - 200px)', // Adjust for header and controls
+          overflow: 'hidden'
+        }}>
           {/* Main Calendar Grid */}
-          <div className="calendar-main" style={{ width: '100%' }}>
+          <div className="calendar-main" style={{ 
+            width: '100%',
+            height: '100%',
+            position: 'relative'
+          }}>
             <div className="calendar-container">
-              {/* Calendar Header with Days */}
+              {state.calendarView === 'week' ? (
+                <>
+                  {/* Week View Header */}
               <div 
                 className="calendar-grid"
                 style={{ 
@@ -1041,7 +1782,179 @@ const App: React.FC = () => {
                     <div className="text-lg">{format(day, 'd')}</div>
                   </div>
                 ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Month View - Properly Aligned Grid */}
+                  <div style={{ 
+                    display: 'flex',
+                    height: '100%',
+                    borderBottom: '2px solid var(--border-color)'
+                  }}>
+                    {/* Sticky Company Column */}
+                    <div style={{ 
+                      position: 'sticky',
+                      left: 0,
+                      zIndex: 10,
+                      backgroundColor: 'var(--primary-bg)',
+                      width: '200px',
+                      borderRight: '2px solid var(--border-color)',
+                      flexShrink: 0
+                    }}>
+                      {/* Company Header */}
+                      <div style={{ 
+                        backgroundColor: 'var(--calendar-header)',
+                        padding: '1rem',
+                        borderBottom: '2px solid var(--border-color)'
+                      }}>
+                        <strong>Companies</strong>
+                        <div className="text-sm text-muted">Drag to reorder</div>
               </div>
+                      
+                      {/* Company List */}
+                      {state.companies.map((company) => (
+                        <div 
+                          key={company.id}
+                          className="calendar-cell company-row"
+                          style={{ 
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            padding: '0.75rem',
+                            minHeight: '80px',
+                            borderBottom: '1px solid var(--border-color)',
+                            backgroundColor: 'var(--primary-bg)'
+                          }}
+                          onClick={() => handleCompanyClick(company)}
+                        >
+                          <div className="company-ticker" style={{ fontSize: '0.875rem', fontWeight: 'bold', color: 'var(--secondary-text)' }}>
+                            {company.ticker_symbol}
+                          </div>
+                          <div className="company-name" style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginLeft: '0.5rem' }}>
+                            {company.company_name}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Scrollable Calendar Grid */}
+                    <div style={{ 
+                      flex: 1,
+                      overflowX: 'auto',
+                      overflowY: 'hidden'
+                    }}>
+                      <div style={{ 
+                        minWidth: `${getMonthWeeks().length * 7 * 120}px`
+                      }}>
+                        {/* Scrollable Day Headers */}
+                        <div 
+                          className="calendar-grid"
+                          style={{ 
+                            gridTemplateColumns: `repeat(${getMonthWeeks().length * 7}, 120px)`,
+                            borderBottom: '2px solid var(--border-color)',
+                            backgroundColor: 'var(--calendar-header)'
+                          }}
+                        >
+                          {getMonthWeeks().map((week) => 
+                            week.days.map((day) => (
+                              <div 
+                                key={day.date.toISOString()} 
+                                className={`calendar-cell ${day.isToday ? 'today' : ''}`}
+                                style={{ 
+                                  backgroundColor: 'var(--calendar-header)', 
+                                  textAlign: 'center', 
+                                  padding: '0.5rem',
+                                  minWidth: '120px',
+                                  opacity: day.isCurrentMonth ? 1 : 0.3
+                                }}
+                              >
+                                <div style={{ 
+                                  fontSize: '0.65rem', 
+                                  fontStyle: 'italic', 
+                                  opacity: 0.6,
+                                  marginBottom: '0.25rem',
+                                  color: 'var(--muted-text)'
+                                }}>
+                                  W{day.weekNumber}
+                                </div>
+                                <div className="font-semibold" style={{ fontSize: '0.875rem' }}>
+                                  {format(day.date, 'EEE')}
+                                </div>
+                                <div className="text-lg" style={{ fontSize: '1rem' }}>
+                                  {day.dayNumber}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+
+                        {/* Event Rows */}
+                        {state.companies.map((company) => (
+                          <div
+                            key={company.id}
+                            className="calendar-grid"
+                            style={{ 
+                              gridTemplateColumns: `repeat(${getMonthWeeks().length * 7}, 120px)`,
+                              minHeight: '80px',
+                              borderBottom: '1px solid var(--border-color)'
+                            }}
+                          >
+                            {getMonthWeeks().map((week) => 
+                              week.days.map((day) => {
+                                const dayEvents = getEventsForCompany(company.id, day.date);
+                                return (
+                                  <div 
+                                    key={`${company.id}-${day.date.toISOString()}`} 
+                                    className="calendar-cell" 
+                                    style={{ 
+                                      minHeight: '80px', 
+                                      padding: '0.25rem',
+                                      minWidth: '120px',
+                                      borderRight: '1px solid var(--border-light)',
+                                      position: 'relative',
+                                      opacity: day.isCurrentMonth ? 1 : 0.3
+                                    }}
+                                  >
+                                    <div className="calendar-events" style={{ 
+                                      display: 'flex', 
+                                      flexDirection: 'column', 
+                                      gap: '0.125rem',
+                                      height: '100%'
+                                    }}>
+                                      {dayEvents.map(event => (
+                                        <div
+                                          key={event.id}
+                                          className="calendar-event"
+                                          style={{
+                                            backgroundColor: event.color_code || 'var(--accent-bg)',
+                                            color: 'var(--primary-bg)',
+                                            padding: '0.125rem 0.25rem',
+                                            borderRadius: '3px',
+                                            fontSize: '0.625rem',
+                                            cursor: 'pointer',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap'
+                                          }}
+                                          onClick={() => handleEventClick(event)}
+                                          title={`${event.title} - ${formatEventTime(event)}`}
+                                        >
+                                          {event.title}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Draggable Company Rows with Events */}
               <DndContext
@@ -1053,6 +1966,9 @@ const App: React.FC = () => {
                   items={state.companies.map(c => c.id)}
                   strategy={verticalListSortingStrategy}
                 >
+                  {state.calendarView === 'week' ? (
+                    <>
+                      {/* Week View Company Rows */}
                   {state.companies.map((company) => (
                     <SortableCompanyCalendarRow
                       key={company.id}
@@ -1064,6 +1980,8 @@ const App: React.FC = () => {
                       formatEventTime={formatEventTime}
                     />
                   ))}
+                    </>
+                  ) : null}
                 </SortableContext>
               </DndContext>
             </div>
@@ -1212,12 +2130,14 @@ const App: React.FC = () => {
       )}
 
       {/* User Profile Modal */}
-      <UserProfile
-        user={currentUser}
-        isOpen={state.showUserProfile}
-        onClose={handleCloseUserProfile}
-        onUserUpdate={handleUserUpdate}
-      />
+      {currentUser && (
+        <UserProfile
+          user={currentUser}
+          isOpen={state.showUserProfile}
+          onClose={handleCloseUserProfile}
+          onUserUpdate={handleUserUpdate}
+        />
+      )}
 
     </div>
   );

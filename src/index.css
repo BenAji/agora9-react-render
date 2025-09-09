@@ -2,7 +2,7 @@
  * AGORA Investment Calendar - Bloomberg-Style Dark Theme
  * 
  * Professional, high-contrast dark theme inspired by Bloomberg Terminal
- * Custom CSS (no Tailwind initially as specified)
+ * Custom CSS for all components including login page
  */
 
 /* ===================================================================================== */
@@ -875,6 +875,19 @@ strong {
   .event-block {
     font-size: 0.625rem;
     padding: 0.125rem 0.25rem;
+  }
+}
+
+/* ===================================================================================== */
+/* ANIMATIONS */
+/* ===================================================================================== */
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 
