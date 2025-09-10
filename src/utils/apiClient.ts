@@ -361,7 +361,30 @@ class SupabaseApiClient implements ApiClient {
       if (error instanceof ApiClientError) throw error;
       return this.handleSupabaseError(error, 'get companies');
   }
-}
+  }
+
+  // Get ALL companies (regardless of subscription status) - for subscription management
+  async getAllCompanies(): Promise<ApiResponse<Company[]>> {
+    try {
+      const { data: companiesData, error } = await supabaseService
+        .from('companies')
+        .select('*')
+        .eq('is_active', true);
+
+      if (error) {
+        console.error('❌ SupabaseApiClient: All companies query error:', error);
+        throw new ApiClientError({
+          message: `Failed to fetch all companies: ${error.message}`,
+          code: 'ALL_COMPANIES_FETCH_ERROR',
+          details: { originalError: error }
+        });
+      }
+
+      return this.success(companiesData || []);
+    } catch (error: any) {
+      return this.handleSupabaseError(error, 'get all companies');
+    }
+  }
 
   // Get All Available Subsectors
   async getAllSubsectors(): Promise<ApiResponse<string[]>> {
@@ -668,7 +691,7 @@ class SupabaseApiClient implements ApiClient {
   async createSubscription(data: CreateSubscriptionRequest): Promise<ApiResponse<UserSubscription>> {
     return await this.createUserSubscription({
       user_id: data.user_id,
-      subsector: (data as any).gics_subsector || '',
+      subsector: data.subsector,
       payment_status: 'paid' // Match the filter in getCompanies
     }) as any;
   }
@@ -720,7 +743,33 @@ class SupabaseApiClient implements ApiClient {
 
   async createUserSubscription(data: { user_id: string; subsector: string; payment_status?: string; is_active?: boolean }): Promise<ApiResponse<any>> {
     try {
+      
+      // Validation: Check if subscription already exists
+      const { data: existingSubscriptions, error: checkError } = await supabaseService
+        .from('user_subscriptions')
+        .select('id')
+        .eq('user_id', data.user_id)
+        .eq('subsector', data.subsector)
+        .eq('is_active', true);
 
+      if (checkError) {
+        console.error('❌ SupabaseApiClient: Subscription check error:', checkError);
+        throw new ApiClientError({
+          message: `Failed to check existing subscription: ${checkError.message}`,
+          code: 'SUBSCRIPTION_CHECK_ERROR',
+          details: { originalError: checkError }
+        });
+      }
+
+      if (existingSubscriptions && existingSubscriptions.length > 0) {
+        throw new ApiClientError({
+          message: `User is already subscribed to ${data.subsector}`,
+          code: 'DUPLICATE_SUBSCRIPTION',
+          details: { user_id: data.user_id, subsector: data.subsector }
+        });
+      }
+
+      // Simple insert - no duplicates should exist due to UI filtering
       const { data: subscription, error } = await supabaseService
         .from('user_subscriptions')
         .insert({

@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { format, startOfWeek, endOfWeek, addDays, isSameDay, addWeeks, getWeek } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addDays, isSameDay, getWeek } from 'date-fns';
 import { Calendar, ChevronLeft, ChevronRight, Filter, Search, Settings, GripVertical, LogOut, ChevronDown, User, Bell } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -343,7 +343,7 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
     };
 
     loadCalendarData();
-  }, [state.currentDate, state.eventFilter, currentUser?.id]);
+  }, [state.currentDate, state.eventFilter, currentUser?.id, state.subscriptionCount]);
 
   // Load subscription count on mount
   useEffect(() => {
@@ -417,12 +417,7 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
     }));
   };
 
-  const handleWeekNavigation = (weekStart: Date) => {
-    setState(prev => ({
-      ...prev,
-      currentDate: weekStart
-    }));
-  };
+
 
 
   const handleEventClick = (event: CalendarEvent) => {
@@ -633,28 +628,21 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
 
   const weekDays = getWeekDays();
 
-  // Helper function to generate week navigation data
-  const generateWeekNavigation = () => {
+  // Helper function to generate current week navigation data
+  const getCurrentWeekData = () => {
     const currentWeekStart = startOfWeek(state.currentDate, { weekStartsOn: 1 });
-    const weeks = [];
+    const weekNumber = getWeek(currentWeekStart);
+    const today = new Date();
+    const isActuallyCurrentWeek = isSameDay(startOfWeek(today, { weekStartsOn: 1 }), currentWeekStart);
     
-    for (let i = 0; i < 4; i++) {
-      const weekStart = addWeeks(currentWeekStart, i);
-      const weekNumber = getWeek(weekStart);
-      const weekEnd = addDays(weekStart, 6);
-      
-      weeks.push({
-        start: weekStart,
-        end: weekEnd,
-        weekNumber: weekNumber,
-        label: `Week ${weekNumber}`,
-        month: format(weekStart, 'MMM'),
-        year: weekStart.getFullYear(),
-        isCurrentWeek: i === 0
-      });
-    }
-    
-    return weeks;
+    return {
+      start: currentWeekStart,
+      weekNumber: weekNumber,
+      label: `Week ${weekNumber}`,
+      month: format(currentWeekStart, 'MMM'),
+      year: currentWeekStart.getFullYear(),
+      isCurrentWeek: isActuallyCurrentWeek
+    };
   };
 
   // Helper function to get month calendar days (only current month days)
@@ -1376,7 +1364,15 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
 
       {/* Main Content */}
       {state.currentPage === 'subscriptions' ? (
-        <SubscriptionManagementPage currentUser={currentUser} />
+        <SubscriptionManagementPage 
+          currentUser={currentUser} 
+          onSubscriptionChange={() => {
+            // Refresh subscription count and calendar data when subscriptions change
+            if (currentUser) {
+              loadSubscriptionCount();
+            }
+          }}
+        />
       ) : state.currentPage === 'events' ? (
         <EventsPage currentUser={currentUser} />
       ) : (
@@ -1429,55 +1425,45 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
 
               {/* Navigation Content */}
               {state.calendarView === 'week' ? (
-                /* Week Navigation Buttons */
+                /* Week Navigation - Single Week Display */
                 <div style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
-                  gap: '0.5rem',
+                  justifyContent: 'center',
                   backgroundColor: 'var(--tertiary-bg)',
                   borderRadius: '8px',
                   padding: '0.5rem'
                 }}>
-                {generateWeekNavigation().map((week, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleWeekNavigation(week.start)}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      borderRadius: '6px',
-                      border: 'none',
-                      backgroundColor: week.isCurrentWeek ? 'var(--accent-bg)' : 'transparent',
-                      color: week.isCurrentWeek ? 'var(--primary-bg)' : 'var(--primary-text)',
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      minWidth: '80px',
-                      textAlign: 'center'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!week.isCurrentWeek) {
-                        (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!week.isCurrentWeek) {
-                        (e.target as HTMLButtonElement).style.backgroundColor = 'transparent';
-                      }
-                    }}
-                  >
-                    <div style={{ fontSize: '0.875rem', fontWeight: '600' }}>
-                      {week.label}
-                    </div>
-                    <div style={{ 
-                      fontSize: '0.75rem', 
-                      opacity: 0.8,
-                      marginTop: '0.125rem'
-                    }}>
-                      {week.month} {week.year}
-                    </div>
-                  </button>
-                ))}
+                  {/* Current Week Display */}
+                  {(() => {
+                    const currentWeek = getCurrentWeekData();
+                    return (
+                      <div
+                        style={{
+                          padding: '0.5rem 1rem',
+                          borderRadius: '6px',
+                          backgroundColor: currentWeek.isCurrentWeek ? 'var(--accent-bg)' : 'transparent',
+                          color: currentWeek.isCurrentWeek ? 'var(--primary-bg)' : 'var(--primary-text)',
+                          fontSize: '0.875rem',
+                          fontWeight: '500',
+                          textAlign: 'center',
+                          minWidth: '80px'
+                        }}
+                      >
+                        <div style={{ fontSize: '0.875rem', fontWeight: '600' }}>
+                          {currentWeek.label}
+                        </div>
+                        <div style={{ 
+                          fontSize: '0.75rem', 
+                          opacity: 0.8,
+                          marginTop: '0.125rem',
+                          fontStyle: 'italic'
+                        }}>
+                          {currentWeek.month} {currentWeek.year}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               ) : (
                 /* Month Name and Year */

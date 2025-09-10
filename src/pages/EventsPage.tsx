@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Search, MapPin, Calendar, ChevronDown, X, Building2, Users } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
 import { CalendarEvent, UserWithSubscriptions } from '../types/database';

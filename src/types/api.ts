@@ -207,6 +207,7 @@ export interface ApiClient {
   
   // Companies
   getCompanies(params?: CompaniesQueryParams): Promise<ApiResponse<CompaniesResponse>>;
+  getAllCompanies(): Promise<ApiResponse<Company[]>>;
   getCompany(id: string): Promise<ApiResponse<CompanyWithEvents>>;
   getUserOrderedCompanies(userId: string): Promise<ApiResponse<Company[]>>;
   updateCompanyOrder(data: UpdateCompanyOrderRequest): Promise<ApiResponse<null>>;
