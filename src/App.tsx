@@ -24,9 +24,13 @@ import NotificationsDrawer from './components/NotificationsDrawer';
 
 interface AppProps {
   authUser?: {
+    id: string;
     email: string;
-    full_name?: string;
-    role?: string;
+    created_at: string;
+    user_metadata?: {
+      full_name?: string;
+      role?: string;
+    };
   } | null;
   onLogout?: () => void;
 }
@@ -172,17 +176,7 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
     selectedManagedUser: null,
     showUserProfile: false,
     showProfileDropdown: false,
-    currentUser: {
-      id: '550e8400-e29b-41d4-a716-446655440002', // analyst2 actual ID
-      email: 'analyst2@agora.com',
-      role: 'investment_analyst' as const,
-      full_name: 'Sarah Johnson',
-      is_active: true,
-      created_at: new Date(),
-      updated_at: new Date(),
-      preferences: {},
-      subscriptions: []
-    },
+    currentUser: null,
     subscriptionCount: 0,
     showEventsDropdown: false,
     showFiltersDropdown: false,
@@ -199,6 +193,74 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
 
   // Get current user from state
   const currentUser = state.currentUser;
+  
+  // Reset state when authUser changes (user switch/logout/login)
+  useEffect(() => {
+    if (!authUser) {
+      // User logged out - reset everything
+      setState(prev => ({
+        ...prev,
+        currentUser: null,
+        events: [],
+        companies: [],
+        selectedEvent: null,
+        selectedCompany: null,
+        showCompanyCalendar: false,
+        subscriptionCount: 0,
+        loading: false,
+        error: null
+      }));
+      return;
+    } else {
+      // New user logged in - reset data to show loading state
+      setState(prev => ({
+        ...prev,
+        currentUser: null, // Will be loaded by loadCurrentUser
+        events: [],
+        companies: [],
+        selectedEvent: null,
+        selectedCompany: null,
+        showCompanyCalendar: false,
+        subscriptionCount: 0,
+        loading: true, // Show loading while new user data loads
+        error: null
+      }));
+    }
+  }, [authUser]); // Trigger when authUser changes
+
+  // Load current user data when authUser changes
+  useEffect(() => {
+    const loadCurrentUser = async () => {
+      if (authUser?.id) {
+        try {
+          const userResponse = await apiClient.getUserSubscriptions(authUser.id);
+          if (userResponse.success) {
+            const user: UserWithSubscriptions = {
+              id: authUser.id,
+              email: authUser.email || '',
+              full_name: authUser.user_metadata?.full_name || authUser.email || '',
+              role: (authUser.user_metadata?.role as 'investment_analyst' | 'executive_assistant') || 'investment_analyst',
+              is_active: true,
+              created_at: new Date(authUser.created_at),
+              updated_at: new Date(),
+              preferences: {},
+              subscriptions: userResponse.data
+            };
+            
+            setState(prev => ({
+              ...prev,
+              currentUser: user,
+              subscriptionCount: userResponse.data.filter(sub => sub.is_active && sub.payment_status === 'paid').length
+            }));
+          }
+        } catch (error) {
+          console.error('Failed to load current user:', error);
+        }
+      }
+    };
+
+    loadCurrentUser();
+  }, [authUser]);
   
   // TODO: Re-implement EA functionality with real API
   // Temporarily disabled to test events functionality
@@ -218,7 +280,6 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
             subscriptions: response.data
           } : null
         }));
-        console.log(`📊 Updated subscription count: ${activeSubscriptions.length}`);
       }
     } catch (error) {
       console.error('Failed to load subscription count:', error);
@@ -248,7 +309,6 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
         const weekEnd = endOfWeek(state.currentDate, { weekStartsOn: 1 });
 
         // Load events and companies using API
-        console.log('📅 App.tsx: Loading events for week:', weekStart.toLocaleDateString(), 'to', weekEnd.toLocaleDateString(), '(v2.0)');
         const eventsResponse = await apiClient.getEvents({
           start_date: weekStart,
           end_date: weekEnd,
@@ -364,16 +424,9 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
     }));
   };
 
-  const handleToggleCalendarView = () => {
-    setState(prev => ({
-      ...prev,
-      calendarView: prev.calendarView === 'week' ? 'month' : 'week'
-    }));
-  };
 
   const handleEventClick = (event: CalendarEvent) => {
     setState(prev => ({ ...prev, selectedEvent: event }));
-    console.log('Event clicked:', event.title, event); // Debug logging
   };
 
   const handleDragEnd = (event: any) => {
@@ -398,7 +451,6 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
       selectedCompany: company,
       showCompanyCalendar: true
     }));
-    console.log('Company clicked:', company.ticker_symbol, company); // Debug logging
   };
 
   const handleBackToMainCalendar = () => {
@@ -432,7 +484,6 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
 
   const handleUserUpdate = (updatedUser: UserWithSubscriptions) => {
     // Update the current user and refresh events if subscriptions changed
-    console.log('🔄 User updated, reloading calendar data to show new subscriptions...');
     
     // Force a complete reload by resetting the loading state and updating dependencies
     setState(prev => ({ 
@@ -456,13 +507,11 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
         return;
       }
 
-      console.log(`🎯 Updating RSVP for event ${eventId} to ${status}`);
       
       // Use updateRSVPByEventAndUser which handles both update and create scenarios
       const response = await (apiClient as any).updateRSVPByEventAndUser(eventId, currentUser.id, status);
       
       if (response.success) {
-        console.log('✅ RSVP updated successfully');
         
         // Update the selected event's user_response in state
         setState(prev => ({
@@ -1256,7 +1305,6 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
                     
                     <button
                       onClick={() => {
-                        console.log('Logout clicked');
                         setState(prev => ({ ...prev, showProfileDropdown: false }));
                         if (onLogout) {
                           onLogout();
@@ -1328,9 +1376,9 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
 
       {/* Main Content */}
       {state.currentPage === 'subscriptions' ? (
-        <SubscriptionManagementPage />
+        <SubscriptionManagementPage currentUser={currentUser} />
       ) : state.currentPage === 'events' ? (
-        <EventsPage />
+        <EventsPage currentUser={currentUser} />
       ) : (
         <main className="main-content" style={{ 
           flexDirection: 'column', 

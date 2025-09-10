@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Search, ChevronDown, ChevronUp, Check, Building2, Target, BarChart3 } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
 import { supabaseService } from '../lib/supabase';
-import { UserSubscription } from '../types/database';
+import { UserSubscription, UserWithSubscriptions } from '../types/database';
 
-// Current user ID (analyst2)
-const CURRENT_USER_ID = '550e8400-e29b-41d4-a716-446655440002';
+interface SubscriptionManagementPageProps {
+  currentUser: UserWithSubscriptions | null;
+}
 
 interface Company {
   id: string;
@@ -41,7 +42,7 @@ interface SubscriptionStats {
   subscribedSubsectors: number;
 }
 
-const SubscriptionManagementPage: React.FC = () => {
+const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({ currentUser }) => {
   const [sectors, setSectors] = useState<SectorData[]>([]);
   const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -63,12 +64,12 @@ const SubscriptionManagementPage: React.FC = () => {
 
   // Load subscription data
   const loadSubscriptionData = async () => {
+    if (!currentUser) return;
+    
     try {
       setLoading(true);
       setError(null);
-
-      // Get user subscriptions
-      const userSubsResponse = await apiClient.getUserSubscriptions(CURRENT_USER_ID);
+      const userSubsResponse = await apiClient.getUserSubscriptions(currentUser.id);
       if (!userSubsResponse.success) {
         throw new Error('Failed to load user subscriptions');
       }
@@ -161,10 +162,28 @@ const SubscriptionManagementPage: React.FC = () => {
     }
   };
 
-  // Load data on mount
+  // Load data when currentUser changes
   useEffect(() => {
-    loadSubscriptionData();
-  }, []);
+    if (currentUser) {
+      loadSubscriptionData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]); // Only depend on the ID, ignore loadSubscriptionData
+
+  // Early return if no current user
+  if (!currentUser) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        minHeight: '400px',
+        color: 'var(--primary-text)'
+      }}>
+        Loading user data...
+      </div>
+    );
+  }
 
   // Handle bulk subscription
   const handleBulkSubscribe = async () => {
@@ -174,7 +193,7 @@ const SubscriptionManagementPage: React.FC = () => {
       setLoading(true);
       const promises = Array.from(selectedSubsectors).map(subsector => 
         apiClient.createSubscription({
-          user_id: CURRENT_USER_ID,
+          user_id: currentUser.id,
           gics_subsector: subsector
         } as any)
       );
@@ -833,7 +852,7 @@ const SubscriptionManagementPage: React.FC = () => {
                                         } else {
                                           // Subscribe
                                           await apiClient.createSubscription({
-                                            user_id: CURRENT_USER_ID,
+                                            user_id: currentUser.id,
                                             gics_subsector: subsector.name
                                           } as any);
                                         }
@@ -1350,7 +1369,7 @@ const SubscriptionManagementPage: React.FC = () => {
                                 setLoading(true);
                                 setError(null);
                                 await apiClient.createSubscription({
-                                  user_id: CURRENT_USER_ID,
+                                  user_id: currentUser.id,
                                   gics_subsector: subsector.name
                                 } as any);
                                 await loadSubscriptionData();

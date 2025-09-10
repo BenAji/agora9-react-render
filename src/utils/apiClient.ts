@@ -13,7 +13,6 @@ import {
   CompaniesQueryParams,
   CreateRSVPRequest,
   CreateSubscriptionRequest,
-  UpdateCompanyOrderRequest,
   EventsResponse,
   CompaniesResponse,
   UserCalendarResponse,
@@ -42,9 +41,6 @@ import { supabase, supabaseService } from '../lib/supabase';
 // =====================================================================================
 
 class SupabaseApiClient implements ApiClient {
-  constructor() {
-    console.log('🚀 SupabaseApiClient initialized - MINIMAL SCHEMA v1.0 🎯');
-  }
 
   private success<T>(data: T): ApiResponse<T> {
     return {
@@ -68,7 +64,6 @@ class SupabaseApiClient implements ApiClient {
 
   async login(email: string, password: string): Promise<ApiResponse<{ user: User; token: string }>> {
     try {
-      console.log('🔐 SupabaseApiClient: Logging in user:', email);
       
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
@@ -115,7 +110,6 @@ class SupabaseApiClient implements ApiClient {
         last_login: undefined
       };
 
-      console.log('✅ SupabaseApiClient: Login successful for:', user.email);
     return this.success({
         user,
         token: authData.session?.access_token || 'supabase-token'
@@ -130,7 +124,6 @@ class SupabaseApiClient implements ApiClient {
 
   async logout(): Promise<ApiResponse<null>> {
     try {
-      console.log('🚪 SupabaseApiClient: Logging out user');
       const { error } = await supabase.auth.signOut();
       
       if (error) {
@@ -149,7 +142,6 @@ class SupabaseApiClient implements ApiClient {
 
   async getCurrentUser(): Promise<ApiResponse<User>> {
     try {
-      console.log('👤 SupabaseApiClient: Getting current user');
       
       const { data: { user: authUser }, error } = await supabase.auth.getUser();
       
@@ -200,13 +192,14 @@ class SupabaseApiClient implements ApiClient {
 
   async getEvents(params?: EventsQueryParams): Promise<ApiResponse<EventsResponse>> {
     try {
-      console.log('📅 SupabaseApiClient: Getting events with params:', params);
 
-      // Get current user
-      const currentUserResponse = await this.getCurrentUser();
-      const userId = currentUserResponse.data.id;
+      // Use user ID from params or get current user
+      let userId = params?.user_id;
+      if (!userId) {
+        const currentUserResponse = await this.getCurrentUser();
+        userId = currentUserResponse.data.id;
+      }
 
-      console.log('👤 Current user ID:', userId);
 
       // Use our simple RPC function for minimal schema
       const { data: eventsData, error: eventsError } = await supabaseService
@@ -225,11 +218,9 @@ class SupabaseApiClient implements ApiClient {
         });
       }
 
-      console.log('📋 SupabaseApiClient: Raw events data:', eventsData);
 
       // Transform the data to match CalendarEvent format
       const events: CalendarEvent[] = (eventsData || []).map((event: any) => {
-        console.log('🔄 Processing event:', event);
       return {
           id: event.event_id,
           title: event.title,
@@ -245,8 +236,8 @@ class SupabaseApiClient implements ApiClient {
           created_at: new Date(),
           updated_at: new Date(),
           companies: event.companies || [],
-          user_response: {
-            id: crypto.randomUUID(),
+          user_response: event.user_response ? {
+            id: event.user_response_id || crypto.randomUUID(),
             user_id: userId,
             event_id: event.event_id,
             response_status: (event.user_response || 'pending') as 'accepted' | 'declined' | 'pending',
@@ -254,13 +245,11 @@ class SupabaseApiClient implements ApiClient {
             notes: event.response_notes || '',
       created_at: new Date(),
       updated_at: new Date()
-          },
+          } : null,
           color_code: this.getEventColor(event.user_response || 'pending')
       };
     });
 
-      console.log('✅ SupabaseApiClient: Processed events:', events.length);
-      console.log('📊 Events details:', events);
     
     return this.success({
         events,
@@ -296,11 +285,13 @@ class SupabaseApiClient implements ApiClient {
 
   async getCompanies(params?: CompaniesQueryParams): Promise<ApiResponse<CompaniesResponse>> {
     try {
-      console.log('🏢 SupabaseApiClient: Getting companies with params:', params);
 
-      // Get current user to filter by subscriptions
-      const currentUserResponse = await this.getCurrentUser();
-      const userId = currentUserResponse.data.id;
+      // Use user ID from params or get current user
+      let userId = params?.user_id;
+      if (!userId) {
+        const currentUserResponse = await this.getCurrentUser();
+        userId = currentUserResponse.data.id;
+      }
 
       // Get user's subscribed subsectors
       const { data: subscriptions, error: subError } = await supabaseService
@@ -320,7 +311,6 @@ class SupabaseApiClient implements ApiClient {
       }
 
       const subscribedSubsectors = subscriptions?.map(s => s.subsector) || [];
-      console.log('📋 SupabaseApiClient: User subscribed to:', subscribedSubsectors);
 
       if (subscribedSubsectors.length === 0) {
     return this.success({
@@ -345,7 +335,6 @@ class SupabaseApiClient implements ApiClient {
         });
       }
 
-      console.log('📋 SupabaseApiClient: Found companies:', companiesData?.length || 0);
 
       const companies: CompanyWithEvents[] = (companiesData || []).map((company: any) => ({
         id: company.id,
@@ -364,8 +353,8 @@ class SupabaseApiClient implements ApiClient {
     
     return this.success({
         companies,
-        total_count: companies.length
-      });
+      total_count: companies.length
+    });
 
     } catch (error: any) {
       console.error('💥 SupabaseApiClient: Get companies failed:', error);
@@ -377,7 +366,6 @@ class SupabaseApiClient implements ApiClient {
   // Get All Available Subsectors
   async getAllSubsectors(): Promise<ApiResponse<string[]>> {
     try {
-      console.log('📋 SupabaseApiClient: Getting all available subsectors');
 
       // Get all unique subsectors from companies table
       const { data: companiesData, error } = await supabaseService
@@ -398,7 +386,6 @@ class SupabaseApiClient implements ApiClient {
         new Set(companiesData?.map(c => c.gics_subsector) || [])
       ).sort();
       
-      console.log('📋 SupabaseApiClient: Found subsectors:', uniqueSubsectors);
       
       return this.success(uniqueSubsectors);
     } catch (error: any) {
@@ -506,7 +493,6 @@ class SupabaseApiClient implements ApiClient {
 
   async createRSVP(data: { user_id: string; event_id: string; response_status: 'accepted' | 'declined' | 'pending'; notes?: string }): Promise<ApiResponse<UserEventResponse>> {
     try {
-      console.log('📝 SupabaseApiClient: Creating RSVP:', data);
 
       const { data: rsvpData, error } = await supabaseService
         .from('user_event_responses')
@@ -537,10 +523,9 @@ class SupabaseApiClient implements ApiClient {
         response_date: new Date(rsvpData.response_date),
         notes: rsvpData.notes || '',
         created_at: new Date(rsvpData.created_at),
-        updated_at: new Date(rsvpData.created_at)
+        updated_at: new Date(rsvpData.updated_at)
       };
 
-      console.log('✅ SupabaseApiClient: RSVP created successfully');
       return this.success(userEventResponse);
 
     } catch (error: any) {
@@ -552,7 +537,6 @@ class SupabaseApiClient implements ApiClient {
 
   async updateRSVP(id: string, data: Partial<CreateRSVPRequest>): Promise<ApiResponse<UserEventResponse>> {
     try {
-      console.log('📝 SupabaseApiClient: Updating RSVP:', { id, data });
 
       const { data: rsvpData, error } = await supabaseService
         .from('user_event_responses')
@@ -582,10 +566,9 @@ class SupabaseApiClient implements ApiClient {
         response_date: new Date(rsvpData.response_date),
         notes: rsvpData.notes || '',
         created_at: new Date(rsvpData.created_at),
-        updated_at: new Date()
+        updated_at: new Date(rsvpData.updated_at)
       };
 
-      console.log('✅ SupabaseApiClient: RSVP updated successfully');
       return this.success(userEventResponse);
 
     } catch (error: any) {
@@ -598,7 +581,6 @@ class SupabaseApiClient implements ApiClient {
   // Helper method for updating RSVP by event and user
   async updateRSVPByEventAndUser(eventId: string, userId: string, responseStatus: 'accepted' | 'declined' | 'pending', notes?: string): Promise<ApiResponse<UserEventResponse>> {
     try {
-      console.log('📝 SupabaseApiClient: Updating RSVP by event and user:', { eventId, userId, responseStatus });
 
       // First try to update existing RSVP
       const { data: rsvpData, error } = await supabaseService
@@ -616,7 +598,6 @@ class SupabaseApiClient implements ApiClient {
       if (error) {
         // If update fails (no existing record), create new one
         if (error.code === 'PGRST116') {
-          console.log('🔄 No existing RSVP found, creating new one...');
           return await this.createRSVP({
             user_id: userId,
             event_id: eventId,
@@ -641,10 +622,9 @@ class SupabaseApiClient implements ApiClient {
         response_date: new Date(rsvpData.response_date),
         notes: rsvpData.notes || '',
         created_at: new Date(rsvpData.created_at),
-        updated_at: new Date()
+        updated_at: new Date(rsvpData.updated_at)
       };
 
-      console.log('✅ SupabaseApiClient: RSVP updated successfully');
       return this.success(userEventResponse);
 
     } catch (error: any) {
@@ -656,7 +636,6 @@ class SupabaseApiClient implements ApiClient {
 
   async deleteRSVP(id: string): Promise<ApiResponse<null>> {
     try {
-      console.log('🗑️ SupabaseApiClient: Deleting RSVP:', { id });
 
       const { error } = await supabaseService
         .from('user_event_responses')
@@ -672,7 +651,6 @@ class SupabaseApiClient implements ApiClient {
         });
       }
 
-      console.log('✅ SupabaseApiClient: RSVP deleted successfully');
       return this.success(null);
 
     } catch (error: any) {
@@ -701,7 +679,6 @@ class SupabaseApiClient implements ApiClient {
 
   async getUserSubscriptions(userId: string): Promise<ApiResponse<UserSubscription[]>> {
     try {
-      console.log('📋 SupabaseApiClient: Getting user subscriptions for:', userId);
 
       const { data: subscriptions, error } = await supabaseService
         .from('user_subscriptions')
@@ -732,7 +709,6 @@ class SupabaseApiClient implements ApiClient {
         updated_at: new Date(sub.created_at)
       }));
 
-      console.log('✅ SupabaseApiClient: User subscriptions loaded:', userSubscriptions.length);
       return this.success(userSubscriptions);
 
     } catch (error: any) {
@@ -744,7 +720,6 @@ class SupabaseApiClient implements ApiClient {
 
   async createUserSubscription(data: { user_id: string; subsector: string; payment_status?: string; is_active?: boolean }): Promise<ApiResponse<any>> {
     try {
-      console.log('📝 SupabaseApiClient: Creating user subscription:', data);
 
       const { data: subscription, error } = await supabaseService
         .from('user_subscriptions')
@@ -766,7 +741,6 @@ class SupabaseApiClient implements ApiClient {
         });
       }
 
-      console.log('✅ SupabaseApiClient: User subscription created successfully');
       return this.success(subscription);
 
     } catch (error: any) {
@@ -778,7 +752,6 @@ class SupabaseApiClient implements ApiClient {
 
   async deleteUserSubscription(subscriptionId: string): Promise<ApiResponse<null>> {
     try {
-      console.log('🗑️ SupabaseApiClient: Deleting subscription:', subscriptionId);
 
       const { error } = await supabaseService
         .from('user_subscriptions')
@@ -794,7 +767,6 @@ class SupabaseApiClient implements ApiClient {
         });
       }
 
-      console.log('✅ SupabaseApiClient: Subscription deleted successfully');
       return this.success(null);
 
     } catch (error: any) {
@@ -806,7 +778,6 @@ class SupabaseApiClient implements ApiClient {
 
   async updateUser(userId: string, data: { full_name?: string }): Promise<ApiResponse<UserWithSubscriptions>> {
     try {
-      console.log('📝 SupabaseApiClient: Updating user:', userId, data);
 
       const { data: user, error } = await supabaseService
         .from('users')
@@ -835,12 +806,11 @@ class SupabaseApiClient implements ApiClient {
         role: user.role as 'investment_analyst' | 'executive_assistant',
         is_active: user.is_active,
         created_at: new Date(user.created_at),
-        updated_at: new Date(),
+        updated_at: new Date(user.updated_at),
         preferences: {},
         subscriptions: subscriptions
       };
 
-      console.log('✅ SupabaseApiClient: User updated successfully');
       return this.success(userWithSubscriptions);
 
     } catch (error: any) {

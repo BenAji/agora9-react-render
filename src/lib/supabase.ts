@@ -6,8 +6,8 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://vermzahfnxjvowompxsa.supabase.co';
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlcm16YWhmbnhqdm93b21weHNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNjE5ODYsImV4cCI6MjA3MjkzNzk4Nn0.LnSFbklmYawaFB31zcjUfVdkXqSB5U7S9YSRcIZkARc';
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
@@ -24,13 +24,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 // Service role client for server-side operations (bypasses RLS)
-const supabaseServiceKey = process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseServiceKey) {
-  throw new Error(
-    'Missing Supabase service role key. Please check your .env.local file and ensure REACT_APP_SUPABASE_SERVICE_ROLE_KEY is set.'
-  );
-}
+const supabaseServiceKey = process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlcm16YWhmbnhqdm93b21weHNhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzM2MTk4NiwiZXhwIjoyMDcyOTM3OTg2fQ.QnyeDeqMI5wnGg18y11NYP6noLgdNyTiXB4VnhcFYLs';
 
 export const supabaseService = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {

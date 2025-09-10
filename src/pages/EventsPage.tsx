@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Eye, Check, Clock, MapPin, Calendar, Filter, ChevronDown, X, Building2, Users } from 'lucide-react';
+import { Search, MapPin, Calendar, ChevronDown, X, Building2, Users } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
-import { CalendarEvent } from '../types/database';
+import { CalendarEvent, UserWithSubscriptions } from '../types/database';
 import { format } from 'date-fns';
 
-// Current user ID (analyst2)
-const CURRENT_USER_ID = '550e8400-e29b-41d4-a716-446655440002';
+interface EventsPageProps {
+  currentUser: UserWithSubscriptions | null;
+}
 
 interface EventFilter {
   type: 'upcoming' | 'need_response' | 'my_events' | 'all';
@@ -18,7 +19,7 @@ interface EventSortOption {
   label: string;
 }
 
-const EventsPage: React.FC = () => {
+const EventsPage: React.FC<EventsPageProps> = ({ currentUser }) => {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,12 +48,12 @@ const EventsPage: React.FC = () => {
 
   // Load events data
   const loadEventsData = async () => {
+    if (!currentUser) return;
+    
     try {
       setLoading(true);
       setError(null);
-
-      // Get user subscriptions first
-      const userSubsResponse = await apiClient.getUserSubscriptions(CURRENT_USER_ID);
+      const userSubsResponse = await apiClient.getUserSubscriptions(currentUser.id);
       if (!userSubsResponse.success) {
         throw new Error('Failed to load user subscriptions');
       }
@@ -61,13 +62,12 @@ const EventsPage: React.FC = () => {
         .filter(sub => sub.is_active && sub.payment_status === 'paid')
         .map(sub => sub.subsector);
 
-      console.log('📊 User subscribed subsectors:', subscribedSubsectors);
 
       // Get all events
       const eventsResponse = await apiClient.getEvents({
         start_date: new Date('2024-01-01'),
         end_date: new Date('2025-12-31'),
-        user_id: CURRENT_USER_ID
+        user_id: currentUser.id
       });
 
       if (!eventsResponse.success) {
@@ -83,11 +83,6 @@ const EventsPage: React.FC = () => {
         );
       });
 
-      console.log(`📅 Filtered ${filteredEvents.length} events from ${allEvents.length} total events`);
-      console.log('📅 Events after subscription filtering:', filteredEvents.map(e => ({
-        title: e.title,
-        companies: e.companies.map(c => ({ name: c.company_name, subsector: c.gics_subsector }))
-      })));
 
       setEvents(filteredEvents);
       setFilteredEvents(filteredEvents);
@@ -163,23 +158,39 @@ const EventsPage: React.FC = () => {
 
   // Update filter counts
   useEffect(() => {
-    const now = new Date();
-    const upcomingCount = events.filter(event => new Date(event.start_date) > now).length;
-    const needResponseCount = events.filter(event => 
-      !event.user_response || event.user_response.response_status === 'pending'
-    ).length;
-    const myEventsCount = events.filter(event => 
-      event.user_response && event.user_response.response_status !== 'pending'
-    ).length;
-
-    // Update filter counts (this would be used to update the filter labels)
-    console.log('📊 Filter counts:', { upcomingCount, needResponseCount, myEventsCount, totalCount: events.length });
+    // Filter counts could be used to update filter labels in the future
+    // const now = new Date();
+    // const upcomingCount = events.filter(event => new Date(event.start_date) > now).length;
+    // const needResponseCount = events.filter(event => 
+    //   !event.user_response || event.user_response.response_status === 'pending'
+    // ).length;
+    // const myEventsCount = events.filter(event => 
+    //   event.user_response && event.user_response.response_status !== 'pending'
+    // ).length;
   }, [events]);
 
-  // Load data on component mount
+  // Load data when currentUser changes
   useEffect(() => {
-    loadEventsData();
-  }, []);
+    if (currentUser) {
+      loadEventsData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]); // Only depend on the ID, ignore loadEventsData
+
+  // Early return if no current user
+  if (!currentUser) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        minHeight: '400px',
+        color: 'var(--primary-text)'
+      }}>
+        Loading user data...
+      </div>
+    );
+  }
 
   const handleEventSelect = (eventId: string) => {
     const newSelected = new Set(selectedEvents);
@@ -242,11 +253,6 @@ const EventsPage: React.FC = () => {
   };
 
   // Event modal handlers
-  const handleViewEvent = (event: CalendarEvent) => {
-    setSelectedEvent(event);
-    setShowEventModal(true);
-  };
-
   const handleCloseEventModal = () => {
     setShowEventModal(false);
     setSelectedEvent(null);
@@ -265,7 +271,7 @@ const EventsPage: React.FC = () => {
       } else {
         // Create new RSVP
         await apiClient.createRSVP({
-          user_id: CURRENT_USER_ID,
+          user_id: currentUser.id,
           event_id: eventId,
           response_status: status,
           notes: undefined
@@ -513,7 +519,7 @@ const EventsPage: React.FC = () => {
         {/* Header Row */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '40px 1fr 120px 120px 120px 150px 80px 80px 100px 80px',
+          gridTemplateColumns: '40px 1fr 120px 120px 120px 150px 80px 80px 100px',
           gap: '1rem',
           padding: '1rem',
           backgroundColor: 'var(--tertiary-bg)',
@@ -538,7 +544,6 @@ const EventsPage: React.FC = () => {
           <div>Date</div>
           <div>Time</div>
           <div>Location</div>
-          <div>Action</div>
         </div>
 
         {/* Event Rows */}
@@ -561,7 +566,7 @@ const EventsPage: React.FC = () => {
                 key={event.id}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '40px 1fr 120px 120px 120px 150px 80px 80px 100px 80px',
+                  gridTemplateColumns: '40px 1fr 120px 120px 120px 150px 80px 80px 100px',
                   gap: '1rem',
                   padding: '1rem',
                   borderBottom: '1px solid var(--border-light)',
@@ -648,35 +653,6 @@ const EventsPage: React.FC = () => {
                 {/* Location */}
                 <div style={{ fontSize: '0.875rem', color: 'var(--primary-text)' }}>
                   {getLocationDisplay(event)}
-                </div>
-
-                {/* View Button */}
-                <div>
-                  <button
-                    onClick={() => handleViewEvent(event)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.25rem',
-                      padding: '0.25rem 0.5rem',
-                      backgroundColor: 'transparent',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: '4px',
-                      color: 'var(--primary-text)',
-                      cursor: 'pointer',
-                      fontSize: '0.75rem',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)';
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.target as HTMLButtonElement).style.backgroundColor = 'transparent';
-                    }}
-                  >
-                    <Eye size={12} />
-                    View
-                  </button>
                 </div>
               </div>
             );

@@ -34,6 +34,18 @@
   --status-declined: #ffc107;   /* Yellow - matches DB 'declined' */
   --status-pending: #6c757d;    /* Grey - matches DB 'pending' */
   
+  /* Form and Error Colors */
+  --success-color: #28a745;
+  --success-bg: #1e3a28;
+  --warning-color: #ffc107;
+  --warning-bg: #3a3a1e;
+  --error-color: #dc3545;
+  --error-bg: #3a1e1e;
+  --accent-color: #d4af37;
+  --accent-hover: #b8941e;
+  --disabled-bg: #333333;
+  --disabled-text: #666666;
+  
   /* Interactive Colors */
   --button-primary: #d4af37;
   --button-primary-hover: #b8941e;

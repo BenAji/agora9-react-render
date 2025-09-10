@@ -318,7 +318,6 @@ const NotificationsDrawer: React.FC<NotificationsDrawerProps> = ({ isOpen, onClo
             }}
             onClick={() => {
               // TODO: Save notification preferences
-              console.log('Saving notification preferences:', settings);
               onClose();
             }}
           >
