@@ -1,5 +1,15 @@
+/**
+ * AGORA Calendar Page
+ * 
+ * PHASE 1, STEP 1.3: Updated to use CalendarLayout
+ * Dependencies: CalendarLayout component
+ * Purpose: Main calendar page with layout integration
+ * 
+ * SAFETY: Uses CalendarLayout with mock data only
+ */
+
 import React from 'react';
-import { Calendar, Clock, Users } from 'lucide-react';
+import CalendarLayout from '../components/calendar/CalendarLayout';
 
 interface CalendarPageProps {
   currentUser: any;
@@ -8,34 +18,14 @@ interface CalendarPageProps {
 
 const CalendarPage: React.FC<CalendarPageProps> = ({ currentUser, onLogout }) => {
   return (
-    <div className="coming-soon-page">
-      <div className="coming-soon-content">
-        <div className="coming-soon-icon">
-          <Calendar size={80} />
-        </div>
-        <h1>Calendar Coming Soon</h1>
-        <p>We're working hard to bring you an amazing calendar experience. Stay tuned!</p>
-        
-        <div className="feature-preview">
-          <h3>What to expect:</h3>
-          <div className="feature-list">
-            <div className="feature-item">
-              <Clock size={20} />
-              <span>Event scheduling and management</span>
-            </div>
-            <div className="feature-item">
-              <Users size={20} />
-              <span>Team collaboration tools</span>
-            </div>
-            <div className="feature-item">
-              <Calendar size={20} />
-              <span>Advanced calendar views</span>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div style={{ 
+      backgroundColor: 'var(--primary-bg)', 
+      minHeight: '100vh' 
+    }}>
+      <CalendarLayout />
     </div>
   );
 };
 
 export default CalendarPage;
+

@@ -176,3 +176,4 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onResultClick }) => {
 };
 
 export default GlobalSearch;
+

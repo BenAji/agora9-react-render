@@ -39,3 +39,4 @@ const EventsPage: React.FC<EventsPageProps> = ({ currentUser, onLogout }) => {
 };
 
 export default EventsPage;
+
