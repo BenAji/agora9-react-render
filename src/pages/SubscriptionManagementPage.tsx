@@ -3,6 +3,7 @@ import { Search, Check, Building2, BarChart3, Calendar } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { apiClient } from '../utils/apiClient';
 import { UserSubscription, UserWithSubscriptions } from '../types/database';
+import { useSubscriptionContext } from '../contexts/SubscriptionContext';
 
 interface SubscriptionManagementPageProps {
   currentUser: UserWithSubscriptions | null;
@@ -41,6 +42,8 @@ interface SubscriptionStats {
 }
 
 const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({ currentUser, onSubscriptionChange }) => {
+  // Get subscription context for global refresh
+  const { triggerRefresh } = useSubscriptionContext();
   
   // Helper function to format expiration date
   const formatExpirationDate = (expiresAt: string) => {
@@ -172,7 +175,6 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
       });
 
     } catch (error) {
-      console.error('Error loading subscription data:', error);
       setError('Failed to load subscription data. Please try again.');
     } finally {
       setLoading(false);
@@ -215,12 +217,13 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
 
       if (response.success) {
         await loadSubscriptionData();
-        onSubscriptionChange?.(); // Notify parent component
+        onSubscriptionChange?.();
+        triggerRefresh(); // Trigger global refresh // Notify parent component
+        triggerRefresh(); // Trigger global refresh
       } else {
         setError('Failed to subscribe. Please try again.');
       }
     } catch (error) {
-      console.error('Error subscribing:', error);
       setError('Failed to subscribe. Please try again.');
       
       // Even if there's an error, refresh data since subscription might have been created
@@ -228,8 +231,9 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
       try {
         await loadSubscriptionData();
         onSubscriptionChange?.();
+        triggerRefresh(); // Trigger global refresh
       } catch (refreshError) {
-        console.error('Error refreshing data after failed subscription:', refreshError);
+        // Silent refresh error
       }
     } finally {
       setLoading(false);
@@ -243,12 +247,13 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
 
       if (response.success) {
         await loadSubscriptionData();
-        onSubscriptionChange?.(); // Notify parent component
+        onSubscriptionChange?.();
+        triggerRefresh(); // Trigger global refresh // Notify parent component
+        triggerRefresh(); // Trigger global refresh
       } else {
         setError('Failed to unsubscribe. Please try again.');
       }
     } catch (error) {
-      console.error('Error unsubscribing:', error);
       setError('Failed to unsubscribe. Please try again.');
     } finally {
       setLoading(false);

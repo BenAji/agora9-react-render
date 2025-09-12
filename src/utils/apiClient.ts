@@ -221,7 +221,6 @@ class SupabaseApiClient implements ApiClient {
         .eq('payment_status', 'paid');
 
       if (subError) {
-        console.error('❌ SupabaseApiClient: Subscriptions query error:', subError);
         throw new ApiClientError({
           message: `Failed to fetch user subscriptions: ${subError.message}`,
           code: 'SUBSCRIPTIONS_FETCH_ERROR',
@@ -266,7 +265,6 @@ class SupabaseApiClient implements ApiClient {
         .in('event_companies.companies.gics_subsector', subscribedSubsectors);
 
       if (eventsError) {
-        console.error('❌ SupabaseApiClient: Events query error:', eventsError);
         throw new ApiClientError({
           message: `Failed to fetch events: ${eventsError.message}`,
           code: 'EVENTS_FETCH_ERROR',
@@ -400,6 +398,7 @@ class SupabaseApiClient implements ApiClient {
       const subscribedSubsectors = subscriptions?.map((s: any) => s.subsector) || [];
 
       if (subscribedSubsectors.length === 0) {
+        console.log('⚠️ No active subscriptions found for user:', userId);
     return this.success({
           companies: [],
           total_count: 0
@@ -414,7 +413,6 @@ class SupabaseApiClient implements ApiClient {
         .eq('is_active', true);
 
       if (companiesError) {
-        console.error('❌ SupabaseApiClient: Companies query error:', companiesError);
         throw new ApiClientError({
           message: `Failed to fetch companies: ${companiesError.message}`,
           code: 'COMPANIES_FETCH_ERROR',

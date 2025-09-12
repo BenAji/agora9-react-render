@@ -1,35 +1,35 @@
 import React from 'react';
-import { Calendar, MapPin, Users, Star } from 'lucide-react';
+import { Calendar, Clock, Users } from 'lucide-react';
 
-interface EventsPageProps {
+interface CalendarPageProps {
   currentUser: any;
   onLogout?: () => void;
 }
 
-const EventsPage: React.FC<EventsPageProps> = ({ currentUser, onLogout }) => {
+const CalendarPage: React.FC<CalendarPageProps> = ({ currentUser, onLogout }) => {
   return (
     <div className="coming-soon-page">
       <div className="coming-soon-content">
         <div className="coming-soon-icon">
           <Calendar size={80} />
         </div>
-        <h1>Events Coming Soon</h1>
-        <p>We're building an incredible events platform. Get ready for something amazing!</p>
+        <h1>Calendar Coming Soon</h1>
+        <p>We're working hard to bring you an amazing calendar experience. Stay tuned!</p>
         
         <div className="feature-preview">
           <h3>What to expect:</h3>
           <div className="feature-list">
             <div className="feature-item">
-              <MapPin size={20} />
-              <span>Event discovery and filtering</span>
+              <Clock size={20} />
+              <span>Event scheduling and management</span>
             </div>
             <div className="feature-item">
               <Users size={20} />
-              <span>Networking and connections</span>
+              <span>Team collaboration tools</span>
             </div>
             <div className="feature-item">
-              <Star size={20} />
-              <span>Personalized recommendations</span>
+              <Calendar size={20} />
+              <span>Advanced calendar views</span>
             </div>
           </div>
         </div>
@@ -38,4 +38,4 @@ const EventsPage: React.FC<EventsPageProps> = ({ currentUser, onLogout }) => {
   );
 };
 
-export default EventsPage;
+export default CalendarPage;

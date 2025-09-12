@@ -75,8 +75,7 @@ const getGlobalSupabaseService = () => {
         auth: {
           autoRefreshToken: false,
           persistSession: false,
-          detectSessionInUrl: false,
-          storageKey: 'agora-service-auth' // Different storage key to avoid conflicts
+          detectSessionInUrl: false
         },
         realtime: {
           params: {
@@ -99,8 +98,7 @@ const getGlobalSupabaseService = () => {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
-      detectSessionInUrl: false,
-      storageKey: 'agora-service-auth' // Different storage key to avoid conflicts
+      detectSessionInUrl: false
     },
     realtime: {
       params: {
