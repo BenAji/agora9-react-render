@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Check, Building2, BarChart3 } from 'lucide-react';
+import { Search, Check, Building2, BarChart3, Calendar } from 'lucide-react';
+import { format, parseISO, differenceInDays } from 'date-fns';
 import { apiClient } from '../utils/apiClient';
 import { UserSubscription, UserWithSubscriptions } from '../types/database';
 
@@ -23,6 +24,11 @@ interface SubsectorData {
   companies: Company[];
   isSubscribed: boolean;
   subscriptionId?: string;
+  subscriptionDetails?: {
+    expires_at: string;
+    created_at: string;
+    payment_status: string;
+  };
 }
 
 interface SubscriptionStats {
@@ -35,6 +41,40 @@ interface SubscriptionStats {
 }
 
 const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({ currentUser, onSubscriptionChange }) => {
+  
+  // Helper function to format expiration date
+  const formatExpirationDate = (expiresAt: string) => {
+    // Handle null, undefined, or empty string
+    if (!expiresAt || expiresAt.trim() === '') {
+      return { text: 'No expiration date', color: 'var(--warning-color)', days: 0 };
+    }
+    
+    try {
+      const expirationDate = parseISO(expiresAt);
+      
+      // Check if the parsed date is valid
+      if (isNaN(expirationDate.getTime())) {
+        return { text: 'Invalid date', color: 'var(--error-color)', days: 0 };
+      }
+      
+      const now = new Date();
+      const daysUntilExpiry = differenceInDays(expirationDate, now);
+      
+      // Note: Only active subscriptions exist in database since expired ones are deleted
+      if (daysUntilExpiry < 0) {
+        return { text: 'Expired', color: 'var(--error-color)', days: 0 };
+      } else if (daysUntilExpiry === 0) {
+        return { text: 'Expires today', color: 'var(--warning-color)', days: 0 };
+      } else if (daysUntilExpiry <= 7) {
+        return { text: `Expires in ${daysUntilExpiry} day${daysUntilExpiry === 1 ? '' : 's'}`, color: 'var(--warning-color)', days: daysUntilExpiry };
+      } else {
+        return { text: `Expires ${format(expirationDate, 'MMM dd, yyyy')}`, color: 'var(--muted-text)', days: daysUntilExpiry };
+      }
+    } catch (error) {
+      return { text: 'Invalid date', color: 'var(--error-color)', days: 0 };
+    }
+  };
+
   const [subsectors, setSubsectors] = useState<SubsectorData[]>([]);
   const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,14 +130,25 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
         // Get sector from the first company in this subsector
         const sectorName = subsectorCompanies.length > 0 ? subsectorCompanies[0].gics_sector : 'Unknown';
 
+        // Check if user has an active subscription to this subsector
+        const isSubscribed = !!userSub && userSub.is_active;
+        
+        // Note: Expired subscriptions are automatically deleted from database
+        // so they will automatically appear in "Add Subscriptions" tab for reactivation
+
 
         subsectorMap.set(subsectorName, {
           name: subsectorName,
           sector: sectorName,
           companyCount: subsectorCompanies.length,
           companies: subsectorCompanies,
-          isSubscribed: !!userSub,
-          subscriptionId: userSub?.id
+          isSubscribed: isSubscribed,
+          subscriptionId: userSub?.id,
+          subscriptionDetails: userSub ? {
+            expires_at: typeof userSub.expires_at === 'string' ? userSub.expires_at : (userSub.expires_at ? userSub.expires_at.toISOString() : ''),
+            created_at: typeof userSub.created_at === 'string' ? userSub.created_at : userSub.created_at.toISOString(),
+            payment_status: userSub.payment_status
+          } : undefined
         });
       });
 
@@ -105,7 +156,7 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
       setSubsectors(subsectorData);
       setSubscriptions(userSubscriptions);
 
-      // Calculate statistics
+      // Calculate statistics (only count active subscriptions)
       const subscribedSubsectors = subsectorData.filter(sub => sub.isSubscribed);
       const subscribedCompanies = subscribedSubsectors.reduce((sum, sub) => sum + sub.companyCount, 0);
       const sectors = new Set(subsectorData.map(sub => sub.sector));
@@ -171,6 +222,15 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
     } catch (error) {
       console.error('Error subscribing:', error);
       setError('Failed to subscribe. Please try again.');
+      
+      // Even if there's an error, refresh data since subscription might have been created
+      // This handles cases where API throws error but subscription is actually successful
+      try {
+        await loadSubscriptionData();
+        onSubscriptionChange?.();
+      } catch (refreshError) {
+        console.error('Error refreshing data after failed subscription:', refreshError);
+      }
     } finally {
       setLoading(false);
     }
@@ -208,9 +268,13 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
 
       const matchesSector = selectedSector === 'all' || subsector.sector === selectedSector;
 
-      // For view tab, only show subscribed subsectors
-      // For add tab, only show unsubscribed subsectors
-      const matchesTab = activeTab === 'view' ? subsector.isSubscribed : !subsector.isSubscribed;
+      // For view tab, only show active subscriptions
+      // For add tab, show subsectors that are either:
+      // 1. Never subscribed to, OR
+      // 2. Previously subscribed but now expired (for reactivation)
+      const matchesTab = activeTab === 'view' 
+        ? subsector.isSubscribed 
+        : !subsector.isSubscribed; // This includes both never-subscribed and expired subscriptions
 
       return matchesSearch && matchesSector && matchesTab;
     });
@@ -556,6 +620,27 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
                               • {subsector.companies.map(c => c.ticker_symbol).join(', ')}
                             </span>
                           </p>
+                          {subsector.subscriptionDetails && (
+                            <div style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '0.25rem', 
+                              marginTop: '0.25rem' 
+                            }}>
+                              <Calendar style={{ 
+                                width: '0.875rem', 
+                                height: '0.875rem', 
+                                color: formatExpirationDate(subsector.subscriptionDetails.expires_at).color 
+                              }} />
+                              <span style={{ 
+                                color: formatExpirationDate(subsector.subscriptionDetails.expires_at).color,
+                                fontSize: '0.75rem',
+                                fontWeight: '500'
+                              }}>
+                                {formatExpirationDate(subsector.subscriptionDetails.expires_at).text}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -701,15 +786,19 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {filteredSubsectors.map(subsector => (
+                {filteredSubsectors.map(subsector => {
+                  // Check if this subsector has an expired subscription
+                  const hasExpiredSubscription = subsector.subscriptionId !== undefined && !subsector.isSubscribed;
+                  
+                  return (
                   <div 
                     key={subsector.name}
                     style={{ 
                       padding: '1.5rem', 
                       borderRadius: '8px', 
-                      border: '1px solid var(--border-color)', 
+                      border: hasExpiredSubscription ? '1px solid var(--warning-color)' : '1px solid var(--border-color)', 
                       transition: 'all 0.2s ease',
-                      backgroundColor: 'var(--tertiary-bg)'
+                      backgroundColor: hasExpiredSubscription ? 'rgba(255, 193, 7, 0.1)' : 'var(--tertiary-bg)'
                     }}
                   >
                     <div style={{ 
@@ -797,7 +886,8 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

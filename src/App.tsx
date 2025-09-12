@@ -5,7 +5,7 @@
  * Uses database-aligned mock data that seamlessly transitions to real data
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { format, startOfWeek, endOfWeek, addDays, isSameDay, getWeek } from 'date-fns';
 import { Calendar, ChevronLeft, ChevronRight, Filter, Search, Settings, GripVertical, LogOut, ChevronDown, User, Bell } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -48,6 +48,7 @@ interface AppState {
   loading: boolean;
   error: string | null;
   searchQuery: string;
+  lastUpdated?: number;
   eventTypeFilter: 'all' | 'standard' | 'catalyst';
   locationTypeFilter: 'all' | 'physical' | 'virtual' | 'hybrid';
   rsvpStatusFilter: 'all' | 'accepted' | 'declined' | 'pending';
@@ -63,17 +64,28 @@ interface AppState {
   showFiltersDropdown: boolean;
   showViewDropdown: boolean;
   showNotificationsDrawer: boolean;
+  isReordering: boolean;
 }
 
-// Sortable Company Calendar Row Component
-const SortableCompanyCalendarRow: React.FC<{
+// Props interface for SortableCompanyCalendarRow
+interface SortableCompanyCalendarRowProps {
   company: CompanyWithEvents;
   weekDays: Date[];
   onCompanyClick: (company: CompanyWithEvents) => void;
   onEventClick: (event: CalendarEvent) => void;
   getEventsForCompany: (companyId: string, date: Date) => CalendarEvent[];
   formatEventTime: (event: CalendarEvent) => string;
-}> = ({ company, weekDays, onCompanyClick, onEventClick, getEventsForCompany, formatEventTime }) => {
+}
+
+// Sortable Company Calendar Row Component
+const SortableCompanyCalendarRow = React.memo<SortableCompanyCalendarRowProps>(({ 
+  company, 
+  weekDays, 
+  onCompanyClick, 
+  onEventClick, 
+  getEventsForCompany, 
+  formatEventTime 
+}) => {
   const {
     attributes,
     listeners,
@@ -87,6 +99,16 @@ const SortableCompanyCalendarRow: React.FC<{
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  const handleEventClick = useCallback((event: React.MouseEvent<HTMLDivElement>, eventData: CalendarEvent) => {
+    event.stopPropagation();
+    onEventClick(eventData);
+  }, [onEventClick]);
+
+  const handleCompanyClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    onCompanyClick(company);
+  }, [onCompanyClick, company]);
 
   return (
     <div
@@ -116,7 +138,7 @@ const SortableCompanyCalendarRow: React.FC<{
         >
           <GripVertical size={16} />
         </div>
-        <div onClick={() => onCompanyClick(company)} style={{ flex: 1 }}>
+        <div onClick={(e) => handleCompanyClick(e)} style={{ flex: 1 }}>
           <div className="company-ticker" style={{ fontSize: '0.875rem', fontWeight: 'bold', color: 'var(--secondary-text)' }}>
             ({company.ticker_symbol})
           </div>
@@ -127,16 +149,16 @@ const SortableCompanyCalendarRow: React.FC<{
       </div>
 
       {/* Event Cells for Each Day */}
-      {weekDays.map(day => {
-        const dayEvents = getEventsForCompany(company.id, day);
+      {weekDays.map((day: Date) => {
+        const dayEvents: CalendarEvent[] = getEventsForCompany(company.id, day);
         return (
           <div key={`${company.id}-${day.toISOString()}`} className="calendar-cell" style={{ minHeight: '80px', padding: '0.5rem' }}>
             <div className="calendar-events" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              {dayEvents.map(event => (
+              {dayEvents.map((event: CalendarEvent) => (
                 <div
                   key={event.id}
                   className={`event-block status-${event.user_response?.response_status || 'pending'}`}
-                  onClick={() => onEventClick(event)}
+                  onClick={(e: React.MouseEvent<HTMLDivElement>) => handleEventClick(e, event)}
                   style={{ cursor: 'pointer' }}
                 >
                   <div className="event-title" style={{ fontSize: '0.75rem', fontWeight: '600' }}>{event.title}</div>
@@ -149,11 +171,15 @@ const SortableCompanyCalendarRow: React.FC<{
       })}
     </div>
   );
-};
+});
 
 const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const viewDropdownRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const saveCompanyOrderRef = useRef<NodeJS.Timeout | null>(null);
+  const prevCompaniesRef = useRef<CompanyWithEvents[]>([]);
   const [state, setState] = useState<AppState>({
     currentDate: new Date(),
     selectedView: 'week',
@@ -167,6 +193,7 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
     loading: true,
     error: null,
     searchQuery: '',
+    lastUpdated: undefined,
     eventTypeFilter: 'all',
     locationTypeFilter: 'all',
     rsvpStatusFilter: 'all',
@@ -181,11 +208,16 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
     showEventsDropdown: false,
     showFiltersDropdown: false,
     showViewDropdown: false,
+    isReordering: false,
     showNotificationsDrawer: false
   });
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Require 8px movement before drag starts
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -246,9 +278,9 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
               preferences: {},
               subscriptions: userResponse.data
             };
-            
-            setState(prev => ({
-              ...prev,
+      
+      setState(prev => ({
+        ...prev,
               currentUser: user,
               subscriptionCount: userResponse.data.filter(sub => sub.is_active && sub.payment_status === 'paid').length
             }));
@@ -298,38 +330,62 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
     loadSubscriptionCount();
   };
 
-  // Load data on component mount and when dependencies change
-  useEffect(() => {
-    const loadCalendarData = async () => {
-      try {
+  // Load calendar data function
+  const loadCalendarData = useCallback(async () => {
+    if (!currentUser?.id) return;
+
+    try {
+      // Only fetch if we don't have data or if the data is stale
+      const shouldFetch = state.companies.length === 0 || 
+                        state.events.length === 0 || 
+                        Date.now() - (state.lastUpdated || 0) > 5 * 60 * 1000; // 5 minutes
+
+      if (!shouldFetch) {
+        setState(prev => ({ ...prev, loading: false }));
+        return;
+      }
+
         setState(prev => ({ ...prev, loading: true, error: null }));
 
-        // Calculate date range for current week
-        const weekStart = startOfWeek(state.currentDate, { weekStartsOn: 1 }); // Monday start
-        const weekEnd = endOfWeek(state.currentDate, { weekStartsOn: 1 });
+      // Load events and companies in parallel
+      const [eventsResponse, companiesResponse] = await Promise.all([
+        apiClient.getEvents({
+          start_date: new Date('2024-01-01'),
+          end_date: new Date('2025-12-31'),
+          user_id: currentUser.id
+        }),
+        apiClient.getCompanies({
+          user_id: currentUser.id
+        })
+      ]);
 
-        // Load events and companies using API
-        const eventsResponse = await apiClient.getEvents({
-          start_date: weekStart,
-          end_date: weekEnd,
-          user_id: currentUser?.id
-        });
+      let companies = companiesResponse.data.companies;
 
-        const companiesResponse = await apiClient.getCompanies({
-          user_id: currentUser?.id
-        });
-
-        // Filter events based on selected filter
-        let filteredEvents = eventsResponse.data.events;
-        if (state.eventFilter === 'my') {
-          filteredEvents = filteredEvents.filter(event => event.user_response);
+      // Load custom order if available
+      try {
+        const orderedResponse = await apiClient.getUserOrderedCompanies(currentUser.id);
+        if (orderedResponse.success && orderedResponse.data.length > 0) {
+          const orderMap = new Map();
+          orderedResponse.data.forEach((company, index) => {
+            orderMap.set(company.id, index);
+          });
+          
+          companies = companies.sort((a, b) => {
+            const orderA = orderMap.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+            const orderB = orderMap.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+            return orderA - orderB;
+          });
+        }
+      } catch (error) {
+        console.warn('Failed to load custom company order, using default:', error);
         }
 
         setState(prev => ({
           ...prev,
-          events: filteredEvents,
-          companies: companiesResponse.data.companies,
-          loading: false
+        events: eventsResponse.data.events,
+        companies: companies,
+        loading: false,
+        lastUpdated: Date.now()
         }));
 
       } catch (error) {
@@ -340,10 +396,27 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
           loading: false
         }));
       }
-    };
+  }, [currentUser, state.companies.length, state.events.length, state.lastUpdated]);
+
+  // Load data on component mount and when dependencies change
+  useEffect(() => {
+    // Don't load data if no current user
+    if (!currentUser) {
+      setState(prev => ({ ...prev, loading: false, companies: [], events: [] }));
+      return;
+    }
 
     loadCalendarData();
-  }, [state.currentDate, state.eventFilter, currentUser?.id, state.subscriptionCount]);
+  }, [state.currentDate, state.eventFilter, currentUser, state.subscriptionCount, loadCalendarData]);
+
+  // Add cleanup for timeouts
+  useEffect(() => {
+    return () => {
+      if (saveCompanyOrderRef.current) {
+        clearTimeout(saveCompanyOrderRef.current);
+      }
+    };
+  }, []);
 
   // Load subscription count on mount
   useEffect(() => {
@@ -420,33 +493,110 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
 
 
 
-  const handleEventClick = (event: CalendarEvent) => {
+  const handleEventClick = useCallback((event: CalendarEvent) => {
     setState(prev => ({ ...prev, selectedEvent: event }));
-  };
+  }, []);
 
-  const handleDragEnd = (event: any) => {
-    const { active, over } = event;
+  const saveCompanyOrder = async (companies: CompanyWithEvents[], userId: string) => {
+    try {
+      const newOrder = companies.map((company, index) => ({
+        company_id: company.id,
+        display_order: index
+      }));
 
-    if (active.id !== over?.id) {
-      setState(prev => {
-        const oldIndex = prev.companies.findIndex(company => company.id === active.id);
-        const newIndex = prev.companies.findIndex(company => company.id === over.id);
-        
-        return {
-          ...prev,
-          companies: arrayMove(prev.companies, oldIndex, newIndex)
-        };
+      const response = await apiClient.updateCompanyOrder({
+        user_id: userId,
+        company_orders: newOrder
       });
+
+      if (!response.success) {
+        throw new Error('Failed to update company order');
+      }
+    } catch (error) {
+      console.error('Failed to save company order:', error);
+      throw error; // Re-throw to handle in the caller
     }
   };
 
-  const handleCompanyClick = (company: CompanyWithEvents) => {
+  const handleDragStart = useCallback(() => {
+    setIsDragging(true);
+  }, []);
+
+  const handleDragEnd = useCallback(async (event: any) => {
+    const { active, over } = event;
+    setIsDragging(false);
+
+    if (active.id !== over?.id && currentUser) {
+      try {
+        setState(prev => ({ ...prev, isReordering: true }));
+        
+        // Store current companies for potential rollback
+        setState(prev => {
+          prevCompaniesRef.current = [...prev.companies];
+          return prev;
+        });
+        
+        // Calculate the new order using current state
+      setState(prev => {
+        const oldIndex = prev.companies.findIndex(company => company.id === active.id);
+        const newIndex = prev.companies.findIndex(company => company.id === over.id);
+          const newCompanies = arrayMove(prev.companies, oldIndex, newIndex);
+          
+          // Clear any pending saves
+          if (saveCompanyOrderRef.current) {
+            clearTimeout(saveCompanyOrderRef.current);
+          }
+
+          // Debounced save
+          saveCompanyOrderRef.current = setTimeout(async () => {
+            try {
+              const newOrder = newCompanies.map((company, index) => ({
+                company_id: company.id,
+                display_order: index
+              }));
+
+              await apiClient.updateCompanyOrder({
+                user_id: currentUser.id,
+                company_orders: newOrder
+              });
+            } catch (error) {
+              console.error('Failed to save company order:', error);
+              // Revert to previous state on error
+              setState(prevState => ({
+                ...prevState,
+                companies: prevCompaniesRef.current
+              }));
+            } finally {
+              setState(prevState => ({ ...prevState, isReordering: false }));
+            }
+          }, 300); // 300ms debounce
+        
+        return {
+          ...prev,
+            companies: newCompanies
+        };
+      });
+
+      } catch (error) {
+        console.error('Error during reorder:', error);
+        setState(prev => ({ ...prev, isReordering: false }));
+      }
+    }
+  }, [currentUser]);
+
+  // Create stable drag handlers object to prevent useLayoutEffect dependency changes
+  const dragHandlers = useMemo(() => ({
+    onDragStart: handleDragStart,
+    onDragEnd: handleDragEnd
+  }), [handleDragStart, handleDragEnd]);
+
+  const handleCompanyClick = useCallback((company: CompanyWithEvents) => {
     setState(prev => ({
       ...prev,
       selectedCompany: company,
       showCompanyCalendar: true
     }));
-  };
+  }, []);
 
   const handleBackToMainCalendar = () => {
     setState(prev => ({
@@ -543,13 +693,21 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
   };
 
 
-  const getEventsForCompany = (companyId: string, date: Date) => {
+  const getEventsForCompany = useCallback((companyId: string, date: Date) => {
+    // Calculate current week for filtering
+    const weekStart = startOfWeek(state.currentDate, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(state.currentDate, { weekStartsOn: 1 });
+    
     return state.events.filter(event => {
       // Basic company and date matching
       const matchesCompany = event.companies.some(c => c.id === companyId);
       const matchesDate = isSameDay(new Date(event.start_date), date);
       
-      if (!matchesCompany || !matchesDate) return false;
+      // Filter by current week
+      const eventDate = new Date(event.start_date);
+      const matchesWeek = eventDate >= weekStart && eventDate <= weekEnd;
+      
+      if (!matchesCompany || !matchesDate || !matchesWeek) return false;
       
       // Search query filter
       if (state.searchQuery) {
@@ -589,12 +747,12 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
       
       return true;
     });
-  };
+  }, [state.events, state.searchQuery, state.eventTypeFilter, state.locationTypeFilter, state.rsvpStatusFilter, state.eventFilter]);
 
-  const formatEventTime = (event: CalendarEvent) => {
+  const formatEventTime = useCallback((event: CalendarEvent) => {
     const startTime = format(new Date(event.start_date), 'HH:mm');
     return startTime;
-  };
+  }, []);
 
   if (state.loading) {
     return (
@@ -726,9 +884,16 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
 
   // Company Calendar Blow-up View
   if (state.showCompanyCalendar && state.selectedCompany) {
-    const companyEvents = state.events.filter(event => 
-      event.companies.some(c => c.id === state.selectedCompany!.id)
-    );
+    // Calculate current week for filtering
+    const weekStart = startOfWeek(state.currentDate, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(state.currentDate, { weekStartsOn: 1 });
+    
+    const companyEvents = state.events.filter(event => {
+      const matchesCompany = event.companies.some(c => c.id === state.selectedCompany!.id);
+      const eventDate = new Date(event.start_date);
+      const matchesWeek = eventDate >= weekStart && eventDate <= weekEnd;
+      return matchesCompany && matchesWeek;
+    });
     
     const monthDays = getMonthDays();
     const currentMonth = state.currentDate.getMonth();
@@ -1087,7 +1252,7 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
             >
               Subscriptions
             </button>
-          </div>
+        </div>
         </nav>
         
         {/* Right: Profile */}
@@ -1374,7 +1539,12 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
           }}
         />
       ) : state.currentPage === 'events' ? (
-        <EventsPage currentUser={currentUser} />
+        <EventsPage 
+          currentUser={currentUser} 
+          events={state.events}
+          loading={state.loading}
+          error={state.error}
+        />
       ) : (
         <main className="main-content" style={{ 
           flexDirection: 'column', 
@@ -1467,32 +1637,43 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
                 </div>
               ) : (
                 /* Month Name and Year */
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  backgroundColor: 'var(--tertiary-bg)',
-                  borderRadius: '8px',
-                  padding: '0.75rem 1.5rem',
-                  textAlign: 'center'
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  minHeight: '100vh',
+                  backgroundColor: 'var(--primary-bg)',
+                  color: 'var(--primary-text)',
+                  position: 'relative' // For notification positioning
                 }}>
-                  <div>
-                    <div style={{ 
-                      fontSize: '1.25rem', 
+                  {/* Reordering Indicator */}
+                  {state.isReordering && (
+                    <div style={{
+                      position: 'fixed',
+                      top: '10px',
+                      right: '10px',
+                      backgroundColor: 'var(--accent-color)',
+                      color: 'white',
+                      padding: '8px 16px',
+                      borderRadius: '20px',
+                      zIndex: 1000,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
                       fontWeight: '600',
-                      color: 'var(--primary-text)',
                       lineHeight: '1.2'
                     }}>
                       {format(state.currentDate, 'MMMM')}
+                      <div style={{ 
+                        fontSize: '0.75rem', 
+                        fontStyle: 'italic',
+                        color: 'var(--muted-text)',
+                        marginLeft: '4px'
+                      }}>
+                        {format(state.currentDate, 'yyyy')}
+                      </div>
                     </div>
-                    <div style={{ 
-                      fontSize: '0.75rem', 
-                      fontStyle: 'italic',
-                      color: 'var(--muted-text)',
-                      marginTop: '0.125rem'
-                    }}>
-                      {format(state.currentDate, 'yyyy')}
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
 
@@ -1515,7 +1696,7 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
                 <ChevronRight size={16} />
               </button>
             </div>
-
+            
             {/* Compact Dropdown Groups */}
             <div style={{ 
               display: 'flex', 
@@ -1525,7 +1706,7 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
             }}>
               {/* Events Dropdown */}
               <div style={{ position: 'relative' }}>
-                <button
+              <button 
                   onClick={() => setState(prev => ({ ...prev, showEventsDropdown: !prev.showEventsDropdown }))}
                   style={{
                     display: 'flex',
@@ -1586,10 +1767,10 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
                           (e.target as HTMLButtonElement).style.backgroundColor = 'transparent';
                         }
                       }}
-                    >
-                      All Events
-                    </button>
-                    <button
+              >
+                All Events
+              </button>
+              <button 
                       onClick={() => {
                         setState(prev => ({ ...prev, eventFilter: 'my', showEventsDropdown: false }));
                       }}
@@ -1614,12 +1795,12 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
                           (e.target as HTMLButtonElement).style.backgroundColor = 'transparent';
                         }
                       }}
-                    >
-                      My Events
-                    </button>
-                  </div>
+              >
+                My Events
+              </button>
+            </div>
                 )}
-              </div>
+          </div>
 
               {/* Filters Dropdown */}
               <div style={{ position: 'relative' }}>
@@ -1664,50 +1845,50 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
                       <label style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem', display: 'block' }}>
                         Event Type
                       </label>
-                      <select 
-                        className="form-select"
-                        value={state.eventTypeFilter}
-                        onChange={(e) => setState(prev => ({ ...prev, eventTypeFilter: e.target.value as any }))}
+              <select 
+                className="form-select"
+                value={state.eventTypeFilter}
+                onChange={(e) => setState(prev => ({ ...prev, eventTypeFilter: e.target.value as any }))}
                         style={{ width: '100%', fontSize: '0.875rem' }}
-                      >
-                        <option value="all">All Types</option>
-                        <option value="standard">Standard</option>
-                        <option value="catalyst">Catalyst</option>
-                      </select>
+              >
+                <option value="all">All Types</option>
+                <option value="standard">Standard</option>
+                <option value="catalyst">Catalyst</option>
+              </select>
                     </div>
-                    
+              
                     <div style={{ marginBottom: '0.5rem' }}>
                       <label style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem', display: 'block' }}>
                         Location
                       </label>
-                      <select 
-                        className="form-select"
-                        value={state.locationTypeFilter}
-                        onChange={(e) => setState(prev => ({ ...prev, locationTypeFilter: e.target.value as any }))}
+              <select 
+                className="form-select"
+                value={state.locationTypeFilter}
+                onChange={(e) => setState(prev => ({ ...prev, locationTypeFilter: e.target.value as any }))}
                         style={{ width: '100%', fontSize: '0.875rem' }}
-                      >
-                        <option value="all">All Locations</option>
-                        <option value="physical">Physical</option>
-                        <option value="virtual">Virtual</option>
-                        <option value="hybrid">Hybrid</option>
-                      </select>
+              >
+                <option value="all">All Locations</option>
+                <option value="physical">Physical</option>
+                <option value="virtual">Virtual</option>
+                <option value="hybrid">Hybrid</option>
+              </select>
                     </div>
-                    
+              
                     <div>
                       <label style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem', display: 'block' }}>
                         RSVP Status
                       </label>
-                      <select 
-                        className="form-select"
-                        value={state.rsvpStatusFilter}
-                        onChange={(e) => setState(prev => ({ ...prev, rsvpStatusFilter: e.target.value as any }))}
+              <select 
+                className="form-select"
+                value={state.rsvpStatusFilter}
+                onChange={(e) => setState(prev => ({ ...prev, rsvpStatusFilter: e.target.value as any }))}
                         style={{ width: '100%', fontSize: '0.875rem' }}
-                      >
-                        <option value="all">All RSVP</option>
-                        <option value="accepted">Accepted</option>
-                        <option value="declined">Declined</option>
-                        <option value="pending">Pending</option>
-                      </select>
+              >
+                <option value="all">All RSVP</option>
+                <option value="accepted">Accepted</option>
+                <option value="declined">Declined</option>
+                <option value="pending">Pending</option>
+              </select>
                     </div>
                   </div>
                 )}
@@ -2058,10 +2239,11 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
               )}
 
               {/* Draggable Company Rows with Events */}
+              <div className={isDragging ? 'dnd-context-dragging' : ''}>
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
+                  {...dragHandlers}
               >
                 <SortableContext
                   items={state.companies.map(c => c.id)}
@@ -2085,6 +2267,7 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
                   ) : null}
                 </SortableContext>
               </DndContext>
+              </div>
             </div>
           </div>
 

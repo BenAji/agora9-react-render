@@ -57,19 +57,48 @@ const AppWithAuth: React.FC = () => {
   useEffect(() => {
     // Check for existing session
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setAuthState({
-        user: session?.user || null,
-        loading: false,
-        showLogin: !session?.user,
-        showSignup: false
-      });
+      try {
+        console.log('🔍 Checking user session...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('❌ Auth session error:', error);
+        }
+        
+        console.log('✅ Session check complete:', { user: session?.user?.email, loading: false });
+        setAuthState({
+          user: session?.user || null,
+          loading: false,
+          showLogin: !session?.user,
+          showSignup: false
+        });
+      } catch (error) {
+        console.error('💥 Auth check failed:', error);
+        setAuthState({
+          user: null,
+          loading: false,
+          showLogin: true,
+          showSignup: false
+        });
+      }
     };
 
     checkUser();
 
+    // Set a timeout to prevent infinite loading
+    const loadingTimeout = setTimeout(() => {
+      console.warn('⏰ Auth loading timeout, forcing login state');
+      setAuthState(prev => ({
+        ...prev,
+        loading: false,
+        showLogin: true
+      }));
+    }, 5000); // 5 second timeout
+
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
+      console.log('🔄 Auth state changed:', event, session?.user?.email);
+      clearTimeout(loadingTimeout);
       setAuthState({
         user: session?.user || null,
         loading: false,
@@ -78,7 +107,10 @@ const AppWithAuth: React.FC = () => {
       });
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(loadingTimeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleLogout = async () => {

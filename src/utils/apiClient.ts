@@ -13,6 +13,7 @@ import {
   CompaniesQueryParams,
   CreateRSVPRequest,
   CreateSubscriptionRequest,
+  UpdateCompanyOrderRequest,
   EventsResponse,
   CompaniesResponse,
   UserCalendarResponse,
@@ -201,13 +202,68 @@ class SupabaseApiClient implements ApiClient {
       }
 
 
-      // Use our simple RPC function for minimal schema
-      const { data: eventsData, error: eventsError } = await supabaseService
-        .rpc('get_user_events_simple', {
-          p_user_id: userId,
-          p_start_date: params?.start_date?.toISOString() || '2025-01-01',
-          p_end_date: params?.end_date?.toISOString() || '2025-12-31'
+      // First, delete any subscriptions that have passed their expiration date
+      const now = new Date().toISOString();
+      await supabaseService
+        .from('user_subscriptions')
+        .delete()
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .not('expires_at', 'is', null)
+        .lt('expires_at', now);
+
+      // Then get user's active subscriptions to filter events
+      const { data: userSubscriptions, error: subError } = await supabaseService
+        .from('user_subscriptions')
+        .select('subsector')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .eq('payment_status', 'paid');
+
+      if (subError) {
+        console.error('❌ SupabaseApiClient: Subscriptions query error:', subError);
+        throw new ApiClientError({
+          message: `Failed to fetch user subscriptions: ${subError.message}`,
+          code: 'SUBSCRIPTIONS_FETCH_ERROR',
+          details: { originalError: subError }
         });
+      }
+
+      const subscribedSubsectors = userSubscriptions?.map((sub: any) => sub.subsector) || [];
+      
+      if (subscribedSubsectors.length === 0) {
+        // User has no subscriptions, return empty array
+    return this.success({
+          events: [],
+          total_count: 0
+        });
+      }
+
+      // Use a direct query instead of the problematic RPC function
+      const { data: eventsData, error: eventsError } = await supabaseService
+        .from('events')
+        .select(`
+          *,
+          event_companies!inner(
+            companies!inner(
+              id,
+              company_name,
+              ticker_symbol,
+              gics_sector,
+              gics_subsector
+            )
+          ),
+          user_event_responses(
+            response_status,
+            response_date,
+            notes
+          )
+        `)
+        .gte('start_date', params?.start_date?.toISOString() || '2025-01-01')
+        .lte('end_date', params?.end_date?.toISOString() || '2025-12-31')
+        .eq('is_active', true)
+        .eq('event_companies.companies.is_active', true)
+        .in('event_companies.companies.gics_subsector', subscribedSubsectors);
 
       if (eventsError) {
         console.error('❌ SupabaseApiClient: Events query error:', eventsError);
@@ -219,36 +275,57 @@ class SupabaseApiClient implements ApiClient {
       }
 
 
-      // Transform the data to match CalendarEvent format
+      // Transform the direct query data to match CalendarEvent format
       const events: CalendarEvent[] = (eventsData || []).map((event: any) => {
-      return {
-          id: event.event_id,
+        // Extract companies from the nested event_companies structure
+        const companies = (event.event_companies || []).map((ec: any) => ({
+          id: ec.companies.id,
+          ticker_symbol: ec.companies.ticker_symbol,
+          company_name: ec.companies.company_name,
+          gics_sector: ec.companies.gics_sector,
+          gics_subsector: ec.companies.gics_subsector,
+          gics_industry: '',
+          gics_sub_industry: '',
+      created_at: new Date(),
+          updated_at: new Date(),
+      is_active: true,
+          classification_status: 'complete' as const
+        }));
+
+        // Get user response if it exists
+        const userResponse = event.user_event_responses && event.user_event_responses.length > 0 
+          ? event.user_event_responses[0] 
+          : undefined;
+
+        return {
+          id: event.id,
           title: event.title,
           description: event.description || '',
           start_date: new Date(event.start_date),
           end_date: new Date(event.end_date),
           location_type: event.location_type as 'physical' | 'virtual' | 'hybrid',
-          location_details: undefined,
-          virtual_details: undefined,
-          weather_location: undefined,
-          event_type: 'standard' as const,
-      is_active: true,
-          created_at: new Date(),
-          updated_at: new Date(),
-          companies: event.companies || [],
-          user_response: event.user_response ? {
-            id: event.user_response_id || crypto.randomUUID(),
-            user_id: userId,
-            event_id: event.event_id,
-            response_status: (event.user_response || 'pending') as 'accepted' | 'declined' | 'pending',
-            response_date: new Date(),
-            notes: event.response_notes || '',
-      created_at: new Date(),
-      updated_at: new Date()
-          } : null,
-          color_code: this.getEventColor(event.user_response || 'pending')
-      };
-    });
+          location_details: event.location_details,
+          virtual_details: event.virtual_details,
+          weather_location: event.weather_location,
+          weather_coordinates: event.weather_coordinates,
+          event_type: event.event_type as 'standard' | 'catalyst',
+          is_active: event.is_active,
+          created_at: new Date(event.created_at),
+          updated_at: new Date(event.updated_at),
+          companies: companies,
+          user_response: userResponse ? {
+            id: userResponse.id,
+            user_id: userId!,
+            event_id: event.id,
+            response_status: (userResponse.response_status || 'pending') as 'accepted' | 'declined' | 'pending',
+            response_date: new Date(userResponse.response_date || new Date()),
+            notes: userResponse.notes || '',
+            created_at: new Date(userResponse.created_at || new Date()),
+            updated_at: new Date(userResponse.updated_at || new Date())
+          } : undefined,
+          color_code: this.getEventColor(userResponse?.response_status || 'pending')
+        };
+      });
 
     
     return this.success({
@@ -293,7 +370,17 @@ class SupabaseApiClient implements ApiClient {
         userId = currentUserResponse.data.id;
       }
 
-      // Get user's subscribed subsectors
+      // First, delete any subscriptions that have passed their expiration date
+      const now = new Date().toISOString();
+      await supabaseService
+        .from('user_subscriptions')
+        .delete()
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .not('expires_at', 'is', null)
+        .lt('expires_at', now);
+
+      // Then get user's subscribed subsectors
       const { data: subscriptions, error: subError } = await supabaseService
         .from('user_subscriptions')
         .select('subsector')
@@ -310,7 +397,7 @@ class SupabaseApiClient implements ApiClient {
         });
       }
 
-      const subscribedSubsectors = subscriptions?.map(s => s.subsector) || [];
+      const subscribedSubsectors = subscriptions?.map((s: any) => s.subsector) || [];
 
       if (subscribedSubsectors.length === 0) {
     return this.success({
@@ -405,9 +492,8 @@ class SupabaseApiClient implements ApiClient {
         });
       }
 
-      const uniqueSubsectors = Array.from(
-        new Set(companiesData?.map(c => c.gics_subsector) || [])
-      ).sort();
+      const subsectors: string[] = companiesData?.map((c: any) => c.gics_subsector as string) || [];
+      const uniqueSubsectors: string[] = Array.from(new Set(subsectors)).sort();
       
       
       return this.success(uniqueSubsectors);
@@ -498,8 +584,41 @@ class SupabaseApiClient implements ApiClient {
     throw new ApiClientError({ message: 'Create notification not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
   }
 
-  async updateCompanyOrder(): Promise<ApiResponse<null>> {
-    throw new ApiClientError({ message: 'Update company order not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
+  async updateCompanyOrder(data: UpdateCompanyOrderRequest): Promise<ApiResponse<null>> {
+    try {
+      // First, delete existing order records for this user
+      await supabaseService
+        .from('user_company_order')
+        .delete()
+        .eq('user_id', data.user_id);
+
+      // Then insert new order records
+      const orderRecords = data.company_orders.map(order => ({
+        user_id: data.user_id,
+        company_id: order.company_id,
+        display_order: order.display_order
+      }));
+
+      const { error } = await supabaseService
+        .from('user_company_order')
+        .insert(orderRecords);
+
+      if (error) {
+        console.error('❌ SupabaseApiClient: Update company order error:', error);
+        throw new ApiClientError({
+          message: `Failed to update company order: ${error.message}`,
+          code: 'COMPANY_ORDER_UPDATE_ERROR',
+          details: { originalError: error }
+        });
+      }
+
+      return this.success(null);
+
+    } catch (error: any) {
+      console.error('💥 SupabaseApiClient: Update company order failed:', error);
+      if (error instanceof ApiClientError) throw error;
+      return this.handleSupabaseError(error, 'update company order');
+    }
   }
 
   async getUserCalendar(): Promise<ApiResponse<UserCalendarResponse>> {
@@ -574,11 +693,11 @@ class SupabaseApiClient implements ApiClient {
 
       if (error) {
         console.error('❌ SupabaseApiClient: Update RSVP error:', error);
-        throw new ApiClientError({
+      throw new ApiClientError({
           message: `Failed to update RSVP: ${error.message}`,
           code: 'RSVP_UPDATE_ERROR',
-          details: { originalError: error }
-        });
+        details: { originalError: error }
+      });
       }
 
       const userEventResponse: UserEventResponse = {
@@ -616,26 +735,26 @@ class SupabaseApiClient implements ApiClient {
         .eq('user_id', userId)
         .eq('event_id', eventId)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
-        // If update fails (no existing record), create new one
-        if (error.code === 'PGRST116') {
-          return await this.createRSVP({
-            user_id: userId,
-            event_id: eventId,
-            response_status: responseStatus,
-            notes: notes
-          });
-        }
-
         console.error('❌ SupabaseApiClient: Update RSVP error:', error);
       throw new ApiClientError({
           message: `Failed to update RSVP: ${error.message}`,
           code: 'RSVP_UPDATE_ERROR',
         details: { originalError: error }
       });
-    }
+      }
+
+      // If no existing record was found, create a new one
+      if (!rsvpData) {
+        return await this.createRSVP({
+          user_id: userId,
+          event_id: eventId,
+          response_status: responseStatus,
+          notes: notes
+        });
+      }
 
       const userEventResponse: UserEventResponse = {
         id: rsvpData.id,
@@ -703,11 +822,23 @@ class SupabaseApiClient implements ApiClient {
   async getUserSubscriptions(userId: string): Promise<ApiResponse<UserSubscription[]>> {
     try {
 
+      // First, delete any subscriptions that have passed their expiration date
+      const now = new Date().toISOString();
+      await supabaseService
+        .from('user_subscriptions')
+        .delete()
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .not('expires_at', 'is', null)
+        .lt('expires_at', now);
+
+      // Then get all remaining active subscriptions
       const { data: subscriptions, error } = await supabaseService
         .from('user_subscriptions')
         .select('*')
         .eq('user_id', userId)
         .eq('is_active', true);
+        // Note: Only get active subscriptions since expired ones are deleted
 
       if (error) {
         console.error('❌ SupabaseApiClient: Get subscriptions error:', error);
@@ -719,17 +850,18 @@ class SupabaseApiClient implements ApiClient {
       }
 
       // Convert to proper UserSubscription format
-      const userSubscriptions: UserSubscription[] = (subscriptions || []).map(sub => ({
+      const userSubscriptions: UserSubscription[] = (subscriptions || []).map((sub: any) => ({
         id: sub.id,
         user_id: sub.user_id,
         subsector: sub.subsector,
         gics_subsector: sub.subsector,
         payment_status: (sub.payment_status === 'active' ? 'paid' : sub.payment_status) as 'pending' | 'paid' | 'failed' | 'cancelled',
         subscription_start_date: new Date(sub.created_at),
-        subscription_end_date: null,
+        subscription_end_date: sub.expires_at ? new Date(sub.expires_at) : null,
+        expires_at: sub.expires_at ? new Date(sub.expires_at) : undefined, // Add the missing expires_at field
         is_active: sub.is_active,
         created_at: new Date(sub.created_at),
-        updated_at: new Date(sub.created_at)
+        updated_at: new Date(sub.updated_at || sub.created_at)
       }));
 
       return this.success(userSubscriptions);
@@ -744,39 +876,44 @@ class SupabaseApiClient implements ApiClient {
   async createUserSubscription(data: { user_id: string; subsector: string; payment_status?: string; is_active?: boolean }): Promise<ApiResponse<any>> {
     try {
       
-      // Validation: Check if subscription already exists
-      const { data: existingSubscriptions, error: checkError } = await supabaseService
+      // First, delete any subscriptions that have passed their expiration date
+      // Also delete subscriptions with null expiration date (they should have an expiration)
+      const now = new Date().toISOString();
+      
+      // Delete subscriptions with actual expiration dates that have passed
+      await supabaseService
         .from('user_subscriptions')
-        .select('id')
+        .delete()
         .eq('user_id', data.user_id)
-        .eq('subsector', data.subsector)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .not('expires_at', 'is', null)
+        .lt('expires_at', now);
 
-      if (checkError) {
-        console.error('❌ SupabaseApiClient: Subscription check error:', checkError);
-        throw new ApiClientError({
-          message: `Failed to check existing subscription: ${checkError.message}`,
-          code: 'SUBSCRIPTION_CHECK_ERROR',
-          details: { originalError: checkError }
-        });
-      }
+      // Also delete subscriptions with null expiration dates (data cleanup)
+      await supabaseService
+        .from('user_subscriptions')
+        .delete()
+        .eq('user_id', data.user_id)
+        .eq('is_active', true)
+        .is('expires_at', null);
 
-      if (existingSubscriptions && existingSubscriptions.length > 0) {
-        throw new ApiClientError({
-          message: `User is already subscribed to ${data.subsector}`,
-          code: 'DUPLICATE_SUBSCRIPTION',
-          details: { user_id: data.user_id, subsector: data.subsector }
-        });
-      }
-
+      // Note: Expired subscriptions are deleted, so we can create new subscriptions freely
+      // The database constraint prevents multiple active subscriptions for the same user/subsector
+      // Clean approach - no expired subscription clutter in the database
+      
       // Simple insert - no duplicates should exist due to UI filtering
+      // Always set an expiration date (30 days from now as default)
+      const defaultExpirationDate = new Date();
+      defaultExpirationDate.setDate(defaultExpirationDate.getDate() + 30);
+      
       const { data: subscription, error } = await supabaseService
         .from('user_subscriptions')
         .insert({
           user_id: data.user_id,
           subsector: data.subsector,
           payment_status: data.payment_status || 'paid', // Default to 'paid' to match filters
-          is_active: data.is_active !== false
+          is_active: data.is_active !== false,
+          expires_at: defaultExpirationDate.toISOString() // Always set an expiration date
         })
         .select()
         .single();
@@ -877,8 +1014,62 @@ class SupabaseApiClient implements ApiClient {
     throw new ApiClientError({ message: 'Update subscription not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
   }
 
-  async getUserOrderedCompanies(): Promise<ApiResponse<Company[]>> {
-    throw new ApiClientError({ message: 'Get user ordered companies not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
+  async getUserOrderedCompanies(userId: string): Promise<ApiResponse<Company[]>> {
+    try {
+      // Get companies with their custom order
+      const { data: orderedCompanies, error } = await supabaseService
+        .from('user_company_order')
+        .select(`
+          display_order,
+          companies!inner (
+            id,
+            ticker_symbol,
+            company_name,
+            gics_sector,
+            gics_subsector,
+            gics_industry,
+            gics_sub_industry,
+            is_active,
+            classification_status,
+            created_at,
+            updated_at
+          )
+        `)
+        .eq('user_id', userId)
+        .order('display_order', { ascending: true });
+
+      if (error) {
+        console.error('❌ SupabaseApiClient: Get ordered companies error:', error);
+        throw new ApiClientError({
+          message: `Failed to get ordered companies: ${error.message}`,
+          code: 'ORDERED_COMPANIES_FETCH_ERROR',
+          details: { originalError: error }
+        });
+      }
+
+      // Transform the data to match Company interface
+      const companies: Company[] = (orderedCompanies || [])
+        .map((item: any) => ({
+          id: item.companies.id,
+          ticker_symbol: item.companies.ticker_symbol,
+          company_name: item.companies.company_name,
+          gics_sector: item.companies.gics_sector,
+          gics_subsector: item.companies.gics_subsector,
+          gics_industry: item.companies.gics_industry,
+          gics_sub_industry: item.companies.gics_sub_industry,
+          is_active: item.companies.is_active,
+          classification_status: item.companies.classification_status,
+          created_at: new Date(item.companies.created_at),
+          updated_at: new Date(item.companies.updated_at)
+        }));
+
+      return this.success(companies);
+
+    } catch (error: any) {
+      console.error('💥 SupabaseApiClient: Get ordered companies failed:', error);
+      if (error instanceof ApiClientError) throw error;
+      return this.handleSupabaseError(error, 'get ordered companies');
+    }
   }
 }
 

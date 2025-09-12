@@ -15,23 +15,121 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
+// Global singleton instances using window object to persist across hot reloads
+const getGlobalSupabase = () => {
+  if (typeof window !== 'undefined') {
+    if (!(window as any).__agoraSupabase) {
+      console.log('🔧 Creating new Supabase client instance');
+      (window as any).__agoraSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: true,
+          storageKey: 'agora-auth' // Unique storage key
+        },
+        realtime: {
+          params: {
+            eventsPerSecond: 0, // Disable realtime updates
+            reconnect: false   // Disable reconnection attempts
+          }
+        },
+        global: {
+          fetch: fetch, // Use standard fetch API
+          headers: { 'X-Client-Info': 'agora-web' }
+        }
+      });
+    } else {
+      console.log('♻️ Reusing existing Supabase client instance');
+    }
+    return (window as any).__agoraSupabase;
   }
-});
+  // Fallback for SSR
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+      storageKey: 'agora-auth'
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 0, // Disable realtime updates
+        reconnect: false   // Disable reconnection attempts
+      }
+    },
+    global: {
+      fetch: fetch,
+      headers: { 'X-Client-Info': 'agora-web' }
+    }
+  });
+};
 
 // Service role client for server-side operations (bypasses RLS)
 const supabaseServiceKey = process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlcm16YWhmbnhqdm93b21weHNhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzM2MTk4NiwiZXhwIjoyMDcyOTM3OTg2fQ.QnyeDeqMI5wnGg18y11NYP6noLgdNyTiXB4VnhcFYLs';
 
-export const supabaseService = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
+const getGlobalSupabaseService = () => {
+  if (typeof window !== 'undefined') {
+    if (!(window as any).__agoraSupabaseService) {
+      console.log('🔧 Creating new Supabase service client instance');
+      (window as any).__agoraSupabaseService = createClient(supabaseUrl, supabaseServiceKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+          detectSessionInUrl: false,
+          storageKey: 'agora-service-auth' // Different storage key to avoid conflicts
+        },
+        realtime: {
+          params: {
+            eventsPerSecond: 0, // Disable realtime updates
+            reconnect: false   // Disable reconnection attempts
+          }
+        },
+        global: {
+          fetch: fetch,
+          headers: { 'X-Client-Info': 'agora-web-service' }
+        }
+      });
+    } else {
+      console.log('♻️ Reusing existing Supabase service client instance');
+    }
+    return (window as any).__agoraSupabaseService;
   }
-});
+  // Fallback for SSR
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+      storageKey: 'agora-service-auth' // Different storage key to avoid conflicts
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 0, // Disable realtime updates
+        reconnect: false   // Disable reconnection attempts
+      }
+    },
+    global: {
+      fetch: fetch,
+      headers: { 'X-Client-Info': 'agora-web-service' }
+    }
+  });
+};
+
+// Export singleton instances
+export const supabase = getGlobalSupabase();
+export const supabaseService = getGlobalSupabaseService();
+
+// Cleanup function for hot reloading
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  // Clear instances on page unload to prevent memory leaks
+  window.addEventListener('beforeunload', () => {
+    if ((window as any).__agoraSupabase) {
+      console.log('🧹 Cleaning up Supabase client instances');
+      delete (window as any).__agoraSupabase;
+      delete (window as any).__agoraSupabaseService;
+    }
+  });
+}
 
 // Database type definitions for better TypeScript support
 export type Database = {

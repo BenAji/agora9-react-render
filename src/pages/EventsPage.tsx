@@ -7,6 +7,9 @@ import { format } from 'date-fns';
 
 interface EventsPageProps {
   currentUser: UserWithSubscriptions | null;
+  events: CalendarEvent[];
+  loading: boolean;
+  error: string | null;
 }
 
 interface EventFilter {
@@ -20,11 +23,8 @@ interface EventSortOption {
   label: string;
 }
 
-const EventsPage: React.FC<EventsPageProps> = ({ currentUser }) => {
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+const EventsPage: React.FC<EventsPageProps> = ({ currentUser, events, loading, error }) => {
   const [filteredEvents, setFilteredEvents] = useState<CalendarEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<EventFilter['type']>('my_events');
   const [sortBy, setSortBy] = useState('date');
@@ -47,54 +47,14 @@ const EventsPage: React.FC<EventsPageProps> = ({ currentUser }) => {
     { value: 'status', label: 'Status' }
   ];
 
-  // Load events data
-  const loadEventsData = async () => {
-    if (!currentUser) return;
-    
-    try {
-      setLoading(true);
-      setError(null);
-      const userSubsResponse = await apiClient.getUserSubscriptions(currentUser.id);
-      if (!userSubsResponse.success) {
-        throw new Error('Failed to load user subscriptions');
-      }
-
-      const subscribedSubsectors = userSubsResponse.data
-        .filter(sub => sub.is_active && sub.payment_status === 'paid')
-        .map(sub => sub.subsector);
-
-
-      // Get all events
-      const eventsResponse = await apiClient.getEvents({
-        start_date: new Date('2024-01-01'),
-        end_date: new Date('2025-12-31'),
-        user_id: currentUser.id
-      });
-
-      if (!eventsResponse.success) {
-        throw new Error('Failed to load events');
-      }
-
-      // Filter events to only show those from companies in subscribed subsectors
-      const allEvents = eventsResponse.data.events;
-      const filteredEvents = allEvents.filter(event => {
-        // Check if any company in this event belongs to a subscribed subsector
-        return event.companies.some(company => 
-          subscribedSubsectors.includes(company.gics_subsector)
-        );
-      });
-
-
-      setEvents(filteredEvents);
-      setFilteredEvents(filteredEvents);
-
-    } catch (error) {
-      console.error('Failed to load events data:', error);
-      setError('Failed to load events data. Please refresh the page.');
-    } finally {
-      setLoading(false);
+  // Process events data from props
+  useEffect(() => {
+    if (events && events.length > 0) {
+      setFilteredEvents(events);
+    } else {
+      setFilteredEvents([]);
     }
-  };
+  }, [events]);
 
   // Apply filters and search
   useEffect(() => {
@@ -170,13 +130,6 @@ const EventsPage: React.FC<EventsPageProps> = ({ currentUser }) => {
     // ).length;
   }, [events]);
 
-  // Load data when currentUser changes
-  useEffect(() => {
-    if (currentUser) {
-      loadEventsData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser?.id]); // Only depend on the ID, ignore loadEventsData
 
   // Early return if no current user
   if (!currentUser) {
@@ -261,7 +214,6 @@ const EventsPage: React.FC<EventsPageProps> = ({ currentUser }) => {
 
   const handleRSVP = async (eventId: string, status: 'accepted' | 'declined' | 'pending') => {
     try {
-      setLoading(true);
       
       if (selectedEvent?.user_response) {
         // Update existing RSVP
@@ -279,8 +231,7 @@ const EventsPage: React.FC<EventsPageProps> = ({ currentUser }) => {
         });
       }
       
-      // Reload events to get updated RSVP status
-      await loadEventsData();
+      // Note: Parent component will handle data refresh
       
       // Update selected event with new status
       if (selectedEvent) {
@@ -292,9 +243,7 @@ const EventsPage: React.FC<EventsPageProps> = ({ currentUser }) => {
       
     } catch (error) {
       console.error('Failed to update RSVP:', error);
-      setError('Failed to update RSVP status');
-    } finally {
-      setLoading(false);
+      // Note: Error handling is now managed by parent component
     }
   };
 
@@ -328,7 +277,7 @@ const EventsPage: React.FC<EventsPageProps> = ({ currentUser }) => {
           <div style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Error Loading Events</div>
           <div style={{ color: 'var(--muted-text)', marginBottom: '1rem' }}>{error}</div>
           <button 
-            onClick={loadEventsData}
+            onClick={() => window.location.reload()}
             style={{
               padding: '0.5rem 1rem',
               backgroundColor: 'var(--accent-bg)',
