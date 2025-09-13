@@ -144,6 +144,13 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({ className = '' }) => {
     setSelectedEvent(null);
   };
 
+  const handleDateSelect = (date: Date) => {
+    // Navigate main calendar to selected date
+    // For now, just close the panel - full navigation will be implemented later
+    setIsEventDetailsVisible(false);
+    setSelectedEvent(null);
+  };
+
   // Get events for a specific company and date
   const getEventsForCell = (companyId: string, date: Date): CalendarEventData[] => {
     const mockEventCells = getMockEventCells();
@@ -492,6 +499,7 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({ className = '' }) => {
         event={selectedEvent}
         isVisible={isEventDetailsVisible}
         onClose={handleCloseEventDetails}
+        onDateSelect={handleDateSelect}
       />
     </div>
   );

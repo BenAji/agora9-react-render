@@ -11,11 +11,14 @@
 import React from 'react';
 import { CalendarEventData } from '../../types/calendar';
 import { MapPin, Users, Building2, Calendar as CalendarIcon, X } from 'lucide-react';
+import MiniCalendar from './MiniCalendar';
+import WeatherForecast from './WeatherForecast';
 
 interface EventDetailsPanelProps {
   event: CalendarEventData | null;
   isVisible: boolean;
   onClose: () => void;
+  onDateSelect?: (date: Date) => void;
   className?: string;
 }
 
@@ -23,6 +26,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
   event, 
   isVisible, 
   onClose,
+  onDateSelect,
   className 
 }) => {
   if (!event || !isVisible) return null;
@@ -362,6 +366,30 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           </div>
         </div>
       )}
+
+      {/* Mini Calendar - As per PRD Step 3.2 */}
+      <div style={{ marginTop: '1.5rem' }}>
+        <h3 style={{ 
+          fontSize: '1rem', 
+          fontWeight: '600', 
+          color: 'var(--primary-text)', 
+          marginBottom: '0.75rem' 
+        }}>
+          Calendar Navigation
+        </h3>
+        <MiniCalendar
+          selectedDate={event.start_date}
+          onDateSelect={onDateSelect}
+        />
+      </div>
+
+      {/* Weather Forecast - As per PRD Step 3.3 */}
+      <div style={{ marginTop: '1.5rem' }}>
+        <WeatherForecast
+          eventDate={event.start_date}
+          location={event.weather_location || event.location || 'Event Location'}
+        />
+      </div>
     </div>
   );
 };

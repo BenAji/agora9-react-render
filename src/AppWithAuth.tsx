@@ -63,6 +63,13 @@ const AppWithAuth: React.FC = () => {
         
         if (error) {
           console.error('❌ Auth session error:', error);
+          // Clear corrupted session data
+          if (error.message.includes('Invalid Refresh Token') || error.message.includes('Refresh Token Not Found')) {
+            console.log('🧹 Clearing corrupted auth session');
+            await supabase.auth.signOut();
+            localStorage.removeItem('agora-auth');
+            localStorage.removeItem('supabase.auth.token');
+          }
         }
         
         console.log('✅ Session check complete:', { user: session?.user?.email, loading: false });
@@ -74,6 +81,11 @@ const AppWithAuth: React.FC = () => {
         });
       } catch (error) {
         console.error('💥 Auth check failed:', error);
+        // Clear any corrupted auth data
+        console.log('🧹 Clearing auth data due to error');
+        await supabase.auth.signOut();
+        localStorage.removeItem('agora-auth');
+        localStorage.removeItem('supabase.auth.token');
         setAuthState({
           user: null,
           loading: false,
