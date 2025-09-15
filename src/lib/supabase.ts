@@ -29,7 +29,7 @@ const getGlobalSupabase = () => {
         },
         realtime: {
           params: {
-            eventsPerSecond: 0, // Disable realtime updates
+            eventsPerSecond: 10, // Enable realtime updates with rate limiting
             reconnect: false   // Disable reconnection attempts
           }
         },
@@ -53,7 +53,7 @@ const getGlobalSupabase = () => {
     },
     realtime: {
       params: {
-        eventsPerSecond: 0, // Disable realtime updates
+        eventsPerSecond: 10, // Enable realtime updates with rate limiting
         reconnect: false   // Disable reconnection attempts
       }
     },
@@ -79,7 +79,7 @@ const getGlobalSupabaseService = () => {
         },
         realtime: {
           params: {
-            eventsPerSecond: 0, // Disable realtime updates
+            eventsPerSecond: 10, // Enable realtime updates with rate limiting
             reconnect: false   // Disable reconnection attempts
           }
         },
@@ -102,7 +102,7 @@ const getGlobalSupabaseService = () => {
     },
     realtime: {
       params: {
-        eventsPerSecond: 0, // Disable realtime updates
+        eventsPerSecond: 10, // Enable realtime updates with rate limiting
         reconnect: false   // Disable reconnection attempts
       }
     },

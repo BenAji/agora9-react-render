@@ -52,6 +52,7 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
     const mockEvents = getMockEvents();
     const counts: EventCountByDate = {};
 
+
     mockEvents.forEach((event: CalendarEventData) => {
       const dateKey = format(event.start_date, 'yyyy-MM-dd');
       
@@ -103,6 +104,7 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
   const getEventDotsForDate = (date: Date) => {
     const dateKey = format(date, 'yyyy-MM-dd');
     const counts = eventCounts[dateKey];
+    
     
     if (!counts) return null;
 
@@ -306,12 +308,12 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
                 color: !isCurrentMonth(date) 
                   ? 'var(--disabled-text)' 
                   : isToday(date) 
-                    ? 'var(--accent-text)' 
+                    ? '#000000' // Black text for current day
                     : 'var(--primary-text)',
                 backgroundColor: isSelected(date) 
                   ? 'var(--accent-bg)' 
                   : isToday(date) 
-                    ? 'var(--accent-bg-light)' 
+                    ? '#FFD700' // Gold background for current day
                     : 'transparent',
                 transition: 'background-color 0.2s ease',
                 position: 'relative'
@@ -346,65 +348,6 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
         })}
       </div>
 
-      {/* Event Count Legend */}
-      <div style={{
-        marginTop: '1rem',
-        padding: '0.75rem',
-        backgroundColor: 'var(--tertiary-bg)',
-        borderRadius: '6px',
-        border: '1px solid var(--border-color)'
-      }}>
-        <div style={{
-          fontSize: '0.75rem',
-          fontWeight: '600',
-          color: 'var(--primary-text)',
-          marginBottom: '0.5rem'
-        }}>
-          Event Legend
-        </div>
-        
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.25rem'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              backgroundColor: 'var(--status-accepted)'
-            }} />
-            <span style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
-              Attending
-            </span>
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              backgroundColor: 'var(--status-declined)'
-            }} />
-            <span style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
-              Declined
-            </span>
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              backgroundColor: 'var(--status-pending)'
-            }} />
-            <span style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
-              Pending
-            </span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

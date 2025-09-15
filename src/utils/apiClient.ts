@@ -471,6 +471,70 @@ class SupabaseApiClient implements ApiClient {
     }
   }
 
+  // Get companies filtered by user subscriptions - for calendar display
+  async getSubscribedCompanies(userId?: string): Promise<ApiResponse<Company[]>> {
+    try {
+      // Get current user if not provided
+      if (!userId) {
+        const currentUserResponse = await this.getCurrentUser();
+        userId = currentUserResponse.data.id;
+      }
+
+      // First, delete any subscriptions that have passed their expiration date
+      const now = new Date().toISOString();
+      await supabaseService
+        .from('user_subscriptions')
+        .delete()
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .not('expires_at', 'is', null)
+        .lt('expires_at', now);
+
+      // Get user's active subscriptions
+      const { data: userSubscriptions, error: subError } = await supabaseService
+        .from('user_subscriptions')
+        .select('subsector')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .eq('payment_status', 'paid');
+
+      if (subError) {
+        throw new ApiClientError({
+          message: `Failed to fetch user subscriptions: ${subError.message}`,
+          code: 'SUBSCRIPTIONS_FETCH_ERROR',
+          details: { originalError: subError }
+        });
+      }
+
+      const subscribedSubsectors = userSubscriptions?.map((sub: any) => sub.subsector) || [];
+      
+      if (subscribedSubsectors.length === 0) {
+        // User has no subscriptions, return empty array
+        return this.success([]);
+      }
+
+      // Get companies from subscribed subsectors
+      const { data: companiesData, error } = await supabaseService
+        .from('companies')
+        .select('*')
+        .eq('is_active', true)
+        .in('gics_subsector', subscribedSubsectors);
+
+      if (error) {
+        console.error('❌ SupabaseApiClient: Subscribed companies query error:', error);
+        throw new ApiClientError({
+          message: `Failed to fetch subscribed companies: ${error.message}`,
+          code: 'SUBSCRIBED_COMPANIES_FETCH_ERROR',
+          details: { originalError: error }
+        });
+      }
+
+      return this.success(companiesData || []);
+    } catch (error: any) {
+      return this.handleSupabaseError(error, 'get subscribed companies');
+    }
+  }
+
   // Get All Available Subsectors
   async getAllSubsectors(): Promise<ApiResponse<string[]>> {
     try {
