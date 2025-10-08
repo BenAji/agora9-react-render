@@ -9,12 +9,12 @@
  */
 
 import React, { useState } from 'react';
-import { CalendarEventData } from '../../types/calendar';
+import { CalendarEvent } from '../../types/database';
 
 interface EventCellProps {
-  event: CalendarEventData;
-  onEventClick?: (event: CalendarEventData) => void;
-  onEventHover?: (event: CalendarEventData | null) => void;
+  event: CalendarEvent;
+  onEventClick?: (event: CalendarEvent) => void;
+  onEventHover?: (event: CalendarEvent | null) => void;
   className?: string;
 }
 
@@ -85,8 +85,8 @@ const EventCell: React.FC<EventCellProps> = ({
     <div
       className={`event-cell ${className}`}
       style={{
-        backgroundColor: getEventBackgroundColor(event.rsvpStatus),
-        borderLeft: `3px solid ${getEventBorderColor(event.rsvpStatus)}`,
+        backgroundColor: getEventBackgroundColor(event.rsvpStatus || 'pending'),
+        borderLeft: `3px solid ${getEventBorderColor(event.rsvpStatus || 'pending')}`,
         borderRight: '1px solid rgba(255,255,255,0.1)',
         borderTop: '1px solid rgba(255,255,255,0.1)',
         borderBottom: '1px solid rgba(255,255,255,0.1)',
@@ -108,7 +108,7 @@ const EventCell: React.FC<EventCellProps> = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}
-      title={`${event.title} - ${formatEventTime(event.start_date, event.end_date)} - Status: ${event.rsvpStatus}`}
+      title={`${event.title} - ${formatEventTime(event.start_date, event.end_date)} - Status: ${event.rsvpStatus || 'pending'}`}
     >
       {/* Event Title */}
       <div style={{
@@ -140,7 +140,7 @@ const EventCell: React.FC<EventCellProps> = ({
         width: '16px',
         height: '16px',
         borderRadius: '50%',
-        backgroundColor: getEventBorderColor(event.rsvpStatus),
+        backgroundColor: getEventBorderColor(event.rsvpStatus || 'pending'),
         color: '#ffffff',
         display: 'flex',
         alignItems: 'center',
@@ -149,7 +149,7 @@ const EventCell: React.FC<EventCellProps> = ({
         fontWeight: 'bold',
         boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
       }}>
-        {getStatusIcon(event.rsvpStatus)}
+        {getStatusIcon(event.rsvpStatus || 'pending')}
       </div>
 
       {/* Multi-Company Indicator */}
@@ -165,7 +165,7 @@ const EventCell: React.FC<EventCellProps> = ({
           padding: '0.125rem 0.25rem',
           borderRadius: '2px'
         }}>
-          {event.attendingCompanies.length}+
+          {event.attendingCompanies?.length || 0}+
         </div>
       )}
     </div>

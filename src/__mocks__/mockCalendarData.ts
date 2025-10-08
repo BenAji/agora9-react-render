@@ -1,11 +1,14 @@
 /**
  * AGORA Calendar Mock Data Service
  * 
- * PHASE 1, STEP 1.2: Mock Data Service
- * Dependencies: calendar.ts types only
- * Purpose: Hardcoded data for development
+ * ⚠️ DEVELOPMENT ONLY - DO NOT USE IN PRODUCTION ⚠️
+ * 
+ * Purpose: Provides mock data for development and testing
+ * Location: src/__mocks__/ (test/dev only directory)
  * 
  * SAFETY: No external dependencies, no API calls, pure functions
+ * 
+ * Environment Check: All functions check NODE_ENV and will throw in production
  */
 
 import {
@@ -15,20 +18,35 @@ import {
   MiniCalendarDay,
   WeatherForecast,
   EventAttendee,
-  EventSpeaker,
   CalendarState,
   CalendarViewMode,
   EventDetailsState,
-  MiniCalendarState,
-  WeatherForecastState,
   CALENDAR_CONSTANTS
 } from '../types/calendar';
+
+// =====================================================================================
+// ENVIRONMENT CHECK
+// =====================================================================================
+
+/**
+ * Prevents mock data usage in production
+ * @throws Error if called in production environment
+ */
+const checkEnvironment = () => {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '🚨 CRITICAL: Mock data functions should not be called in production! ' +
+      'This indicates a configuration error. Please check your environment settings.'
+    );
+  }
+};
 
 // =====================================================================================
 // MOCK COMPANIES DATA
 // =====================================================================================
 
 export const getMockCompanies = (): CompanyRow[] => {
+  checkEnvironment();
   return [
     {
       id: 'company-1',
@@ -104,6 +122,7 @@ export const getMockCompanies = (): CompanyRow[] => {
 // =====================================================================================
 
 export const getMockEvents = (): CalendarEventData[] => {
+  checkEnvironment();
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
@@ -407,6 +426,7 @@ export const getMockEvents = (): CalendarEventData[] => {
 // =====================================================================================
 
 export const getMockEventCells = (): EventCell[] => {
+  checkEnvironment();
   const events = getMockEvents();
   const companies = getMockCompanies();
 
@@ -489,6 +509,7 @@ export const getMockEventCells = (): EventCell[] => {
 // =====================================================================================
 
 export const getMockWeatherForecast = (eventDate: Date): WeatherForecast[] => {
+  checkEnvironment();
   const forecasts: WeatherForecast[] = [];
   
   // Generate 3 days prior to event + event day
@@ -525,6 +546,7 @@ export const getMockWeatherForecast = (eventDate: Date): WeatherForecast[] => {
 // =====================================================================================
 
 export const getMockAttendees = (eventId: string): EventAttendee[] => {
+  checkEnvironment();
   const baseAttendees = [
     {
       id: 'attendee-1',
@@ -583,6 +605,7 @@ export const getMockAttendees = (eventId: string): EventAttendee[] => {
 // =====================================================================================
 
 export const getMockMiniCalendarDays = (currentMonth: Date): MiniCalendarDay[] => {
+  checkEnvironment();
   const days: MiniCalendarDay[] = [];
   const today = new Date();
   const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
@@ -631,6 +654,7 @@ export const getMockMiniCalendarDays = (currentMonth: Date): MiniCalendarDay[] =
 // =====================================================================================
 
 export const getMockCalendarState = (): CalendarState => {
+  checkEnvironment();
   const today = new Date();
   const endDate = new Date(today);
   endDate.setDate(today.getDate() + 30);
@@ -660,6 +684,7 @@ export const getMockCalendarState = (): CalendarState => {
 // =====================================================================================
 
 export const getMockEventDetailsState = (eventId?: string): EventDetailsState => {
+  checkEnvironment();
   const events = getMockEvents();
   const selectedEvent = eventId ? events.find(e => e.id === eventId) || events[0] : null;
   
@@ -691,18 +716,22 @@ export const getMockEventDetailsState = (eventId?: string): EventDetailsState =>
 // =====================================================================================
 
 export const getMockCompanyById = (id: string): CompanyRow | null => {
+  checkEnvironment();
   return getMockCompanies().find(company => company.id === id) || null;
 };
 
 export const getMockEventById = (id: string): CalendarEventData | null => {
+  checkEnvironment();
   return getMockEvents().find(event => event.id === id) || null;
 };
 
 export const getMockEventsByCompany = (companyId: string): EventCell[] => {
+  checkEnvironment();
   return getMockEventCells().filter(cell => cell.position.companyRowId === companyId);
 };
 
 export const getMockEventsByDateRange = (startDate: Date, endDate: Date): EventCell[] => {
+  checkEnvironment();
   return getMockEventCells().filter(cell => {
     const eventDate = cell.position.date;
     return eventDate >= startDate && eventDate <= endDate;
@@ -710,6 +739,7 @@ export const getMockEventsByDateRange = (startDate: Date, endDate: Date): EventC
 };
 
 export const getMockEventsByRSVPStatus = (status: 'accepted' | 'declined' | 'pending'): EventCell[] => {
+  checkEnvironment();
   return getMockEventCells().filter(cell => cell.rsvpStatus === status);
 };
 

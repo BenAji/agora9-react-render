@@ -9,12 +9,13 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { CalendarEventData, CompanyRow, CalendarState } from '../types/calendar';
+import { CompanyRow, CalendarState } from '../types/calendar';
+import { CalendarEvent } from '../types/database';
 import { 
   getMockEvents, 
   getMockCompanies, 
   getMockCalendarState 
-} from '../services/mockCalendarData';
+} from '../__mocks__/mockCalendarData';
 import { apiClient } from '../utils/apiClient';
 
 interface UseCalendarDataOptions {
@@ -24,7 +25,7 @@ interface UseCalendarDataOptions {
 
 interface CalendarDataState {
   companies: CompanyRow[];
-  events: CalendarEventData[];
+  events: CalendarEvent[];
   calendarState: CalendarState;
   loading: boolean;
   error: string | null;
@@ -65,7 +66,7 @@ export const useCalendarData = (
 
       return {
         companies: mockCompanies,
-        events: mockEvents,
+        events: mockEvents as any as CalendarEvent[],
         calendarState: mockCalendarState,
         loading: false,
         error: null,
@@ -113,7 +114,7 @@ export const useCalendarData = (
       }
 
       // Attempt to load events
-      let events: CalendarEventData[] = [];
+      let events: CalendarEvent[] = [];
       try {
         const eventsResponse = await apiClient.getEvents();
         if (eventsResponse.success && eventsResponse.data) {
@@ -127,37 +128,36 @@ export const useCalendarData = (
           location: event.location || '',
           location_details: event.location_details || {},
           virtual_details: event.virtual_details || {},
-          event_type: event.event_type || 'standard',
-          speakers: event.speakers || [],
-          agenda: event.agenda || [],
-          tags: event.tags || [],
-          access_info: event.access_info || {
-            is_free: true,
-            registration_required: false
-          },
           weather_location: event.weather_location || event.location || '',
-          companies: companies.filter(c => 
-            event.company_ids?.includes(c.id) || 
-            event.companies?.some((ec: any) => ec.id === c.id)
+          weather_coordinates: event.weather_coordinates,
+          event_type: event.event_type || 'standard',
+          created_at: new Date(event.created_at),
+          updated_at: new Date(event.updated_at),
+          is_active: event.is_active !== undefined ? event.is_active : true,
+          companies: event.companies || companies.filter((c: any) => 
+            event.company_ids?.includes(c.id)
           ),
+          hosts: event.hosts || [],
+          primary_host: event.primary_host,
+          user_response: event.user_response,
+          color_code: event.color_code || (event.user_rsvp_status === 'accepted' ? 'green' : 
+                    event.user_rsvp_status === 'declined' ? 'yellow' : 'grey'),
           rsvpStatus: event.user_rsvp_status || 'pending',
-          colorCode: event.user_rsvp_status === 'accepted' ? 'green' : 
-                    event.user_rsvp_status === 'declined' ? 'yellow' : 'grey',
-          isMultiCompany: (event.company_ids?.length || 0) > 1,
-            attendingCompanies: event.company_ids || [],
-            attendees: event.attendees || []
+          isMultiCompany: (event.companies?.length || 0) > 1,
+          attendingCompanies: event.companies?.map((c: any) => c.id) || [],
+          attendees: event.attendees || []
           }));
         }
         console.log('✅ Events loaded from API:', events.length);
       } catch (eventError) {
         console.warn('⚠️ Events API failed, using mock events:', eventError);
-        events = getMockEvents();
+        events = getMockEvents() as any as CalendarEvent[];
       }
 
       // Update company event counts
       companies.forEach(company => {
         company.eventCount = events.filter(event => 
-          event.companies.some(ec => ec.id === company.id)
+          event.companies.some((ec: any) => ec.id === company.id)
         ).length;
       });
 
@@ -165,10 +165,10 @@ export const useCalendarData = (
       const eventCells = events.map(event => ({
         id: `cell-${event.id}`,
         event: event,
-        rsvpStatus: event.rsvpStatus,
-        colorCode: event.colorCode,
-        isMultiCompany: event.isMultiCompany,
-        attendingCompanies: event.attendingCompanies,
+        rsvpStatus: event.rsvpStatus || 'pending',
+        colorCode: event.color_code,
+        isMultiCompany: event.isMultiCompany || false,
+        attendingCompanies: event.attendingCompanies || [],
         position: {
           companyRowId: event.companies[0]?.id || '',
           date: event.start_date,

@@ -7,16 +7,18 @@
  * SAFETY: Uses API data with mock fallbacks, error boundaries
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, startOfWeek, addWeeks, subWeeks, getWeek, getYear, addDays } from 'date-fns';
 import {
   CalendarEventData,
   CompanyRow
 } from '../../types/calendar';
+import { CalendarEvent } from '../../types/database';
 import { useCalendarData } from '../../hooks/useCalendarData';
 import EventCell from './EventCell';
 import EventDetailsPanel from './EventDetailsPanel';
+import MiniCalendar from './MiniCalendar';
 
 // =====================================================================================
 // CALENDAR LAYOUT COMPONENT
@@ -46,11 +48,15 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
 
   // Local state for UI interactions
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEventData | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isEventDetailsVisible, setIsEventDetailsVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showMyEventsOnly, setShowMyEventsOnly] = useState(false);
   const [currentWeek, setCurrentWeek] = useState(new Date());
+  const [showMiniCalendar, setShowMiniCalendar] = useState(false);
+  
+  // Ref for week box positioning
+  const weekBoxRef = useRef<HTMLDivElement>(null);
 
   // Mobile detection and viewport height recalculation
   useEffect(() => {
@@ -116,23 +122,23 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
     const weekNumber = getWeek(currentWeek, { weekStartsOn: 1 });
     const year = getYear(currentWeek);
     const month = format(currentWeek, 'MMM');
-    const day = format(currentWeek, 'd');
+    const yearShort = format(currentWeek, 'yyyy'); // Full year instead of day
     
     return {
       weekNumber,
       year,
       month,
-      day
+      yearShort
     };
   };
 
   // Event interaction handlers
-  const handleEventClick = (event: CalendarEventData) => {
+  const handleEventClick = (event: CalendarEvent) => {
     setSelectedEvent(event);
     setIsEventDetailsVisible(true);
   };
 
-  const handleEventHover = (event: CalendarEventData | null) => {
+  const handleEventHover = (event: CalendarEvent | null) => {
     // Right sidebar panel doesn't need hover - only click
   };
 
@@ -163,16 +169,16 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
   };
 
   // Get events for a specific company and date
-  const getEventsForCell = (companyId: string, date: Date): CalendarEventData[] => {
+  const getEventsForCell = (companyId: string, date: Date): CalendarEvent[] => {
     return events.filter(event => {
       const eventDate = new Date(event.start_date);
       const isSameDate = eventDate.toDateString() === date.toDateString();
-      const isForCompany = event.companies.some((company: CompanyRow) => company.id === companyId);
+      const isForCompany = event.companies.some((company) => company.id === companyId);
       
       // Apply search filter
       const matchesSearch = !searchQuery || 
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event.description.toLowerCase().includes(searchQuery.toLowerCase());
+        (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase()));
       
       // Apply event filter (my events only)
       const matchesEventFilter = !showMyEventsOnly || 
@@ -304,22 +310,37 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
                 <ChevronLeft size={16} />
               </button>
               
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center',
-                padding: `${0.5 * parseFloat(dimensions.controlSize)}rem ${1 * parseFloat(dimensions.controlSize)}rem`,
-                backgroundColor: 'var(--accent-bg)',
-                color: 'var(--primary-bg)',
-                borderRadius: '4px',
-                minWidth: `${80 * parseFloat(dimensions.controlSize)}px`,
-                transform: `scale(${dimensions.controlSize})`
-              }}>
+              <div 
+                ref={weekBoxRef}
+                onClick={() => setShowMiniCalendar(!showMiniCalendar)}
+                style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center',
+                  padding: `${0.5 * parseFloat(dimensions.controlSize)}rem ${1 * parseFloat(dimensions.controlSize)}rem`,
+                  backgroundColor: 'var(--accent-bg)',
+                  color: 'var(--primary-bg)',
+                  borderRadius: '4px',
+                  minWidth: `${80 * parseFloat(dimensions.controlSize)}px`,
+                  transform: `scale(${dimensions.controlSize})`,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: showMiniCalendar ? 'inset 0 2px 4px rgba(0, 0, 0, 0.2)' : '0 2px 4px rgba(0, 0, 0, 0.1)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = `scale(${parseFloat(dimensions.controlSize) * 1.05})`;
+                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(184, 134, 11, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = `scale(${dimensions.controlSize})`;
+                  e.currentTarget.style.boxShadow = showMiniCalendar ? 'inset 0 2px 4px rgba(0, 0, 0, 0.2)' : '0 2px 4px rgba(0, 0, 0, 0.1)';
+                }}
+              >
                 <div style={{ fontSize: `${0.875 * parseFloat(dimensions.controlSize)}rem`, fontWeight: '600' }}>
                   Week {getCurrentWeekInfo().weekNumber}
                 </div>
                 <div style={{ fontSize: `${0.75 * parseFloat(dimensions.controlSize)}rem`, fontStyle: 'italic', opacity: 0.8 }}>
-                  {getCurrentWeekInfo().month} {getCurrentWeekInfo().day}
+                  {getCurrentWeekInfo().month} {getCurrentWeekInfo().yearShort}
                 </div>
               </div>
               
@@ -731,9 +752,87 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
         event={selectedEvent}
         isVisible={isEventDetailsVisible}
         onClose={handleCloseEventDetails}
-        onDateSelect={handleDateSelect}
         onRSVPUpdate={handleRSVPUpdate}
       />
+
+      {/* Mini Calendar Popover */}
+      {showMiniCalendar && weekBoxRef.current && (
+        <>
+          {/* Backdrop - click to close */}
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'transparent',
+              zIndex: 999
+            }}
+            onClick={() => setShowMiniCalendar(false)}
+          />
+          
+          {/* Popover */}
+          <div
+            style={{
+              position: 'fixed',
+              top: (() => {
+                const rect = weekBoxRef.current!.getBoundingClientRect();
+                const popoverHeight = 450; // Increased height for bigger calendar
+                const viewportHeight = window.innerHeight;
+                const spaceBelow = viewportHeight - rect.bottom;
+                
+                // If not enough space below, show above
+                if (spaceBelow < popoverHeight + 20 && rect.top > popoverHeight) {
+                  return `${rect.top - popoverHeight - 8}px`;
+                }
+                // Otherwise show below
+                return `${rect.bottom + 8}px`;
+              })(),
+              left: (() => {
+                const rect = weekBoxRef.current!.getBoundingClientRect();
+                const popoverWidth = 420; // Increased width for bigger calendar
+                const viewportWidth = window.innerWidth;
+                
+                // Center on mobile
+                if (isMobile) {
+                  return '50%';
+                }
+                
+                // Desktop: Position relative to week box
+                let leftPos = rect.left - (popoverWidth / 2) + (rect.width / 2);
+                
+                // Keep within viewport
+                if (leftPos < 10) leftPos = 10;
+                if (leftPos + popoverWidth > viewportWidth - 10) {
+                  leftPos = viewportWidth - popoverWidth - 10;
+                }
+                
+                return `${leftPos}px`;
+              })(),
+              transform: isMobile ? 'translateX(-50%)' : 'none',
+              zIndex: 1000,
+              backgroundColor: 'var(--secondary-bg)',
+              border: '2px solid var(--accent-bg)',
+              borderRadius: '8px',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+              padding: '1.5rem', // Increased padding
+              animation: 'slideDown 0.2s ease-out',
+              minWidth: isMobile ? '90vw' : '420px',
+              maxWidth: isMobile ? '90vw' : '500px'
+            }}
+          >
+            <MiniCalendar
+              selectedDate={currentWeek}
+              events={events}
+              onDateSelect={(date) => {
+                setCurrentWeek(startOfWeek(date, { weekStartsOn: 1 }));
+                setShowMiniCalendar(false);
+              }}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 };

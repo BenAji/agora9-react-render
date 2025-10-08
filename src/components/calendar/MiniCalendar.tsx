@@ -10,8 +10,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { CalendarEventData, MiniCalendarDay } from '../../types/calendar';
-import { getMockEvents } from '../../services/mockCalendarData';
+import { MiniCalendarDay } from '../../types/calendar';
+import { CalendarEvent } from '../../types/database';
 import { 
   format, 
   startOfMonth, 
@@ -28,6 +28,7 @@ import {
 interface MiniCalendarProps {
   selectedDate?: Date;
   onDateSelect?: (date: Date) => void;
+  events: CalendarEvent[];  // NEW: Real events from parent
   className?: string;
 }
 
@@ -42,25 +43,26 @@ interface EventCountByDate {
 const MiniCalendar: React.FC<MiniCalendarProps> = ({ 
   selectedDate = new Date(), 
   onDateSelect,
+  events,
   className = '' 
 }) => {
   const [currentMonth, setCurrentMonth] = useState(selectedDate);
   const [eventCounts, setEventCounts] = useState<EventCountByDate>({});
 
-  // Load mock events and calculate counts
+  // Calculate event counts from real events
   useEffect(() => {
-    const mockEvents = getMockEvents();
     const counts: EventCountByDate = {};
 
-
-    mockEvents.forEach((event: CalendarEventData) => {
-      const dateKey = format(event.start_date, 'yyyy-MM-dd');
+    events.forEach((event: CalendarEvent) => {
+      const dateKey = format(new Date(event.start_date), 'yyyy-MM-dd');
       
       if (!counts[dateKey]) {
         counts[dateKey] = { attending: 0, declined: 0, pending: 0 };
       }
 
-      switch (event.rsvpStatus) {
+      const rsvpStatus = event.rsvpStatus || event.user_response?.response_status || 'pending';
+      
+      switch (rsvpStatus) {
         case 'accepted':
           counts[dateKey].attending++;
           break;
@@ -74,7 +76,7 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
     });
 
     setEventCounts(counts);
-  }, []);
+  }, [events]);
 
   // Generate calendar days
   const monthStart = startOfMonth(currentMonth);
@@ -105,70 +107,83 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
     const dateKey = format(date, 'yyyy-MM-dd');
     const counts = eventCounts[dateKey];
     
-    
-    if (!counts) return null;
+    if (!counts || (counts.attending === 0 && counts.pending === 0 && counts.declined === 0)) {
+      return null;
+    }
 
     const dots = [];
+    let totalShown = 0;
+    const maxDots = 3;
     
-    // Green dots for attending events
-    for (let i = 0; i < Math.min(counts.attending, 3); i++) {
+    // Priority order: Green (accepted) → Yellow (pending) → Red (declined)
+    
+    // Green dots for accepted events (highest priority)
+    for (let i = 0; i < counts.attending && totalShown < maxDots; i++) {
       dots.push(
         <div
-          key={`attending-${i}`}
+          key={`accepted-${i}`}
           style={{
-            width: '4px',
-            height: '4px',
+            width: '8px',
+            height: '8px',
             borderRadius: '50%',
-            backgroundColor: 'var(--status-accepted)',
-            margin: '0 1px'
+            backgroundColor: '#10b981', // Green for accepted
+            margin: '0 2px',
+            display: 'inline-block'
           }}
         />
       );
+      totalShown++;
     }
     
-    // Yellow dots for declined events
-    for (let i = 0; i < Math.min(counts.declined, 3); i++) {
-      dots.push(
-        <div
-          key={`declined-${i}`}
-          style={{
-            width: '4px',
-            height: '4px',
-            borderRadius: '50%',
-            backgroundColor: 'var(--status-declined)',
-            margin: '0 1px'
-          }}
-        />
-      );
-    }
-    
-    // Grey dots for pending events
-    for (let i = 0; i < Math.min(counts.pending, 3); i++) {
+    // Yellow dots for pending events (medium priority)
+    for (let i = 0; i < counts.pending && totalShown < maxDots; i++) {
       dots.push(
         <div
           key={`pending-${i}`}
           style={{
-            width: '4px',
-            height: '4px',
+            width: '8px',
+            height: '8px',
             borderRadius: '50%',
-            backgroundColor: 'var(--status-pending)',
-            margin: '0 1px'
+            backgroundColor: '#f59e0b', // Yellow for pending
+            margin: '0 2px',
+            display: 'inline-block'
           }}
         />
       );
+      totalShown++;
+    }
+    
+    // Red dots for declined events (lowest priority)
+    for (let i = 0; i < counts.declined && totalShown < maxDots; i++) {
+      dots.push(
+        <div
+          key={`declined-${i}`}
+          style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            backgroundColor: '#ef4444', // Red for declined
+            margin: '0 2px',
+            display: 'inline-block'
+          }}
+        />
+      );
+      totalShown++;
     }
 
-    // Show "+" if more than 3 total events
-    const totalEvents = counts.attending + counts.declined + counts.pending;
-    if (totalEvents > 3) {
+    // Show "+" if there are more events than we can display
+    const totalEvents = counts.attending + counts.pending + counts.declined;
+    if (totalEvents > maxDots) {
       dots.push(
         <div
           key="more"
           style={{
-            fontSize: '8px',
+            fontSize: '10px',
             color: 'var(--muted-text)',
             fontWeight: '600',
-            marginLeft: '2px'
+            marginLeft: '3px',
+            display: 'inline-block',
+            verticalAlign: 'middle'
           }}
         >
           +
@@ -176,7 +191,17 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
       );
     }
 
-    return dots;
+    return dots.length > 0 ? (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: '2px',
+        minHeight: '12px'
+      }}>
+        {dots}
+      </div>
+    ) : null;
   };
 
   const isToday = (date: Date) => isSameDay(date, new Date());
@@ -329,20 +354,10 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
                 }
               }}
             >
-              <span>{format(date, 'd')}</span>
-              
-              {/* Event Dots */}
-              {eventDots && eventDots.length > 0 && (
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginTop: '2px',
-                  minHeight: '6px'
-                }}>
-                  {eventDots}
-                </div>
-              )}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span>{format(date, 'd')}</span>
+                {eventDots}
+              </div>
             </button>
           );
         })}

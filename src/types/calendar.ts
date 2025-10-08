@@ -59,9 +59,9 @@ export interface CompanyRowDragState {
 
 export interface EventCell {
   id: string;
-  event: CalendarEventData;
+  event: CalendarEventData | any; // TODO: Migrate to CalendarEvent from database.ts
   rsvpStatus: 'accepted' | 'declined' | 'pending';
-  colorCode: 'green' | 'yellow' | 'grey';
+  colorCode: 'green' | 'yellow' | 'grey' | string;
   isMultiCompany: boolean;
   attendingCompanies: string[];
   position: {
