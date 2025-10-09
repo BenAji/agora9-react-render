@@ -726,26 +726,6 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
         </div>
       )}
 
-      {/* Data Mode Indicator (Development) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div style={{
-          position: 'fixed',
-          bottom: '1rem',
-          left: '1rem',
-          backgroundColor: isUsingMockData ? 'var(--warning-bg)' : 'var(--success-bg)',
-          color: isUsingMockData ? 'var(--warning-text)' : 'var(--success-text)',
-          padding: '0.5rem 1rem',
-          borderRadius: '16px',
-          fontSize: '0.75rem',
-          fontWeight: '600',
-          zIndex: 1000,
-          cursor: 'pointer'
-        }}
-        title="Click to toggle between API and mock data"
-        >
-          {isUsingMockData ? '📦 MOCK DATA' : '🌐 API DATA'}
-        </div>
-      )}
 
       {/* Event Details Panel */}
       <EventDetailsPanel

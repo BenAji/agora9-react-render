@@ -92,6 +92,8 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
     setError(null);
 
     try {
+      console.log('🚀 Starting signup process for:', formData.email);
+      
       // Sign up with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
@@ -104,34 +106,60 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
         }
       });
 
+      console.log('📧 Supabase signup response:', { authData, authError });
+
       if (authError) {
+        console.error('❌ Supabase auth error:', authError);
         throw authError;
       }
 
       if (authData.user) {
+        console.log('✅ Auth user created:', authData.user.id);
+        
         // Create user profile in our users table
-        const { error: profileError } = await supabase
+        const profileData = {
+          id: authData.user.id,
+          email: formData.email,
+          full_name: formData.fullName,
+          role: formData.role,
+          is_active: true,
+          preferences: {},
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          last_login: new Date().toISOString()
+        };
+        
+        console.log('👤 Creating user profile with data:', profileData);
+        
+        const { data: profileResult, error: profileError } = await supabase
           .from('users')
-          .insert({
-            id: authData.user.id,
-            email: formData.email,
-            full_name: formData.fullName,
-            role: formData.role,
-            is_active: true,
-            preferences: {},
-            last_login: new Date().toISOString()
-          });
+          .insert(profileData)
+          .select();
+
+        console.log('👤 Profile creation result:', { profileResult, profileError });
 
         if (profileError) {
-          console.error('Profile creation error:', profileError);
-          // Note: User is created in auth but profile creation failed
-          // You might want to handle this case differently
+          console.error('❌ Profile creation error:', profileError);
+          // Don't throw error - user is created in auth, profile creation is secondary
+          setError(`Account created successfully, but there was an issue with profile setup: ${profileError.message}`);
+        } else {
+          console.log('✅ Profile created successfully');
         }
 
-        onSignupSuccess(authData.user);
+        // Check if email confirmation is required
+        if (authData.user.email_confirmed_at === null) {
+          console.log('📧 Email confirmation required');
+          setError('Account created successfully! Please check your email and click the confirmation link to activate your account.');
+        } else {
+          console.log('✅ Email already confirmed, proceeding with login');
+          onSignupSuccess(authData.user);
+        }
+      } else {
+        console.log('❌ No user data returned from signup');
+        setError('Failed to create account. Please try again.');
       }
     } catch (err: any) {
-      console.error('Signup error:', err);
+      console.error('💥 Signup error:', err);
       setError(err.message || 'Failed to create account. Please try again.');
     } finally {
       setLoading(false);
@@ -181,6 +209,39 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
           }}>
             Join AGORA to access premium investment events and insights
           </p>
+        </div>
+
+        {/* Connection Test Button */}
+        <div style={{ marginBottom: '1rem', textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={async () => {
+              console.log('🔍 Testing Supabase connection...');
+              try {
+                const { data, error } = await supabase.from('users').select('count').limit(1);
+                console.log('✅ Supabase connection test result:', { data, error });
+                if (error) {
+                  setError(`Connection test failed: ${error.message}`);
+                } else {
+                  setError('✅ Connection test successful! Supabase is accessible.');
+                }
+              } catch (err) {
+                console.error('❌ Connection test error:', err);
+                setError(`Connection test error: ${err}`);
+              }
+            }}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: 'var(--tertiary-bg)',
+              color: 'var(--primary-text)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '0.75rem'
+            }}
+          >
+            Test Connection
+          </button>
         </div>
 
         {/* Error Message */}
