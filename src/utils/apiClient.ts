@@ -262,10 +262,6 @@ class SupabaseApiClient implements ApiClient {
             id,
             host_type,
             host_id,
-            host_name,
-            host_ticker,
-            host_sector,
-            host_subsector,
             companies_jsonb,
             primary_company_id,
             created_at,
@@ -288,7 +284,7 @@ class SupabaseApiClient implements ApiClient {
 
 
       // Transform the direct query data to match CalendarEvent format
-      const events: CalendarEvent[] = (eventsData || []).map((event: any) => {
+      const events: CalendarEvent[] = await Promise.all((eventsData || []).map(async (event: any) => {
         // Extract companies from the nested event_companies structure
         const companies = (event.event_companies || []).map((ec: any) => ({
           id: ec.companies.id,
@@ -315,6 +311,77 @@ class SupabaseApiClient implements ApiClient {
           eventHosts = [eventHosts];
         }
 
+        // Fetch host details for each event host
+        const enrichedHosts = [];
+        if (eventHosts && eventHosts.length > 0) {
+          for (const host of eventHosts) {
+            let hostDetails = {
+              ...host,
+              host_name: undefined,
+              host_ticker: undefined,
+              host_sector: undefined,
+              host_subsector: undefined
+            };
+
+            // Fetch host details based on host_type
+            if (host.host_type === 'single_corp' && host.host_id) {
+              try {
+                const { data: companyData } = await supabaseService
+                  .from('companies')
+                  .select('company_name, ticker_symbol, gics_sector, gics_subsector')
+                  .eq('id', host.host_id)
+                  .single();
+                
+                if (companyData) {
+                  hostDetails = {
+                    ...hostDetails,
+                    host_name: companyData.company_name,
+                    host_ticker: companyData.ticker_symbol,
+                    host_sector: companyData.gics_sector,
+                    host_subsector: companyData.gics_subsector
+                  };
+                }
+              } catch (error) {
+                console.warn(`Failed to fetch company details for host_id: ${host.host_id}`, error);
+              }
+            } else if (host.host_type === 'non_company' && host.host_id) {
+              try {
+                const { data: orgData } = await supabaseService
+                  .from('organizations')
+                  .select('name, sector, subsector')
+                  .eq('id', host.host_id)
+                  .single();
+                
+                if (orgData) {
+                  hostDetails = {
+                    ...hostDetails,
+                    host_name: orgData.name,
+                    host_ticker: undefined,
+                    host_sector: orgData.sector,
+                    host_subsector: orgData.subsector
+                  };
+                }
+              } catch (error) {
+                console.warn(`Failed to fetch organization details for host_id: ${host.host_id}`, error);
+              }
+            } else if (host.host_type === 'multi_corp' && host.companies_jsonb) {
+              // For multi-corporate events, use the first company as primary
+              const primaryCompany = host.companies_jsonb.find((c: any) => c.is_primary);
+              if (primaryCompany) {
+                hostDetails = {
+                  ...hostDetails,
+                  host_name: primaryCompany.name,
+                  host_ticker: primaryCompany.ticker,
+                  host_sector: undefined, // Would need to fetch from companies table
+                  host_subsector: undefined
+                };
+              }
+            }
+
+            enrichedHosts.push(hostDetails);
+          }
+        }
+
         // Parse location details for display using utility
 
         return {
@@ -334,8 +401,8 @@ class SupabaseApiClient implements ApiClient {
           created_at: new Date(event.created_at),
           updated_at: new Date(event.updated_at),
           companies: companies,
-          hosts: eventHosts || [],
-          primary_host: eventHosts && eventHosts.length > 0 ? eventHosts[0] : undefined,
+          hosts: enrichedHosts,
+          primary_host: enrichedHosts.length > 0 ? enrichedHosts[0] : undefined,
           user_response: userResponse ? {
             id: userResponse.id,
             user_id: userId!,
@@ -352,7 +419,7 @@ class SupabaseApiClient implements ApiClient {
           attendingCompanies: companies.map((c: any) => c.id),
           attendees: [] // TODO: Implement attendee fetching if needed
         };
-      });
+      }));
 
     
     return this.success({
