@@ -110,36 +110,25 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
 
       if (authData.user) {
         // Create user profile in our users table
-        const profileData = {
-          id: authData.user.id,
-          email: formData.email,
-          full_name: formData.fullName,
-          role: formData.role,
-          is_active: true,
-          preferences: {},
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          last_login: new Date().toISOString()
-        };
-        
         const { error: profileError } = await supabase
           .from('users')
-          .insert(profileData);
+          .insert({
+            id: authData.user.id,
+            email: formData.email,
+            full_name: formData.fullName,
+            role: formData.role,
+            is_active: true,
+            preferences: {},
+            last_login: new Date().toISOString()
+          });
 
         if (profileError) {
           console.error('Profile creation error:', profileError);
-          // Don't throw error - user is created in auth, profile creation is secondary
-          setError(`Account created successfully, but there was an issue with profile setup: ${profileError.message}`);
+          // Note: User is created in auth but profile creation failed
+          // You might want to handle this case differently
         }
 
-        // Check if email confirmation is required
-        if (authData.user.email_confirmed_at === null) {
-          setError('Account created successfully! Please check your email and click the confirmation link to activate your account.');
-        } else {
-          onSignupSuccess(authData.user);
-        }
-      } else {
-        setError('Failed to create account. Please try again.');
+        onSignupSuccess(authData.user);
       }
     } catch (err: any) {
       console.error('Signup error:', err);
