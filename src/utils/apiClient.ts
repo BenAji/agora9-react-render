@@ -36,6 +36,7 @@ import {
 } from '../types/database';
 
 import { supabase, supabaseService } from '../lib/supabase';
+import { parseLocationForDisplay } from './locationUtils';
 
 // =====================================================================================
 // SUPABASE API CLIENT IMPLEMENTATION
@@ -256,6 +257,19 @@ class SupabaseApiClient implements ApiClient {
             response_status,
             response_date,
             notes
+          ),
+          event_hosts(
+            id,
+            host_type,
+            host_id,
+            host_name,
+            host_ticker,
+            host_sector,
+            host_subsector,
+            companies_jsonb,
+            primary_company_id,
+            created_at,
+            updated_at
           )
         `)
         .gte('start_date', params?.start_date?.toISOString() || '2025-01-01')
@@ -295,6 +309,14 @@ class SupabaseApiClient implements ApiClient {
           ? event.user_event_responses[0] 
           : undefined;
 
+        // Process event hosts - handle both single object and array cases
+        let eventHosts = event.event_hosts;
+        if (eventHosts && !Array.isArray(eventHosts)) {
+          eventHosts = [eventHosts];
+        }
+
+        // Parse location details for display using utility
+
         return {
           id: event.id,
           title: event.title,
@@ -304,6 +326,7 @@ class SupabaseApiClient implements ApiClient {
           location_type: event.location_type as 'physical' | 'virtual' | 'hybrid',
           location_details: event.location_details,
           virtual_details: event.virtual_details,
+          location: parseLocationForDisplay(event.location_type as 'physical' | 'virtual' | 'hybrid', event.location_details, event.virtual_details),
           weather_location: event.weather_location,
           weather_coordinates: event.weather_coordinates,
           event_type: event.event_type as 'standard' | 'catalyst',
@@ -311,6 +334,8 @@ class SupabaseApiClient implements ApiClient {
           created_at: new Date(event.created_at),
           updated_at: new Date(event.updated_at),
           companies: companies,
+          hosts: eventHosts || [],
+          primary_host: eventHosts && eventHosts.length > 0 ? eventHosts[0] : undefined,
           user_response: userResponse ? {
             id: userResponse.id,
             user_id: userId!,
@@ -321,7 +346,11 @@ class SupabaseApiClient implements ApiClient {
             created_at: new Date(userResponse.created_at || new Date()),
             updated_at: new Date(userResponse.updated_at || new Date())
           } : undefined,
-          color_code: this.getEventColor(userResponse?.response_status || 'pending')
+          color_code: this.getEventColor(userResponse?.response_status || 'pending'),
+          rsvpStatus: (userResponse?.response_status || 'pending') as 'accepted' | 'declined' | 'pending',
+          isMultiCompany: companies.length > 1,
+          attendingCompanies: companies.map((c: any) => c.id),
+          attendees: [] // TODO: Implement attendee fetching if needed
         };
       });
 

@@ -246,8 +246,23 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
               <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
                 {event.primary_host.host_subsector || event.primary_host.host_sector || 'Industry Information'}
               </div>
+              
+              {/* Multi-corporate event details */}
+              {event.primary_host.host_type === 'multi_corp' && event.primary_host.companies_jsonb && (
+                <div style={{ marginTop: '0.5rem', fontSize: '0.7rem', color: 'var(--muted-text)' }}>
+                  <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>Co-hosts:</div>
+                  {event.primary_host.companies_jsonb
+                    .filter((company: any) => !company.is_primary)
+                    .map((company: any, index: number) => (
+                      <div key={index} style={{ marginLeft: '0.5rem' }}>
+                        [{company.ticker}] {company.name}
+                      </div>
+                    ))
+                  }
+                </div>
+              )}
             </>
-          ) : (
+          ) : event.companies && event.companies.length > 0 ? (
             <>
               <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)', marginBottom: '0.25rem' }}>
                 [{event.companies[0]?.ticker_symbol}] {event.companies[0]?.company_name}
@@ -255,7 +270,23 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
               <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
                 {event.companies[0]?.gics_subsector || 'Industry Information'}
               </div>
+              
+              {/* Show multiple companies if present */}
+              {event.companies.length > 1 && (
+                <div style={{ marginTop: '0.5rem', fontSize: '0.7rem', color: 'var(--muted-text)' }}>
+                  <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>Participating companies:</div>
+                  {event.companies.slice(1).map((company: any, index: number) => (
+                    <div key={index} style={{ marginLeft: '0.5rem' }}>
+                      [{company.ticker_symbol}] {company.company_name}
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
+          ) : (
+            <div style={{ fontSize: '0.875rem', color: 'var(--muted-text)' }}>
+              Host information not available
+            </div>
           )}
         </div>
       </div>
