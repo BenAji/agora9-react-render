@@ -417,10 +417,146 @@ class SupabaseApiClient implements ApiClient {
   }
 
   async getEvent(id: string): Promise<ApiResponse<CalendarEvent>> {
-    throw new ApiClientError({
-      message: 'Get event not implemented in minimal schema',
-      code: 'NOT_IMPLEMENTED'
-    });
+    try {
+      const { data: eventData, error: eventError } = await supabaseService
+        .from('events')
+        .select(`
+          *,
+          event_hosts(
+            id,
+            host_type,
+            host_id,
+            companies_jsonb,
+            primary_company_id
+          ),
+          event_companies(
+            companies(
+              id,
+              company_name,
+              ticker_symbol,
+              gics_sector,
+              gics_subsector,
+              is_active
+            )
+          ),
+          user_event_responses(
+            response_status,
+            response_date,
+            notes,
+            user_id
+          )
+        `)
+        .eq('id', id)
+        .eq('is_active', true)
+        .single();
+
+      if (eventError) {
+        throw new ApiClientError({
+          message: `Failed to fetch event: ${eventError.message}`,
+          code: 'EVENT_FETCH_ERROR',
+          details: { originalError: eventError }
+        });
+      }
+
+      if (!eventData) {
+        throw new ApiClientError({
+          message: 'Event not found',
+          code: 'EVENT_NOT_FOUND'
+        });
+      }
+
+      // Transform the event data to match CalendarEvent format
+      const companies = eventData.event_companies?.map((ec: any) => ec.companies).filter(Boolean) || [];
+      const hosts = Array.isArray(eventData.event_hosts) ? eventData.event_hosts.map((eh: any) => ({
+        id: eh.id,
+        event_id: eventData.id,
+        host_type: eh.host_type,
+        host_id: eh.host_id,
+        host_name: '',
+        host_ticker: '',
+        host_sector: '',
+        host_subsector: '',
+        companies_jsonb: eh.companies_jsonb,
+        primary_company_id: eh.primary_company_id,
+        created_at: new Date(eh.created_at),
+        updated_at: new Date(eh.updated_at),
+      })) : [];
+
+      const primary_host = hosts.find((h: any) => h.primary_company_id) || hosts[0] || null;
+
+      // Get user response
+      const currentUserResponse = await this.getCurrentUser();
+      const userId = currentUserResponse.data.id;
+      const userResponse = eventData.user_event_responses?.find((response: any) => response.user_id === userId);
+
+      // Parse location details (simplified for now)
+      const parsedLocation = eventData.location_details ? {
+        displayText: eventData.location_details.venue || eventData.location_details.address || 'Location details available',
+        fullAddress: eventData.location_details.address || '',
+        isPrimarilyVirtual: eventData.location_type === 'virtual',
+        hasPhysicalComponent: eventData.location_type === 'physical' || eventData.location_type === 'hybrid',
+        hasVirtualComponent: eventData.location_type === 'virtual' || eventData.location_type === 'hybrid',
+        meetingUrl: eventData.virtual_details?.join_url,
+        weatherLocation: eventData.weather_location || eventData.location_details.city || 'Unknown location'
+      } : undefined;
+
+      return this.success({
+        id: eventData.id,
+        title: eventData.title,
+        description: eventData.description || '',
+        start_date: new Date(eventData.start_date),
+        end_date: new Date(eventData.end_date),
+        location_type: eventData.location_type as 'physical' | 'virtual' | 'hybrid',
+        location_details: eventData.location_details,
+        virtual_details: eventData.virtual_details,
+        weather_location: eventData.weather_location,
+        weather_coordinates: eventData.weather_coordinates,
+        parsed_location: parsedLocation,
+        event_type: eventData.event_type as 'standard' | 'catalyst',
+        is_active: eventData.is_active,
+        created_at: new Date(eventData.created_at),
+        updated_at: new Date(eventData.updated_at),
+        companies: companies,
+        hostingCompanies: companies,
+        hosts: hosts,
+        primary_host: primary_host,
+        speakers: [],
+        agenda: [],
+        tags: [],
+        access_info: {
+          is_free: true,
+          registration_required: false,
+          registration_link: undefined,
+          contact_email: undefined
+        },
+        rsvpStatus: (userResponse?.response_status || 'pending') as 'accepted' | 'declined' | 'pending',
+        colorCode: this.getEventColor(userResponse?.response_status || 'pending'),
+        isMultiCompany: companies.length > 1,
+        attendingCompanies: companies.map((c: any) => c.ticker_symbol),
+        attendees: eventData.user_event_responses?.filter((response: any) => response.response_status === 'accepted') || [],
+        user_response: userResponse ? {
+          id: userResponse.id,
+          user_id: userId,
+          event_id: eventData.id,
+          response_status: (userResponse.response_status || 'pending') as 'accepted' | 'declined' | 'pending',
+          response_date: new Date(userResponse.response_date || new Date()),
+          notes: userResponse.notes || '',
+          created_at: new Date(userResponse.created_at || new Date()),
+          updated_at: new Date(userResponse.updated_at || new Date())
+        } : undefined,
+        user_rsvp_status: (userResponse?.response_status || 'pending') as 'accepted' | 'declined' | 'pending',
+        color_code: this.getEventColor(userResponse?.response_status || 'pending')
+      });
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw error;
+      }
+      throw new ApiClientError({
+        message: `Failed to get event: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        code: 'EVENT_FETCH_ERROR',
+        details: { originalError: error }
+      });
+    }
   }
 
   // =====================================================================================
@@ -651,8 +787,96 @@ class SupabaseApiClient implements ApiClient {
     throw new ApiClientError({ message: 'Event attendance not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
   }
 
-  async updateEventResponse(): Promise<ApiResponse<UserEventResponse>> {
-    throw new ApiClientError({ message: 'Update event response not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
+  async updateEventResponse(eventId: string, responseStatus: 'accepted' | 'declined' | 'pending', notes?: string): Promise<ApiResponse<UserEventResponse>> {
+    try {
+      const currentUserResponse = await this.getCurrentUser();
+      const userId = currentUserResponse.data.id;
+
+      // Check if response already exists
+      const { data: existingResponse, error: checkError } = await supabaseService
+        .from('user_event_responses')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('event_id', eventId)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found"
+        throw new ApiClientError({
+          message: `Failed to check existing response: ${checkError.message}`,
+          code: 'RESPONSE_CHECK_ERROR',
+          details: { originalError: checkError }
+        });
+      }
+
+      const now = new Date().toISOString();
+      let responseData;
+
+      if (existingResponse) {
+        // Update existing response
+        const { data, error } = await supabaseService
+          .from('user_event_responses')
+          .update({
+            response_status: responseStatus,
+            response_date: now,
+            notes: notes || existingResponse.notes,
+            updated_at: now
+          })
+          .eq('id', existingResponse.id)
+          .select()
+          .single();
+
+        if (error) {
+          throw new ApiClientError({
+            message: `Failed to update event response: ${error.message}`,
+            code: 'RESPONSE_UPDATE_ERROR',
+            details: { originalError: error }
+          });
+        }
+        responseData = data;
+      } else {
+        // Create new response
+        const { data, error } = await supabaseService
+          .from('user_event_responses')
+          .insert({
+            user_id: userId,
+            event_id: eventId,
+            response_status: responseStatus,
+            response_date: now,
+            notes: notes || null
+          })
+          .select()
+          .single();
+
+        if (error) {
+          throw new ApiClientError({
+            message: `Failed to create event response: ${error.message}`,
+            code: 'RESPONSE_CREATE_ERROR',
+            details: { originalError: error }
+          });
+        }
+        responseData = data;
+      }
+
+      return this.success({
+        id: responseData.id,
+        user_id: responseData.user_id,
+        event_id: responseData.event_id,
+        response_status: responseData.response_status as 'accepted' | 'declined' | 'pending',
+        response_date: new Date(responseData.response_date),
+        notes: responseData.notes || '',
+        created_at: new Date(responseData.created_at),
+        updated_at: new Date(responseData.updated_at)
+      });
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw error;
+      }
+      throw new ApiClientError({
+        message: `Failed to update event response: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        code: 'RESPONSE_UPDATE_ERROR',
+        details: { originalError: error }
+      });
+    }
   }
 
   async getCompany(): Promise<ApiResponse<CompanyWithEvents>> {
@@ -663,8 +887,83 @@ class SupabaseApiClient implements ApiClient {
     throw new ApiClientError({ message: 'Create user not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
   }
 
-  async getUser(): Promise<ApiResponse<UserWithSubscriptions>> {
-    throw new ApiClientError({ message: 'Get user not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
+  async getUser(userId?: string): Promise<ApiResponse<UserWithSubscriptions>> {
+    try {
+      const targetUserId = userId || (await this.getCurrentUser()).data.id;
+
+      // Get user data
+      const { data: userData, error: userError } = await supabaseService
+        .from('users')
+        .select('*')
+        .eq('id', targetUserId)
+        .eq('is_active', true)
+        .single();
+
+      if (userError) {
+        throw new ApiClientError({
+          message: `Failed to fetch user: ${userError.message}`,
+          code: 'USER_FETCH_ERROR',
+          details: { originalError: userError }
+        });
+      }
+
+      if (!userData) {
+        throw new ApiClientError({
+          message: 'User not found',
+          code: 'USER_NOT_FOUND'
+        });
+      }
+
+      // Get user subscriptions
+      const { data: subscriptionsData, error: subError } = await supabaseService
+        .from('user_subscriptions')
+        .select('*')
+        .eq('user_id', targetUserId)
+        .eq('is_active', true);
+
+      if (subError) {
+        throw new ApiClientError({
+          message: `Failed to fetch user subscriptions: ${subError.message}`,
+          code: 'SUBSCRIPTIONS_FETCH_ERROR',
+          details: { originalError: subError }
+        });
+      }
+
+      const subscriptions = subscriptionsData?.map((sub: any) => ({
+        id: sub.id,
+        user_id: sub.user_id,
+        subsector: sub.subsector,
+        payment_status: sub.payment_status as 'pending' | 'paid' | 'failed' | 'canceled',
+        is_active: sub.is_active,
+        expires_at: sub.expires_at ? new Date(sub.expires_at) : null,
+        stripe_subscription_id: sub.stripe_subscription_id,
+        stripe_customer_id: sub.stripe_customer_id,
+        created_at: new Date(sub.created_at),
+        updated_at: new Date(sub.updated_at)
+      })) || [];
+
+      return this.success({
+        id: userData.id,
+        email: userData.email,
+        full_name: userData.full_name,
+        role: userData.role as 'investment_analyst' | 'executive_assistant',
+        is_active: userData.is_active,
+        preferences: userData.preferences,
+        created_at: new Date(userData.created_at),
+        updated_at: new Date(userData.updated_at),
+        last_login: userData.last_login ? new Date(userData.last_login) : undefined,
+        subscriptions
+      });
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw error;
+      }
+      throw new ApiClientError({
+        message: `Failed to get user: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        code: 'USER_FETCH_ERROR',
+        details: { originalError: error }
+      });
+    }
   }
 
   async getSubscriptionSummary(): Promise<ApiResponse<SubscriptionSummaryResponse>> {
@@ -695,16 +994,150 @@ class SupabaseApiClient implements ApiClient {
     throw new ApiClientError({ message: 'Remove assignment not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
   }
 
-  async getNotifications(): Promise<ApiResponse<PaginatedResponse<Notification>>> {
-    throw new ApiClientError({ message: 'Notifications not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
+  async getNotifications(params?: { limit?: number; offset?: number; unread_only?: boolean }): Promise<ApiResponse<PaginatedResponse<Notification>>> {
+    try {
+      const currentUserResponse = await this.getCurrentUser();
+      const userId = currentUserResponse.data.id;
+
+      const limit = params?.limit || 20;
+      const offset = params?.offset || 0;
+
+      let query = supabaseService
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (params?.unread_only) {
+        query = query.eq('is_read', false);
+      }
+
+      const { data: notificationsData, error: notificationsError } = await query;
+
+      if (notificationsError) {
+        throw new ApiClientError({
+          message: `Failed to fetch notifications: ${notificationsError.message}`,
+          code: 'NOTIFICATIONS_FETCH_ERROR',
+          details: { originalError: notificationsError }
+        });
+      }
+
+      const notifications = notificationsData?.map((notification: any) => ({
+        id: notification.id,
+        user_id: notification.user_id,
+        title: notification.title,
+        message: notification.message,
+        type: notification.type as 'event_reminder' | 'subscription_update' | 'ea_notification' | 'system_alert',
+        is_read: notification.is_read,
+        metadata: notification.metadata,
+        created_at: new Date(notification.created_at),
+        updated_at: new Date(notification.updated_at)
+      })) || [];
+
+      // Get total count for pagination
+      const { count, error: countError } = await supabaseService
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+      if (countError) {
+        throw new ApiClientError({
+          message: `Failed to count notifications: ${countError.message}`,
+          code: 'NOTIFICATIONS_COUNT_ERROR',
+          details: { originalError: countError }
+        });
+      }
+
+      return this.success({
+        data: notifications,
+        total_count: count || 0,
+        total: count || 0,
+        page: Math.floor(offset / limit) + 1,
+        limit,
+        offset,
+        has_more: (count || 0) > offset + limit
+      });
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw error;
+      }
+      throw new ApiClientError({
+        message: `Failed to get notifications: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        code: 'NOTIFICATIONS_FETCH_ERROR',
+        details: { originalError: error }
+      });
+    }
   }
 
-  async markNotificationRead(): Promise<ApiResponse<null>> {
-    throw new ApiClientError({ message: 'Mark notification read not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
+  async markNotificationRead(notificationId: string): Promise<ApiResponse<null>> {
+    try {
+      const currentUserResponse = await this.getCurrentUser();
+      const userId = currentUserResponse.data.id;
+
+      const { error } = await supabaseService
+        .from('notifications')
+        .update({
+          is_read: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', notificationId)
+        .eq('user_id', userId);
+
+      if (error) {
+        throw new ApiClientError({
+          message: `Failed to mark notification as read: ${error.message}`,
+          code: 'NOTIFICATION_UPDATE_ERROR',
+          details: { originalError: error }
+        });
+      }
+
+      return this.success(null);
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw error;
+      }
+      throw new ApiClientError({
+        message: `Failed to mark notification as read: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        code: 'NOTIFICATION_UPDATE_ERROR',
+        details: { originalError: error }
+      });
+    }
   }
 
   async markAllNotificationsRead(): Promise<ApiResponse<null>> {
-    throw new ApiClientError({ message: 'Mark all notifications read not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
+    try {
+      const currentUserResponse = await this.getCurrentUser();
+      const userId = currentUserResponse.data.id;
+
+      const { error } = await supabaseService
+        .from('notifications')
+        .update({
+          is_read: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId)
+        .eq('is_read', false);
+
+      if (error) {
+        throw new ApiClientError({
+          message: `Failed to mark all notifications as read: ${error.message}`,
+          code: 'NOTIFICATIONS_UPDATE_ERROR',
+          details: { originalError: error }
+        });
+      }
+
+      return this.success(null);
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw error;
+      }
+      throw new ApiClientError({
+        message: `Failed to mark all notifications as read: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        code: 'NOTIFICATIONS_UPDATE_ERROR',
+        details: { originalError: error }
+      });
+    }
   }
 
   async createNotification(): Promise<ApiResponse<Notification>> {

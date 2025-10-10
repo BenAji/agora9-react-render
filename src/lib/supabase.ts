@@ -5,15 +5,10 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { getSupabaseConfig } from '../config/environment';
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'http://127.0.0.1:54321';
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Missing Supabase environment variables. Please check your .env.local file and ensure REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY are set.'
-  );
-}
+// Get Supabase configuration from environment
+const { url: supabaseUrl, anonKey: supabaseAnonKey } = getSupabaseConfig();
 
 // Global singleton instances using window object to persist across hot reloads
 const getGlobalSupabase = () => {
@@ -65,7 +60,7 @@ const getGlobalSupabase = () => {
 };
 
 // Service role client for server-side operations (bypasses RLS)
-const supabaseServiceKey = process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
+const supabaseServiceKey = process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY || '';
 
 const getGlobalSupabaseService = () => {
   if (typeof window !== 'undefined') {
