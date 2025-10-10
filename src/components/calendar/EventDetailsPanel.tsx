@@ -430,26 +430,28 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           {event.description}
         </p>
 
-        {/* Company Info */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          padding: '0.75rem',
-          backgroundColor: 'var(--tertiary-bg)',
-          borderRadius: '8px',
-          border: '1px solid var(--border-color)'
-        }}>
-          <Building2 size={16} color="var(--accent-color)" />
-          <div>
-            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
-              {event.companies[0]?.ticker_symbol}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
-              {event.companies[0]?.company_name}
+        {/* Company Info - Show primary host or first company */}
+        {event.companies && event.companies.length > 0 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.75rem',
+            backgroundColor: 'var(--tertiary-bg)',
+            borderRadius: '8px',
+            border: '1px solid var(--border-color)'
+          }}>
+            <Building2 size={16} color="var(--accent-color)" />
+            <div>
+              <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
+                {event.primary_host?.host_ticker || event.companies[0]?.ticker_symbol}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
+                {event.primary_host?.host_name || event.companies[0]?.company_name}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Event Information Cards */}
@@ -513,7 +515,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
             </span>
           </div>
           <div style={{ fontSize: '0.875rem', color: 'var(--primary-text)' }}>
-            {event.attendees?.length || 0} confirmed
+            Analysts Attending: {event.attendees?.length || 0} confirmed
           </div>
         </div>
       </div>

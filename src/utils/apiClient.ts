@@ -379,7 +379,7 @@ class SupabaseApiClient implements ApiClient {
           colorCode: this.getEventColor(userResponse?.response_status || 'pending'),
           isMultiCompany: companies.length > 1,
           attendingCompanies: companies.map((c: any) => c.ticker_symbol),
-          attendees: [], // Will be populated from database if available
+          attendees: event.user_event_responses?.filter((response: any) => response.response_status === 'accepted') || [], // Analyst confirmations
           user_response: userResponse ? {
             id: userResponse.id,
             user_id: userId!,
