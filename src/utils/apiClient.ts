@@ -334,9 +334,9 @@ class SupabaseApiClient implements ApiClient {
         // Get primary host for easy access
         const primary_host = hosts.find((h: any) => h.primary_company_id === h.host_id) || hosts[0];
 
-        // Get user response if it exists (should be filtered by current user now)
+        // Get user response if it exists (filtered by current user only)
         const userResponse = event.user_event_responses && event.user_event_responses.length > 0 
-          ? event.user_event_responses.find((response: any) => response.user_id === userId) || event.user_event_responses[0]
+          ? event.user_event_responses.find((response: any) => response.user_id === userId)
           : undefined;
 
         // Parse location information from JSONB fields
