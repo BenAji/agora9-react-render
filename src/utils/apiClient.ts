@@ -264,7 +264,12 @@ class SupabaseApiClient implements ApiClient {
             response_status,
             response_date,
             notes,
-            user_id
+            user_id,
+            users(
+              id,
+              full_name,
+              email
+            )
           )
         `)
         .gte('start_date', params?.start_date?.toISOString() || '2025-01-01')
@@ -381,7 +386,13 @@ class SupabaseApiClient implements ApiClient {
           colorCode: this.getEventColor(userResponse?.response_status || 'pending'),
           isMultiCompany: companies.length > 1,
           attendingCompanies: companies.map((c: any) => c.ticker_symbol),
-          attendees: event.user_event_responses?.filter((response: any) => response.response_status === 'accepted') || [], // Analyst confirmations
+          attendees: event.user_event_responses?.filter((response: any) => response.response_status === 'accepted').map((response: any) => ({
+            user_id: response.user_id,
+            full_name: response.users?.full_name || 'Unknown User',
+            email: response.users?.email || '',
+            response_status: response.response_status,
+            response_date: response.response_date ? new Date(response.response_date) : null
+          })) || [], // Analyst confirmations
           user_response: userResponse ? {
             id: userResponse.id,
             user_id: userId!,
@@ -445,7 +456,12 @@ class SupabaseApiClient implements ApiClient {
             response_status,
             response_date,
             notes,
-            user_id
+            user_id,
+            users(
+              id,
+              full_name,
+              email
+            )
           )
         `)
         .eq('id', id)
@@ -535,7 +551,13 @@ class SupabaseApiClient implements ApiClient {
         colorCode: this.getEventColor(userResponse?.response_status || 'pending'),
         isMultiCompany: companies.length > 1,
         attendingCompanies: companies.map((c: any) => c.ticker_symbol),
-        attendees: eventData.user_event_responses?.filter((response: any) => response.response_status === 'accepted') || [],
+        attendees: eventData.user_event_responses?.filter((response: any) => response.response_status === 'accepted').map((response: any) => ({
+          user_id: response.user_id,
+          full_name: response.users?.full_name || 'Unknown User',
+          email: response.users?.email || '',
+          response_status: response.response_status,
+          response_date: response.response_date ? new Date(response.response_date) : null
+        })) || [],
         user_response: userResponse ? {
           id: userResponse.id,
           user_id: userId,
@@ -2050,7 +2072,12 @@ class SupabaseApiClient implements ApiClient {
             response_status,
             response_date,
             notes,
-            user_id
+            user_id,
+            users(
+              id,
+              full_name,
+              email
+            )
           )
         `)
         .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
@@ -2148,7 +2175,13 @@ class SupabaseApiClient implements ApiClient {
           colorCode: this.getEventColor(userResponse?.response_status || 'pending'),
           isMultiCompany: companies.length > 1,
           attendingCompanies: companies.map((c: any) => c.ticker_symbol),
-          attendees: event.user_event_responses?.filter((response: any) => response.response_status === 'accepted') || [],
+          attendees: event.user_event_responses?.filter((response: any) => response.response_status === 'accepted').map((response: any) => ({
+            user_id: response.user_id,
+            full_name: response.users?.full_name || 'Unknown User',
+            email: response.users?.email || '',
+            response_status: response.response_status,
+            response_date: response.response_date ? new Date(response.response_date) : null
+          })) || [],
           user_response: userResponse ? {
             id: userResponse.id,
             user_id: userId,
