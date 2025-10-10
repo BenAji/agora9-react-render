@@ -19,7 +19,9 @@ import {
   UserCalendarResponse,
   SubscriptionSummaryResponse,
   EventAttendanceResponse,
-  PaginatedResponse
+  PaginatedResponse,
+  CreateEventRequest,
+  UpdateEventRequest
 } from '../types/api';
 
 import {
@@ -771,16 +773,158 @@ class SupabaseApiClient implements ApiClient {
   // PLACEHOLDER METHODS (Not implemented for minimal schema)
 // =====================================================================================
 
-  async createEvent(): Promise<ApiResponse<Event>> {
-    throw new ApiClientError({ message: 'Create event not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
+  async createEvent(data: CreateEventRequest): Promise<ApiResponse<Event>> {
+    try {
+      const { data: eventData, error: eventError } = await supabaseService
+        .from('events')
+        .insert({
+          title: data.title,
+          description: data.description || null,
+          start_date: data.start_date.toISOString(),
+          end_date: data.end_date.toISOString(),
+          location_type: data.location_type,
+          location_details: data.location_details || null,
+          virtual_details: data.virtual_details || null,
+          weather_location: data.weather_location || null,
+          event_type: data.event_type || 'standard',
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (eventError) {
+        throw new ApiClientError({
+          message: `Failed to create event: ${eventError.message}`,
+          code: 'EVENT_CREATE_ERROR',
+          details: { originalError: eventError }
+        });
+      }
+
+      return this.success({
+        id: eventData.id,
+        title: eventData.title,
+        description: eventData.description,
+        start_date: new Date(eventData.start_date),
+        end_date: new Date(eventData.end_date),
+        location_type: eventData.location_type as 'physical' | 'virtual' | 'hybrid',
+        location_details: eventData.location_details,
+        virtual_details: eventData.virtual_details,
+        weather_location: eventData.weather_location,
+        weather_coordinates: eventData.weather_coordinates,
+        event_type: eventData.event_type as 'standard' | 'catalyst',
+        is_active: eventData.is_active,
+        created_at: new Date(eventData.created_at),
+        updated_at: new Date(eventData.updated_at)
+      });
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw error;
+      }
+      throw new ApiClientError({
+        message: `Failed to create event: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        code: 'EVENT_CREATE_ERROR',
+        details: { originalError: error }
+      });
+    }
   }
 
-  async updateEvent(): Promise<ApiResponse<Event>> {
-    throw new ApiClientError({ message: 'Update event not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
+  async updateEvent(id: string, data: UpdateEventRequest): Promise<ApiResponse<Event>> {
+    try {
+      const updateData: any = {
+        updated_at: new Date().toISOString()
+      };
+
+      // Only include fields that are provided
+      if (data.title !== undefined) updateData.title = data.title;
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.start_date !== undefined) updateData.start_date = data.start_date.toISOString();
+      if (data.end_date !== undefined) updateData.end_date = data.end_date.toISOString();
+      if (data.location_type !== undefined) updateData.location_type = data.location_type;
+      if (data.location_details !== undefined) updateData.location_details = data.location_details;
+      if (data.virtual_details !== undefined) updateData.virtual_details = data.virtual_details;
+      if (data.weather_location !== undefined) updateData.weather_location = data.weather_location;
+      if (data.event_type !== undefined) updateData.event_type = data.event_type;
+
+      const { data: eventData, error: eventError } = await supabaseService
+        .from('events')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (eventError) {
+        throw new ApiClientError({
+          message: `Failed to update event: ${eventError.message}`,
+          code: 'EVENT_UPDATE_ERROR',
+          details: { originalError: eventError }
+        });
+      }
+
+      if (!eventData) {
+        throw new ApiClientError({
+          message: 'Event not found',
+          code: 'EVENT_NOT_FOUND'
+        });
+      }
+
+      return this.success({
+        id: eventData.id,
+        title: eventData.title,
+        description: eventData.description,
+        start_date: new Date(eventData.start_date),
+        end_date: new Date(eventData.end_date),
+        location_type: eventData.location_type as 'physical' | 'virtual' | 'hybrid',
+        location_details: eventData.location_details,
+        virtual_details: eventData.virtual_details,
+        weather_location: eventData.weather_location,
+        weather_coordinates: eventData.weather_coordinates,
+        event_type: eventData.event_type as 'standard' | 'catalyst',
+        is_active: eventData.is_active,
+        created_at: new Date(eventData.created_at),
+        updated_at: new Date(eventData.updated_at)
+      });
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw error;
+      }
+      throw new ApiClientError({
+        message: `Failed to update event: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        code: 'EVENT_UPDATE_ERROR',
+        details: { originalError: error }
+      });
+    }
   }
 
-  async deleteEvent(): Promise<ApiResponse<null>> {
-    throw new ApiClientError({ message: 'Delete event not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
+  async deleteEvent(id: string): Promise<ApiResponse<null>> {
+    try {
+      // Soft delete by setting is_active to false
+      const { error: eventError } = await supabaseService
+        .from('events')
+        .update({
+          is_active: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (eventError) {
+        throw new ApiClientError({
+          message: `Failed to delete event: ${eventError.message}`,
+          code: 'EVENT_DELETE_ERROR',
+          details: { originalError: eventError }
+        });
+      }
+
+      return this.success(null);
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw error;
+      }
+      throw new ApiClientError({
+        message: `Failed to delete event: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        code: 'EVENT_DELETE_ERROR',
+        details: { originalError: error }
+      });
+    }
   }
 
   async getEventAttendance(eventId: string): Promise<ApiResponse<EventAttendanceResponse>> {
@@ -1088,12 +1232,117 @@ class SupabaseApiClient implements ApiClient {
     }
   }
 
-  async activateSubscription(): Promise<ApiResponse<UserSubscription>> {
-    throw new ApiClientError({ message: 'Activate subscription not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
+  async activateSubscription(stripeSubscriptionId: string): Promise<ApiResponse<UserSubscription>> {
+    try {
+      // Find subscription by Stripe ID
+      const { data: subscriptionData, error: findError } = await supabaseService
+        .from('user_subscriptions')
+        .select('*')
+        .eq('stripe_subscription_id', stripeSubscriptionId)
+        .single();
+
+      if (findError) {
+        throw new ApiClientError({
+          message: `Failed to find subscription: ${findError.message}`,
+          code: 'SUBSCRIPTION_NOT_FOUND',
+          details: { originalError: findError }
+        });
+      }
+
+      if (!subscriptionData) {
+        throw new ApiClientError({
+          message: 'Subscription not found',
+          code: 'SUBSCRIPTION_NOT_FOUND'
+        });
+      }
+
+      // Update subscription to active
+      const { data: updatedData, error: updateError } = await supabaseService
+        .from('user_subscriptions')
+        .update({
+          is_active: true,
+          payment_status: 'paid',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', subscriptionData.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw new ApiClientError({
+          message: `Failed to activate subscription: ${updateError.message}`,
+          code: 'SUBSCRIPTION_ACTIVATE_ERROR',
+          details: { originalError: updateError }
+        });
+      }
+
+      return this.success({
+        id: updatedData.id,
+        user_id: updatedData.user_id,
+        subsector: updatedData.subsector,
+        payment_status: updatedData.payment_status as 'pending' | 'paid' | 'failed' | 'cancelled',
+        is_active: updatedData.is_active,
+        expires_at: updatedData.expires_at ? new Date(updatedData.expires_at) : null,
+        stripe_subscription_id: updatedData.stripe_subscription_id,
+        stripe_customer_id: updatedData.stripe_customer_id,
+        created_at: new Date(updatedData.created_at),
+        updated_at: new Date(updatedData.updated_at)
+      });
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw error;
+      }
+      throw new ApiClientError({
+        message: `Failed to activate subscription: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        code: 'SUBSCRIPTION_ACTIVATE_ERROR',
+        details: { originalError: error }
+      });
+    }
   }
 
-  async assignExecutiveAssistant(): Promise<ApiResponse<ExecutiveAssistantAssignment>> {
-    throw new ApiClientError({ message: 'Executive assistant assignment not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
+  async assignExecutiveAssistant(userId: string, assistantId: string, permissions: Record<string, boolean>): Promise<ApiResponse<ExecutiveAssistantAssignment>> {
+    try {
+      const { data: assignmentData, error: assignmentError } = await supabaseService
+        .from('executive_assistant_assignments')
+        .insert({
+          user_id: userId,
+          assistant_id: assistantId,
+          permissions: permissions,
+          assignment_type: 'permanent',
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (assignmentError) {
+        throw new ApiClientError({
+          message: `Failed to assign executive assistant: ${assignmentError.message}`,
+          code: 'EA_ASSIGNMENT_ERROR',
+          details: { originalError: assignmentError }
+        });
+      }
+
+      return this.success({
+        id: assignmentData.id,
+        assistant_id: assignmentData.assistant_id,
+        user_id: assignmentData.user_id,
+        permissions: assignmentData.permissions,
+        assignment_type: assignmentData.assignment_type as 'permanent' | 'temporary',
+        expires_at: assignmentData.expires_at ? new Date(assignmentData.expires_at) : undefined,
+        is_active: assignmentData.is_active,
+        created_at: new Date(assignmentData.created_at),
+        updated_at: new Date(assignmentData.updated_at)
+      });
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw error;
+      }
+      throw new ApiClientError({
+        message: `Failed to assign executive assistant: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        code: 'EA_ASSIGNMENT_ERROR',
+        details: { originalError: error }
+      });
+    }
   }
 
   async getAssignedUsers(): Promise<ApiResponse<UserWithSubscriptions[]>> {

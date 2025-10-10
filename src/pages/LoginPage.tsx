@@ -326,8 +326,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onSwitchToSignup 
                 fontSize: '0.75rem'
               }}
               onClick={() => {
-                // TODO: Implement forgot password
-                alert('Forgot password functionality coming soon!');
+                // TODO: Implement forgot password functionality
+                // For now, show a proper message or redirect to support
+                window.location.href = 'mailto:support@agora.com?subject=Forgot Password Request';
               }}
             >
               Forgot your password?

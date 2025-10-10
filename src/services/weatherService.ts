@@ -46,7 +46,7 @@ class WeatherService {
    */
   async getWeatherForecast(location: string, eventDate: Date): Promise<WeatherForecast[]> {
     if (!this.apiKey) {
-      console.warn('Weather API key not configured, using mock data');
+      // Weather API key not configured, using mock data
       return this.generateMockWeatherForecast(eventDate);
     }
 
@@ -68,8 +68,7 @@ class WeatherService {
       // Transform API data to our format
       return this.transformWeatherData(data, eventDate);
     } catch (error) {
-      console.error('Weather API error:', error);
-      console.warn('Falling back to mock weather data');
+      // Weather API error, falling back to mock data
       return this.generateMockWeatherForecast(eventDate);
     }
   }
@@ -79,7 +78,7 @@ class WeatherService {
    */
   async getCurrentWeather(location: string): Promise<WeatherData | null> {
     if (!this.apiKey) {
-      console.warn('Weather API key not configured, using mock data');
+      // Weather API key not configured, using mock data
       return this.generateMockCurrentWeather();
     }
 
@@ -110,8 +109,7 @@ class WeatherService {
         icon: data.weather[0].icon
       };
     } catch (error) {
-      console.error('Weather API error:', error);
-      console.warn('Falling back to mock weather data');
+      // Weather API error, falling back to mock data
       return this.generateMockCurrentWeather();
     }
   }
