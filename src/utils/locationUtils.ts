@@ -1,155 +1,215 @@
 /**
- * Location Utilities for AGORA Calendar
- * 
- * Handles parsing and formatting of location data from JSONB fields
- * in the events table (location_details and virtual_details)
+ * Location Utility Functions
+ * Handles parsing of location_details and virtual_details JSONB fields from database
  */
-
-export interface PhysicalLocationDetails {
-  venue?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  postal_code?: string;
-  coordinates?: {
-    latitude: number;
-    longitude: number;
-  };
-  accessibility_info?: string;
-  parking_info?: string;
-  additional_notes?: string;
-}
-
-export interface VirtualLocationDetails {
-  platform?: string;
-  meeting_url?: string;
-  meeting_id?: string;
-  passcode?: string;
-  dial_in_number?: string;
-  additional_instructions?: string;
-}
 
 export interface ParsedLocation {
   displayText: string;
   type: 'physical' | 'virtual' | 'hybrid';
-  details: PhysicalLocationDetails | VirtualLocationDetails | null;
+  details: {
+    // Physical details
+    city?: string;
+    state?: string;
+    venue?: string;
+    room?: string;
+    address?: string;
+    // Virtual details
+    platform?: string;
+    meetingId?: string;
+    dialIn?: string;
+    webinarLink?: string;
+  };
+  weatherLocation?: string;
 }
 
 /**
- * Parse location details for display in the EventDetailsPanel
+ * Parses location information from database JSONB fields
  */
-export const parseLocationForDisplay = (
+export function parseEventLocation(
   locationType: 'physical' | 'virtual' | 'hybrid',
-  locationDetails?: Record<string, any>,
-  virtualDetails?: Record<string, any>
-): string => {
+  locationDetails?: Record<string, any> | null,
+  virtualDetails?: Record<string, any> | null,
+  weatherLocation?: string | null
+): ParsedLocation {
+  const details = {
+    city: locationDetails?.city,
+    state: locationDetails?.state,
+    venue: locationDetails?.venue,
+    room: locationDetails?.room,
+    address: locationDetails?.address,
+    platform: locationDetails?.platform || virtualDetails?.platform,
+    meetingId: locationDetails?.meeting_id || virtualDetails?.meeting_id,
+    dialIn: virtualDetails?.dial_in,
+    webinarLink: virtualDetails?.webinar_link
+  };
+
+  let displayText = '';
+  let type: 'physical' | 'virtual' | 'hybrid' = locationType;
+
   switch (locationType) {
     case 'physical':
-      return parsePhysicalLocation(locationDetails);
+      displayText = buildPhysicalLocationText(details);
+      break;
     case 'virtual':
-      return parseVirtualLocation(virtualDetails);
+      displayText = buildVirtualLocationText(details);
+      break;
     case 'hybrid':
-      return parseHybridLocation(locationDetails, virtualDetails);
+      displayText = buildHybridLocationText(details);
+      break;
     default:
-      return 'Location details not available';
+      displayText = weatherLocation || 'Location TBD';
   }
-};
+
+  return {
+    displayText,
+    type,
+    details,
+    weatherLocation: weatherLocation || undefined
+  };
+}
 
 /**
- * Parse physical location details
+ * Builds display text for physical events
  */
-const parsePhysicalLocation = (locationDetails?: Record<string, any>): string => {
-  if (!locationDetails) {
-    return 'Physical location details not available';
+function buildPhysicalLocationText(details: ParsedLocation['details']): string {
+  const parts: string[] = [];
+  
+  // City, State
+  if (details.city && details.state) {
+    parts.push(`${details.city}, ${details.state}`);
+  } else if (details.city) {
+    parts.push(details.city);
   }
-
-  const venue = locationDetails.venue;
-  const address = locationDetails.address;
-  const city = locationDetails.city;
-  const state = locationDetails.state;
-  const country = locationDetails.country;
-
-  // Build address string
-  const addressParts = [];
-  if (venue) addressParts.push(venue);
-  if (address) addressParts.push(address);
-  if (city) addressParts.push(city);
-  if (state) addressParts.push(state);
-  if (country) addressParts.push(country);
-
-  if (addressParts.length > 0) {
-    return addressParts.join(', ');
+  
+  // Venue
+  if (details.venue) {
+    parts.push(details.venue);
   }
-
-  return 'Physical location details not available';
-};
+  
+  // Room
+  if (details.room) {
+    parts.push(details.room);
+  }
+  
+  // Address (if no venue/room)
+  if (!details.venue && !details.room && details.address) {
+    parts.push(details.address);
+  }
+  
+  return parts.length > 0 ? parts.join(' - ') : 'Physical Location TBD';
+}
 
 /**
- * Parse virtual location details
+ * Builds display text for virtual events
  */
-const parseVirtualLocation = (virtualDetails?: Record<string, any>): string => {
-  if (!virtualDetails) {
-    return 'Virtual meeting details not available';
+function buildVirtualLocationText(details: ParsedLocation['details']): string {
+  const parts: string[] = [];
+  
+  // Platform
+  if (details.platform) {
+    parts.push(details.platform);
   }
-
-  const platform = virtualDetails.platform;
-  const meetingUrl = virtualDetails.meeting_url;
-  const meetingId = virtualDetails.meeting_id;
-
-  if (platform && meetingUrl) {
-    return `${platform} - ${meetingUrl}`;
-  } else if (platform && meetingId) {
-    return `${platform} (ID: ${meetingId})`;
-  } else if (platform) {
-    return platform;
-  } else if (meetingUrl) {
-    return meetingUrl;
+  
+  // Meeting ID
+  if (details.meetingId) {
+    parts.push(details.meetingId);
   }
-
-  return 'Virtual meeting details not available';
-};
+  
+  // Additional info
+  if (details.dialIn || details.webinarLink) {
+    const additional = [];
+    if (details.dialIn) additional.push('Dial-in Available');
+    if (details.webinarLink) additional.push('Webinar Link Available');
+    parts.push(`(${additional.join(', ')})`);
+  }
+  
+  return parts.length > 0 ? parts.join(' - ') : 'Virtual Event TBD';
+}
 
 /**
- * Parse hybrid location details (both physical and virtual)
+ * Builds display text for hybrid events
  */
-const parseHybridLocation = (
-  locationDetails?: Record<string, any>,
-  virtualDetails?: Record<string, any>
-): string => {
-  const physical = parsePhysicalLocation(locationDetails);
-  const virtual = parseVirtualLocation(virtualDetails);
-
-  // Remove the "not available" suffix if we have actual details
-  const physicalClean = physical.includes('not available') ? 'Physical location' : physical;
-  const virtualClean = virtual.includes('not available') ? 'Virtual access' : virtual;
-
-  return `${physicalClean} / ${virtualClean}`;
-};
+function buildHybridLocationText(details: ParsedLocation['details']): string {
+  const physicalParts: string[] = [];
+  const virtualParts: string[] = [];
+  
+  // Physical location parts
+  if (details.city && details.state) {
+    physicalParts.push(`${details.city}, ${details.state}`);
+  } else if (details.city) {
+    physicalParts.push(details.city);
+  }
+  
+  if (details.venue) {
+    physicalParts.push(details.venue);
+  }
+  
+  if (details.room) {
+    physicalParts.push(details.room);
+  }
+  
+  // Virtual location parts
+  if (details.platform) {
+    virtualParts.push(details.platform);
+  }
+  
+  if (details.meetingId) {
+    virtualParts.push(details.meetingId);
+  }
+  
+  // Combine physical and virtual
+  const physicalText = physicalParts.length > 0 ? physicalParts.join(' - ') : '';
+  const virtualText = virtualParts.length > 0 ? virtualParts.join(' - ') : '';
+  
+  if (physicalText && virtualText) {
+    return `${physicalText} + ${virtualText}`;
+  } else if (physicalText) {
+    return physicalText;
+  } else if (virtualText) {
+    return virtualText;
+  } else {
+    return 'Hybrid Event TBD';
+  }
+}
 
 /**
- * Get location type icon
+ * Gets location icon based on event type
  */
-export const getLocationTypeIcon = (locationType: string): string => {
+export function getLocationIcon(locationType: 'physical' | 'virtual' | 'hybrid'): string {
   switch (locationType) {
     case 'physical': return '📍';
-    case 'virtual': return '🌐';
+    case 'virtual': return '🔗';
     case 'hybrid': return '🏢';
     default: return '📍';
   }
-};
+}
 
 /**
- * Get detailed location information for tooltips or expanded views
+ * Gets location type display text
  */
-export const getDetailedLocationInfo = (
-  locationType: 'physical' | 'virtual' | 'hybrid',
-  locationDetails?: Record<string, any>,
-  virtualDetails?: Record<string, any>
-): ParsedLocation => {
-  return {
-    displayText: parseLocationForDisplay(locationType, locationDetails, virtualDetails),
-    type: locationType,
-    details: locationType === 'physical' ? (locationDetails || null) : (virtualDetails || null)
-  };
-};
+export function getLocationTypeText(locationType: 'physical' | 'virtual' | 'hybrid'): string {
+  switch (locationType) {
+    case 'physical': return 'In-Person Event';
+    case 'virtual': return 'Virtual Event';
+    case 'hybrid': return 'Hybrid Event';
+    default: return 'Event';
+  }
+}
+
+/**
+ * Checks if location has virtual components
+ */
+export function hasVirtualComponents(parsedLocation: ParsedLocation): boolean {
+  return parsedLocation.type === 'virtual' || 
+         parsedLocation.type === 'hybrid' || 
+         !!parsedLocation.details.platform;
+}
+
+/**
+ * Checks if location has physical components
+ */
+export function hasPhysicalComponents(parsedLocation: ParsedLocation): boolean {
+  return parsedLocation.type === 'physical' || 
+         parsedLocation.type === 'hybrid' || 
+         !!(parsedLocation.details.city || parsedLocation.details.venue);
+}

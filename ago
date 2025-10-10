@@ -1,0 +1,5 @@
+[33mfe24e27[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdev[m[33m)[m fix: Resolve database schema mismatch for event_hosts table
+[33mc8f38d2[m fix: Complete EventDetailsPanel database integration
+[33mf992212[m cleanup: Remove debug code from signup process and complete EventDetailsPanel database integration
+[33m9e3404a[m cleanup: Remove debug code from signup process
+[33m70dc38a[m debug: Add comprehensive debugging to signup process

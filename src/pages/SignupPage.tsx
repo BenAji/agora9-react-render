@@ -123,7 +123,6 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
           });
 
         if (profileError) {
-          console.error('Profile creation error:', profileError);
           // Note: User is created in auth but profile creation failed
           // You might want to handle this case differently
         }
@@ -131,7 +130,6 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
         onSignupSuccess(authData.user);
       }
     } catch (err: any) {
-      console.error('Signup error:', err);
       setError(err.message || 'Failed to create account. Please try again.');
     } finally {
       setLoading(false);

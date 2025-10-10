@@ -216,6 +216,7 @@ export interface ApiClient {
   // RSVP Management
   createRSVP(data: CreateRSVPRequest): Promise<ApiResponse<UserEventResponse>>;
   updateRSVP(id: string, data: Partial<CreateRSVPRequest>): Promise<ApiResponse<UserEventResponse>>;
+  updateRSVPByEventAndUser(eventId: string, userId: string, responseStatus: 'accepted' | 'declined' | 'pending', notes?: string): Promise<ApiResponse<UserEventResponse>>;
   deleteRSVP(id: string): Promise<ApiResponse<null>>;
   getUserEventResponse(userId: string, eventId: string): Promise<ApiResponse<UserEventResponse | null>>;
   getUserRSVPs(userId: string): Promise<ApiResponse<UserEventResponse[]>>;

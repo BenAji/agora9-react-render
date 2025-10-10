@@ -36,7 +36,7 @@ import {
 } from '../types/database';
 
 import { supabase, supabaseService } from '../lib/supabase';
-import { parseLocationForDisplay } from './locationUtils';
+import { parseEventLocation } from './locationUtils';
 
 // =====================================================================================
 // SUPABASE API CLIENT IMPLEMENTATION
@@ -52,7 +52,6 @@ class SupabaseApiClient implements ApiClient {
   }
 
   private async handleSupabaseError(error: any, operation: string): Promise<never> {
-    console.error(`Supabase ${operation} error:`, error);
     throw new ApiClientError({
       message: error.message || `Failed to ${operation}`,
       code: error.code || 'SUPABASE_ERROR',
@@ -118,7 +117,6 @@ class SupabaseApiClient implements ApiClient {
       });
 
     } catch (error: any) {
-      console.error('💥 SupabaseApiClient: Login failed:', error);
       if (error instanceof ApiClientError) throw error;
       return this.handleSupabaseError(error, 'login');
     }
@@ -182,7 +180,6 @@ class SupabaseApiClient implements ApiClient {
       return this.success(user);
 
     } catch (error: any) {
-      console.error('💥 SupabaseApiClient: Get current user failed:', error);
       if (error instanceof ApiClientError) throw error;
       return this.handleSupabaseError(error, 'get current user');
     }
@@ -239,40 +236,38 @@ class SupabaseApiClient implements ApiClient {
         });
       }
 
-      // Use a direct query instead of the problematic RPC function
+      // Use a direct query with enhanced hosting information
       const { data: eventsData, error: eventsError } = await supabaseService
         .from('events')
         .select(`
           *,
-          event_companies!inner(
-            companies!inner(
-              id,
-              company_name,
-              ticker_symbol,
-              gics_sector,
-              gics_subsector
-            )
-          ),
-          user_event_responses(
-            response_status,
-            response_date,
-            notes
-          ),
           event_hosts(
             id,
             host_type,
             host_id,
             companies_jsonb,
-            primary_company_id,
-            created_at,
-            updated_at
+            primary_company_id
+          ),
+          event_companies(
+            companies(
+              id,
+              company_name,
+              ticker_symbol,
+              gics_sector,
+              gics_subsector,
+              is_active
+            )
+          ),
+          user_event_responses(
+            response_status,
+            response_date,
+            notes,
+            user_id
           )
         `)
         .gte('start_date', params?.start_date?.toISOString() || '2025-01-01')
         .lte('end_date', params?.end_date?.toISOString() || '2025-12-31')
-        .eq('is_active', true)
-        .eq('event_companies.companies.is_active', true)
-        .in('event_companies.companies.gics_subsector', subscribedSubsectors);
+        .eq('is_active', true);
 
       if (eventsError) {
         throw new ApiClientError({
@@ -283,106 +278,72 @@ class SupabaseApiClient implements ApiClient {
       }
 
 
-      // Transform the direct query data to match CalendarEvent format
-      const events: CalendarEvent[] = await Promise.all((eventsData || []).map(async (event: any) => {
-        // Extract companies from the nested event_companies structure
-        const companies = (event.event_companies || []).map((ec: any) => ({
-          id: ec.companies.id,
-          ticker_symbol: ec.companies.ticker_symbol,
-          company_name: ec.companies.company_name,
-          gics_sector: ec.companies.gics_sector,
-          gics_subsector: ec.companies.gics_subsector,
-          gics_industry: '',
-          gics_sub_industry: '',
-      created_at: new Date(),
-          updated_at: new Date(),
-      is_active: true,
-          classification_status: 'complete' as const
-        }));
+      // Filter events client-side based on subscriptions and active companies
+      const filteredEvents = (eventsData || []).filter((event: any) => {
+        // Check if event has any companies
+        if (!event.event_companies || event.event_companies.length === 0) {
+          return false;
+        }
+        
+        // Check if any company is active and matches subscribed subsectors
+        return event.event_companies.some((ec: any) => {
+          const company = ec.companies;
+          return company && 
+                 company.is_active && 
+                 subscribedSubsectors.includes(company.gics_subsector);
+        });
+      });
 
-        // Get user response if it exists
+      // Transform the filtered query data to match CalendarEvent format
+      const events: CalendarEvent[] = filteredEvents.map((event: any) => {
+        // Extract companies from the nested event_companies structure
+        const companies = (event.event_companies || [])
+          .filter((ec: any) => ec.companies && ec.companies.is_active)
+          .map((ec: any) => ({
+            id: ec.companies.id,
+            ticker_symbol: ec.companies.ticker_symbol,
+            company_name: ec.companies.company_name,
+            gics_sector: ec.companies.gics_sector,
+            gics_subsector: ec.companies.gics_subsector,
+            gics_industry: '',
+            gics_sub_industry: '',
+            created_at: new Date(),
+            updated_at: new Date(),
+            is_active: true,
+            classification_status: 'complete' as const
+          }));
+
+        // Extract event hosts information (simplified - will need separate queries for details)
+        const hosts = Array.isArray(event.event_hosts) ? event.event_hosts.map((eh: any) => ({
+          id: eh.id,
+          event_id: event.id,
+          host_type: eh.host_type,
+          host_id: eh.host_id,
+          host_name: '', // Will be populated later if needed
+          host_ticker: '', // Will be populated later if needed
+          host_sector: '', // Will be populated later if needed
+          host_subsector: '', // Will be populated later if needed
+          companies_jsonb: eh.companies_jsonb,
+          primary_company_id: eh.primary_company_id,
+          created_at: new Date(eh.created_at),
+          updated_at: new Date(eh.updated_at),
+        })) : [];
+
+        // Get primary host for easy access
+        const primary_host = hosts.find((h: any) => h.primary_company_id === h.host_id) || hosts[0];
+
+        // Get user response if it exists (should be filtered by current user now)
         const userResponse = event.user_event_responses && event.user_event_responses.length > 0 
-          ? event.user_event_responses[0] 
+          ? event.user_event_responses.find((response: any) => response.user_id === userId) || event.user_event_responses[0]
           : undefined;
 
-        // Process event hosts - handle both single object and array cases
-        let eventHosts = event.event_hosts;
-        if (eventHosts && !Array.isArray(eventHosts)) {
-          eventHosts = [eventHosts];
-        }
-
-        // Fetch host details for each event host
-        const enrichedHosts = [];
-        if (eventHosts && eventHosts.length > 0) {
-          for (const host of eventHosts) {
-            let hostDetails = {
-              ...host,
-              host_name: undefined,
-              host_ticker: undefined,
-              host_sector: undefined,
-              host_subsector: undefined
-            };
-
-            // Fetch host details based on host_type
-            if (host.host_type === 'single_corp' && host.host_id) {
-              try {
-                const { data: companyData } = await supabaseService
-                  .from('companies')
-                  .select('company_name, ticker_symbol, gics_sector, gics_subsector')
-                  .eq('id', host.host_id)
-                  .single();
-                
-                if (companyData) {
-                  hostDetails = {
-                    ...hostDetails,
-                    host_name: companyData.company_name,
-                    host_ticker: companyData.ticker_symbol,
-                    host_sector: companyData.gics_sector,
-                    host_subsector: companyData.gics_subsector
-                  };
-                }
-              } catch (error) {
-                console.warn(`Failed to fetch company details for host_id: ${host.host_id}`, error);
-              }
-            } else if (host.host_type === 'non_company' && host.host_id) {
-              try {
-                const { data: orgData } = await supabaseService
-                  .from('organizations')
-                  .select('name, sector, subsector')
-                  .eq('id', host.host_id)
-                  .single();
-                
-                if (orgData) {
-                  hostDetails = {
-                    ...hostDetails,
-                    host_name: orgData.name,
-                    host_ticker: undefined,
-                    host_sector: orgData.sector,
-                    host_subsector: orgData.subsector
-                  };
-                }
-              } catch (error) {
-                console.warn(`Failed to fetch organization details for host_id: ${host.host_id}`, error);
-              }
-            } else if (host.host_type === 'multi_corp' && host.companies_jsonb) {
-              // For multi-corporate events, use the first company as primary
-              const primaryCompany = host.companies_jsonb.find((c: any) => c.is_primary);
-              if (primaryCompany) {
-                hostDetails = {
-                  ...hostDetails,
-                  host_name: primaryCompany.name,
-                  host_ticker: primaryCompany.ticker,
-                  host_sector: undefined, // Would need to fetch from companies table
-                  host_subsector: undefined
-                };
-              }
-            }
-
-            enrichedHosts.push(hostDetails);
-          }
-        }
-
-        // Parse location details for display using utility
+        // Parse location information from JSONB fields
+        const parsedLocation = parseEventLocation(
+          event.location_type as 'physical' | 'virtual' | 'hybrid',
+          event.location_details,
+          event.virtual_details,
+          event.weather_location
+        );
 
         return {
           id: event.id,
@@ -393,16 +354,32 @@ class SupabaseApiClient implements ApiClient {
           location_type: event.location_type as 'physical' | 'virtual' | 'hybrid',
           location_details: event.location_details,
           virtual_details: event.virtual_details,
-          location: parseLocationForDisplay(event.location_type as 'physical' | 'virtual' | 'hybrid', event.location_details, event.virtual_details),
           weather_location: event.weather_location,
           weather_coordinates: event.weather_coordinates,
+          parsed_location: parsedLocation,
           event_type: event.event_type as 'standard' | 'catalyst',
           is_active: event.is_active,
           created_at: new Date(event.created_at),
           updated_at: new Date(event.updated_at),
           companies: companies,
-          hosts: enrichedHosts,
-          primary_host: enrichedHosts.length > 0 ? enrichedHosts[0] : undefined,
+          hostingCompanies: companies, // For compatibility with CalendarEventData interface
+          hosts: hosts, // NEW: Event hosting information
+          primary_host: primary_host, // NEW: Primary host for easy access
+          // Additional properties required by CalendarEventData interface
+          speakers: [], // Will be populated from database if available
+          agenda: [], // Will be populated from database if available
+          tags: [], // Will be populated from database if available
+          access_info: {
+            is_free: true,
+            registration_required: false,
+            registration_link: undefined,
+            contact_email: undefined
+          },
+          rsvpStatus: (userResponse?.response_status || 'pending') as 'accepted' | 'declined' | 'pending',
+          colorCode: this.getEventColor(userResponse?.response_status || 'pending'),
+          isMultiCompany: companies.length > 1,
+          attendingCompanies: companies.map((c: any) => c.ticker_symbol),
+          attendees: [], // Will be populated from database if available
           user_response: userResponse ? {
             id: userResponse.id,
             user_id: userId!,
@@ -413,13 +390,10 @@ class SupabaseApiClient implements ApiClient {
             created_at: new Date(userResponse.created_at || new Date()),
             updated_at: new Date(userResponse.updated_at || new Date())
           } : undefined,
-          color_code: this.getEventColor(userResponse?.response_status || 'pending'),
-          rsvpStatus: (userResponse?.response_status || 'pending') as 'accepted' | 'declined' | 'pending',
-          isMultiCompany: companies.length > 1,
-          attendingCompanies: companies.map((c: any) => c.id),
-          attendees: [] // TODO: Implement attendee fetching if needed
+          user_rsvp_status: (userResponse?.response_status || 'pending') as 'accepted' | 'declined' | 'pending',
+          color_code: this.getEventColor(userResponse?.response_status || 'pending')
         };
-      }));
+      });
 
     
     return this.success({
@@ -428,7 +402,6 @@ class SupabaseApiClient implements ApiClient {
       });
 
     } catch (error: any) {
-      console.error('💥 SupabaseApiClient: Get events failed:', error);
       if (error instanceof ApiClientError) throw error;
       return this.handleSupabaseError(error, 'get events');
     }
@@ -483,7 +456,6 @@ class SupabaseApiClient implements ApiClient {
         .eq('payment_status', 'paid');
 
       if (subError) {
-        console.error('❌ SupabaseApiClient: Subscriptions query error:', subError);
         throw new ApiClientError({
           message: `Failed to fetch subscriptions: ${subError.message}`,
           code: 'SUBSCRIPTION_FETCH_ERROR',
@@ -494,8 +466,7 @@ class SupabaseApiClient implements ApiClient {
       const subscribedSubsectors = subscriptions?.map((s: any) => s.subsector) || [];
 
       if (subscribedSubsectors.length === 0) {
-        console.log('⚠️ No active subscriptions found for user:', userId);
-    return this.success({
+        return this.success({
           companies: [],
           total_count: 0
         });
@@ -538,7 +509,6 @@ class SupabaseApiClient implements ApiClient {
     });
 
     } catch (error: any) {
-      console.error('💥 SupabaseApiClient: Get companies failed:', error);
       if (error instanceof ApiClientError) throw error;
       return this.handleSupabaseError(error, 'get companies');
   }
@@ -553,7 +523,6 @@ class SupabaseApiClient implements ApiClient {
         .eq('is_active', true);
 
       if (error) {
-        console.error('❌ SupabaseApiClient: All companies query error:', error);
         throw new ApiClientError({
           message: `Failed to fetch all companies: ${error.message}`,
           code: 'ALL_COMPANIES_FETCH_ERROR',
@@ -617,7 +586,7 @@ class SupabaseApiClient implements ApiClient {
         .in('gics_subsector', subscribedSubsectors);
 
       if (error) {
-        console.error('❌ SupabaseApiClient: Subscribed companies query error:', error);
+        
         throw new ApiClientError({
           message: `Failed to fetch subscribed companies: ${error.message}`,
           code: 'SUBSCRIBED_COMPANIES_FETCH_ERROR',
@@ -642,7 +611,7 @@ class SupabaseApiClient implements ApiClient {
         .eq('is_active', true);
 
       if (error) {
-        console.error('❌ SupabaseApiClient: Subsectors query error:', error);
+        
         throw new ApiClientError({
           message: `Failed to fetch subsectors: ${error.message}`,
           code: 'SUBSECTORS_FETCH_ERROR',
@@ -656,7 +625,7 @@ class SupabaseApiClient implements ApiClient {
       
       return this.success(uniqueSubsectors);
     } catch (error: any) {
-      console.error('💥 SupabaseApiClient: Get all subsectors failed:', error);
+      
       if (error instanceof ApiClientError) throw error;
       return this.handleSupabaseError(error, 'get all subsectors');
     }
@@ -762,7 +731,7 @@ class SupabaseApiClient implements ApiClient {
         .insert(orderRecords);
 
       if (error) {
-        console.error('❌ SupabaseApiClient: Update company order error:', error);
+        
         throw new ApiClientError({
           message: `Failed to update company order: ${error.message}`,
           code: 'COMPANY_ORDER_UPDATE_ERROR',
@@ -773,7 +742,7 @@ class SupabaseApiClient implements ApiClient {
       return this.success(null);
 
     } catch (error: any) {
-      console.error('💥 SupabaseApiClient: Update company order failed:', error);
+      
       if (error instanceof ApiClientError) throw error;
       return this.handleSupabaseError(error, 'update company order');
     }
@@ -807,7 +776,7 @@ class SupabaseApiClient implements ApiClient {
         .single();
 
       if (error) {
-        console.error('❌ SupabaseApiClient: Create RSVP error:', error);
+        
         throw new ApiClientError({
           message: `Failed to create RSVP: ${error.message}`,
           code: 'RSVP_CREATE_ERROR',
@@ -829,7 +798,7 @@ class SupabaseApiClient implements ApiClient {
       return this.success(userEventResponse);
 
     } catch (error: any) {
-      console.error('💥 SupabaseApiClient: Create RSVP failed:', error);
+      
       if (error instanceof ApiClientError) throw error;
       return this.handleSupabaseError(error, 'create RSVP');
     }
@@ -850,7 +819,7 @@ class SupabaseApiClient implements ApiClient {
         .single();
 
       if (error) {
-        console.error('❌ SupabaseApiClient: Update RSVP error:', error);
+        
       throw new ApiClientError({
           message: `Failed to update RSVP: ${error.message}`,
           code: 'RSVP_UPDATE_ERROR',
@@ -872,7 +841,7 @@ class SupabaseApiClient implements ApiClient {
       return this.success(userEventResponse);
 
     } catch (error: any) {
-      console.error('💥 SupabaseApiClient: Update RSVP failed:', error);
+      
       if (error instanceof ApiClientError) throw error;
       return this.handleSupabaseError(error, 'update RSVP');
     }
@@ -881,31 +850,60 @@ class SupabaseApiClient implements ApiClient {
   // Helper method for updating RSVP by event and user
   async updateRSVPByEventAndUser(eventId: string, userId: string, responseStatus: 'accepted' | 'declined' | 'pending', notes?: string): Promise<ApiResponse<UserEventResponse>> {
     try {
-
-      // First try to update existing RSVP
-      const { data: rsvpData, error } = await supabaseService
+      // First check if RSVP exists
+      const { data: existingRsvp, error: checkError } = await supabaseService
         .from('user_event_responses')
-        .update({
-          response_status: responseStatus,
-          response_date: new Date().toISOString(),
-          notes: notes || null
-        })
+        .select('*')
         .eq('user_id', userId)
         .eq('event_id', eventId)
-        .select()
-        .maybeSingle();
+        .single();
 
-      if (error) {
-        console.error('❌ SupabaseApiClient: Update RSVP error:', error);
-      throw new ApiClientError({
-          message: `Failed to update RSVP: ${error.message}`,
-          code: 'RSVP_UPDATE_ERROR',
-        details: { originalError: error }
-      });
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows found
+        
+        throw new ApiClientError({
+          message: `Failed to check existing RSVP: ${checkError.message}`,
+          code: 'RSVP_CHECK_ERROR',
+          details: { originalError: checkError }
+        });
       }
 
-      // If no existing record was found, create a new one
-      if (!rsvpData) {
+      // If RSVP exists, update it
+      if (existingRsvp) {
+        const { data: updatedRsvp, error: updateError } = await supabaseService
+          .from('user_event_responses')
+          .update({
+            response_status: responseStatus,
+            response_date: new Date().toISOString(),
+            notes: notes || null
+          })
+          .eq('user_id', userId)
+          .eq('event_id', eventId)
+          .select()
+          .single();
+
+        if (updateError) {
+          
+          throw new ApiClientError({
+            message: `Failed to update RSVP: ${updateError.message}`,
+            code: 'RSVP_UPDATE_ERROR',
+            details: { originalError: updateError }
+          });
+        }
+
+        const userEventResponse: UserEventResponse = {
+          id: updatedRsvp.id,
+          user_id: updatedRsvp.user_id,
+          event_id: updatedRsvp.event_id,
+          response_status: updatedRsvp.response_status as 'accepted' | 'declined' | 'pending',
+          response_date: new Date(updatedRsvp.response_date),
+          notes: updatedRsvp.notes || '',
+          created_at: new Date(updatedRsvp.created_at),
+          updated_at: new Date(updatedRsvp.updated_at)
+        };
+
+        return this.success(userEventResponse);
+      } else {
+        // If no existing record, create a new one
         return await this.createRSVP({
           user_id: userId,
           event_id: eventId,
@@ -914,21 +912,8 @@ class SupabaseApiClient implements ApiClient {
         });
       }
 
-      const userEventResponse: UserEventResponse = {
-        id: rsvpData.id,
-        user_id: rsvpData.user_id,
-        event_id: rsvpData.event_id,
-        response_status: rsvpData.response_status as 'accepted' | 'declined' | 'pending',
-        response_date: new Date(rsvpData.response_date),
-        notes: rsvpData.notes || '',
-        created_at: new Date(rsvpData.created_at),
-        updated_at: new Date(rsvpData.updated_at)
-      };
-
-      return this.success(userEventResponse);
-
     } catch (error: any) {
-      console.error('💥 SupabaseApiClient: Update RSVP failed:', error);
+      
       if (error instanceof ApiClientError) throw error;
       return this.handleSupabaseError(error, 'update RSVP');
     }
@@ -943,7 +928,7 @@ class SupabaseApiClient implements ApiClient {
         .eq('id', id);
 
       if (error) {
-        console.error('❌ SupabaseApiClient: Delete RSVP error:', error);
+        
         throw new ApiClientError({
           message: `Failed to delete RSVP: ${error.message}`,
           code: 'RSVP_DELETE_ERROR',
@@ -954,7 +939,7 @@ class SupabaseApiClient implements ApiClient {
       return this.success(null);
 
     } catch (error: any) {
-      console.error('💥 SupabaseApiClient: Delete RSVP failed:', error);
+      
       if (error instanceof ApiClientError) throw error;
       return this.handleSupabaseError(error, 'delete RSVP');
     }
@@ -999,7 +984,7 @@ class SupabaseApiClient implements ApiClient {
         // Note: Only get active subscriptions since expired ones are deleted
 
       if (error) {
-        console.error('❌ SupabaseApiClient: Get subscriptions error:', error);
+        
         throw new ApiClientError({
           message: `Failed to get user subscriptions: ${error.message}`,
           code: 'SUBSCRIPTIONS_FETCH_ERROR',
@@ -1025,7 +1010,7 @@ class SupabaseApiClient implements ApiClient {
       return this.success(userSubscriptions);
 
     } catch (error: any) {
-      console.error('💥 SupabaseApiClient: Get user subscriptions failed:', error);
+      
       if (error instanceof ApiClientError) throw error;
       return this.handleSupabaseError(error, 'get user subscriptions');
     }
@@ -1077,7 +1062,7 @@ class SupabaseApiClient implements ApiClient {
         .single();
 
       if (error) {
-        console.error('❌ SupabaseApiClient: Create subscription error:', error);
+        
         throw new ApiClientError({
           message: `Failed to create subscription: ${error.message}`,
           code: 'SUBSCRIPTION_CREATE_ERROR',
@@ -1088,7 +1073,7 @@ class SupabaseApiClient implements ApiClient {
       return this.success(subscription);
 
     } catch (error: any) {
-      console.error('💥 SupabaseApiClient: Create subscription failed:', error);
+      
       if (error instanceof ApiClientError) throw error;
       return this.handleSupabaseError(error, 'create user subscription');
     }
@@ -1103,7 +1088,7 @@ class SupabaseApiClient implements ApiClient {
         .eq('id', subscriptionId);
 
       if (error) {
-        console.error('❌ SupabaseApiClient: Delete subscription error:', error);
+        
         throw new ApiClientError({
           message: `Failed to delete subscription: ${error.message}`,
           code: 'SUBSCRIPTION_DELETE_ERROR',
@@ -1114,7 +1099,7 @@ class SupabaseApiClient implements ApiClient {
       return this.success(null);
 
     } catch (error: any) {
-      console.error('💥 SupabaseApiClient: Delete subscription failed:', error);
+      
       if (error instanceof ApiClientError) throw error;
       return this.handleSupabaseError(error, 'delete subscription');
     }
@@ -1131,7 +1116,7 @@ class SupabaseApiClient implements ApiClient {
         .single();
 
       if (error) {
-        console.error('❌ SupabaseApiClient: Update user error:', error);
+        
         throw new ApiClientError({
           message: `Failed to update user: ${error.message}`,
           code: 'USER_UPDATE_ERROR',
@@ -1158,7 +1143,7 @@ class SupabaseApiClient implements ApiClient {
       return this.success(userWithSubscriptions);
 
     } catch (error: any) {
-      console.error('💥 SupabaseApiClient: Update user failed:', error);
+      
       if (error instanceof ApiClientError) throw error;
       return this.handleSupabaseError(error, 'update user');
     }
@@ -1197,7 +1182,7 @@ class SupabaseApiClient implements ApiClient {
         .order('display_order', { ascending: true });
 
       if (error) {
-        console.error('❌ SupabaseApiClient: Get ordered companies error:', error);
+        
         throw new ApiClientError({
           message: `Failed to get ordered companies: ${error.message}`,
           code: 'ORDERED_COMPANIES_FETCH_ERROR',
@@ -1224,7 +1209,7 @@ class SupabaseApiClient implements ApiClient {
       return this.success(companies);
 
     } catch (error: any) {
-      console.error('💥 SupabaseApiClient: Get ordered companies failed:', error);
+      
       if (error instanceof ApiClientError) throw error;
       return this.handleSupabaseError(error, 'get ordered companies');
     }

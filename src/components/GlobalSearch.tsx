@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Calendar, Building2, Users, Bell } from 'lucide-react';
+import { Search, Calendar, Building2, Bell } from 'lucide-react';
+import { apiClient } from '../utils/apiClient';
+import { CalendarEvent } from '../types/database';
 
 interface SearchResult {
   id: string;
@@ -21,37 +23,39 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onResultClick }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Mock search results - in real app, this would be an API call
-  const mockResults: SearchResult[] = [
-    {
-      id: '1',
-      type: 'event',
-      title: 'Q4 Earnings Call',
-      subtitle: 'Apple Inc. - Dec 15, 2024',
-      icon: <Calendar size={16} />
-    },
-    {
-      id: '2',
-      type: 'company',
-      title: 'Apple Inc.',
-      subtitle: 'Technology - AAPL',
-      icon: <Building2 size={16} />
-    },
-    {
-      id: '3',
-      type: 'subscription',
-      title: 'Technology Sector',
-      subtitle: '12 companies subscribed',
-      icon: <Bell size={16} />
-    },
-    {
-      id: '4',
-      type: 'user',
-      title: 'John Smith',
-      subtitle: 'john.smith@company.com',
-      icon: <Users size={16} />
-    }
-  ];
+  // Real search data from API
+  const [searchData, setSearchData] = useState<{
+    events: CalendarEvent[];
+    companies: any[];
+    subsectors: string[];
+  }>({
+    events: [],
+    companies: [],
+    subsectors: []
+  });
+
+  // Load search data on component mount
+  useEffect(() => {
+    const loadSearchData = async () => {
+      try {
+        const [eventsResponse, companiesResponse, subsectorsResponse] = await Promise.all([
+          apiClient.getEvents(),
+          apiClient.getAllCompanies(),
+          apiClient.getAllSubsectors()
+        ]);
+
+        setSearchData({
+          events: eventsResponse.success ? eventsResponse.data.events : [],
+          companies: companiesResponse.success ? companiesResponse.data : [],
+          subsectors: subsectorsResponse.success ? subsectorsResponse.data : []
+        });
+      } catch (error) {
+        // Handle error silently for search
+      }
+    };
+
+    loadSearchData();
+  }, []);
 
   const handleSearch = async (searchQuery: string) => {
     if (searchQuery.length < 2) {
@@ -61,21 +65,86 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onResultClick }) => {
 
     setIsLoading(true);
     
-    // Simulate API delay
-    setTimeout(() => {
-      const filteredResults = mockResults.filter(result =>
-        result.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        result.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setResults(filteredResults);
+    try {
+      const query = searchQuery.toLowerCase();
+      const searchResults: SearchResult[] = [];
+
+      // Search events
+      searchData.events.forEach(event => {
+        if (
+          event.title.toLowerCase().includes(query) ||
+          (event.description && event.description.toLowerCase().includes(query)) ||
+          event.companies.some(company => 
+            company.company_name.toLowerCase().includes(query) ||
+            company.ticker_symbol.toLowerCase().includes(query)
+          )
+        ) {
+          searchResults.push({
+            id: event.id,
+            type: 'event',
+            title: event.title,
+            subtitle: `${event.companies[0]?.company_name || 'Unknown'} - ${new Date(event.start_date).toLocaleDateString()}`,
+            icon: <Calendar size={16} />
+          });
+        }
+      });
+
+      // Search companies
+      searchData.companies.forEach(company => {
+        if (
+          company.company_name.toLowerCase().includes(query) ||
+          company.ticker_symbol.toLowerCase().includes(query) ||
+          company.gics_subsector.toLowerCase().includes(query)
+        ) {
+          searchResults.push({
+            id: company.id,
+            type: 'company',
+            title: company.company_name,
+            subtitle: `${company.gics_subsector} - ${company.ticker_symbol}`,
+            icon: <Building2 size={16} />
+          });
+        }
+      });
+
+      // Search subsectors
+      searchData.subsectors.forEach(subsector => {
+        if (subsector.toLowerCase().includes(query)) {
+          const companyCount = searchData.companies.filter(c => c.gics_subsector === subsector).length;
+          searchResults.push({
+            id: `subsector-${subsector}`,
+            type: 'subscription',
+            title: subsector,
+            subtitle: `${companyCount} companies`,
+            icon: <Bell size={16} />
+          });
+        }
+      });
+
+      // Limit results to top 10
+      setResults(searchResults.slice(0, 10));
+    } catch (error) {
+      setResults([]);
+    } finally {
       setIsLoading(false);
-    }, 300);
+    }
   };
+
+  // Debounced search
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (query) {
+        handleSearch(query);
+      } else {
+        setResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [query, handleSearch]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setQuery(value);
-    handleSearch(value);
   };
 
   const handleResultClick = (result: SearchResult) => {
@@ -132,6 +201,24 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onResultClick }) => {
           className="search-input"
         />
         <div className="search-shortcut">Ctrl+K</div>
+        {query && (
+          <button
+            onClick={() => {
+              setQuery('');
+              setResults([]);
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--muted-text)',
+              cursor: 'pointer',
+              padding: '4px',
+              marginLeft: '8px'
+            }}
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {isOpen && (

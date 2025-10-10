@@ -7,18 +7,20 @@
  * SAFETY: Uses API data with mock fallbacks, error boundaries
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, GripVertical, RefreshCw } from 'lucide-react';
 import { format, startOfWeek, addWeeks, subWeeks, getWeek, getYear, addDays } from 'date-fns';
 import {
-  CalendarEventData,
   CompanyRow
 } from '../../types/calendar';
 import { CalendarEvent } from '../../types/database';
 import { useCalendarData } from '../../hooks/useCalendarData';
+import { supabase } from '../../lib/supabase';
+import { apiClient } from '../../utils/apiClient';
 import EventCell from './EventCell';
 import EventDetailsPanel from './EventDetailsPanel';
-import MiniCalendar from './MiniCalendar';
+import CompanyOrderPanel from './CompanyOrderPanel';
+import CompanyCalendarView from './CompanyCalendarView';
 
 // =====================================================================================
 // CALENDAR LAYOUT COMPONENT
@@ -26,37 +28,38 @@ import MiniCalendar from './MiniCalendar';
 
 interface CalendarLayoutProps {
   className?: string;
-  useMockData?: boolean;
 }
 
 const CalendarLayout: React.FC<CalendarLayoutProps> = ({ 
-  className = '', 
-  useMockData = false
+  className = ''
 }) => {
-  // API data hook with fallbacks
+  // API data hook
   const {
     companies,
     events,
     loading,
     error,
-    isUsingMockData,
-    updateRSVP
+    updateRSVP,
+    updateCompanyOrder,
+    refreshData
   } = useCalendarData({ 
-    useMockData, 
     enableRealtime: true
   });
 
   // Local state for UI interactions
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isEventDetailsVisible, setIsEventDetailsVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showMyEventsOnly, setShowMyEventsOnly] = useState(false);
   const [currentWeek, setCurrentWeek] = useState(new Date());
-  const [showMiniCalendar, setShowMiniCalendar] = useState(false);
   
-  // Ref for week box positioning
-  const weekBoxRef = useRef<HTMLDivElement>(null);
+  // Company calendar view state
+  const [viewMode, setViewMode] = useState<'main' | 'company'>('main');
+  const [selectedCompany, setSelectedCompany] = useState<CompanyRow | null>(null);
+  
+  // Company reordering state
+  const [companyOrder, setCompanyOrder] = useState<string[]>([]);
+  const [isCompanyOrderPanelVisible, setIsCompanyOrderPanelVisible] = useState(false);
 
   // Mobile detection and viewport height recalculation
   useEffect(() => {
@@ -74,6 +77,55 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
   useEffect(() => {
     // This will trigger a re-render when companies change
   }, [companies.length]);
+
+  // Load company order from database and localStorage on mount
+  useEffect(() => {
+    const loadCompanyOrder = async () => {
+      try {
+        // First try to load from database
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // Load from database
+          const response = await apiClient.getUserOrderedCompanies(user.id);
+          if (response.success && response.data) {
+            const dbOrder = response.data.map(company => company.id);
+            setCompanyOrder(dbOrder);
+            // Also save to localStorage for offline access
+            localStorage.setItem('agora-company-order', JSON.stringify(dbOrder));
+            return;
+          }
+        }
+      } catch (error) {
+        }
+
+      // Fallback to localStorage
+      const savedOrder = localStorage.getItem('agora-company-order');
+      if (savedOrder) {
+        try {
+          setCompanyOrder(JSON.parse(savedOrder));
+        } catch (error) {
+          }
+      }
+    };
+
+    loadCompanyOrder();
+  }, []);
+
+  // Computed ordered companies based on saved order
+  const orderedCompanies = useMemo(() => {
+    if (companyOrder.length === 0) {
+      return companies;
+    }
+    
+    // Create a map for quick lookup
+    const orderMap = new Map(companyOrder.map((id, index) => [id, index]));
+    
+    return [...companies].sort((a, b) => {
+      const aOrder = orderMap.get(a.id) ?? 999;
+      const bOrder = orderMap.get(b.id) ?? 999;
+      return aOrder - bOrder;
+    });
+  }, [companies, companyOrder]);
 
   // Generate day columns for the current week
   const generateDayColumns = () => {
@@ -104,10 +156,18 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
     setShowMyEventsOnly(filter === 'my_events');
   };
 
-  // Handle search input
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
+  // Handle company ticker click
+  const handleCompanyTickerClick = (company: CompanyRow) => {
+    setSelectedCompany(company);
+    setViewMode('company');
   };
+
+  // Handle back to main calendar
+  const handleBackToMainCalendar = () => {
+    setViewMode('main');
+    setSelectedCompany(null);
+  };
+
 
   // Week navigation handlers
   const handlePreviousWeek = () => {
@@ -122,13 +182,13 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
     const weekNumber = getWeek(currentWeek, { weekStartsOn: 1 });
     const year = getYear(currentWeek);
     const month = format(currentWeek, 'MMM');
-    const yearShort = format(currentWeek, 'yyyy'); // Full year instead of day
+    const day = format(currentWeek, 'd');
     
     return {
       weekNumber,
       year,
       month,
-      yearShort
+      day
     };
   };
 
@@ -164,8 +224,34 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
         } : null);
       }
     } catch (error) {
-      console.error('Failed to update RSVP:', error);
     }
+  };
+
+  // Company reordering handlers
+  const handleCompanyOrderChange = async (newOrder: CompanyRow[]) => {
+    const newOrderIds = newOrder.map(company => company.id);
+    setCompanyOrder(newOrderIds);
+    
+    // Save to localStorage
+    localStorage.setItem('agora-company-order', JSON.stringify(newOrderIds));
+    
+    // Save to database
+    try {
+      // Prepare company order data
+      const companyOrders = newOrder.map((company, index) => ({
+        company_id: company.id,
+        display_order: index
+      }));
+
+      // Save to database via API
+      await updateCompanyOrder(companyOrders);
+    } catch (error) {
+      // Don't throw error - localStorage backup is still working
+    }
+  };
+
+  const handleOpenCompanyOrderPanel = () => {
+    setIsCompanyOrderPanelVisible(true);
   };
 
   // Get events for a specific company and date
@@ -173,57 +259,49 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
     return events.filter(event => {
       const eventDate = new Date(event.start_date);
       const isSameDate = eventDate.toDateString() === date.toDateString();
-      const isForCompany = event.companies.some((company) => company.id === companyId);
-      
-      // Apply search filter
-      const matchesSearch = !searchQuery || 
-        event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      const isForCompany = event.companies.some((company: any) => company.id === companyId);
       
       // Apply event filter (my events only)
       const matchesEventFilter = !showMyEventsOnly || 
-        event.rsvpStatus === 'accepted';
+        event.user_response?.response_status === 'accepted';
       
-      return isSameDate && isForCompany && matchesSearch && matchesEventFilter;
+      return isSameDate && isForCompany && matchesEventFilter;
     });
   };
+
 
   // Calculate responsive dimensions
   const getResponsiveDimensions = () => {
     if (isMobile) {
       return {
         headerHeight: '50px', // Reduced from 60px
-        rowHeight: '70px', // Reduced from 80px
+        rowHeight: '75px', // Slightly increased for better space utilization
         controlSize: '1.0' // Normal size
       };
     }
     return {
       headerHeight: '60px', // Reduced from 80px
-      rowHeight: '85px', // Reduced from 100px
+      rowHeight: '90px', // Slightly increased for better space utilization
       controlSize: '1.0' // Normal size
     };
   };
 
   const dimensions = getResponsiveDimensions();
 
-  // Calculate viewport height minus header for full coverage
+  // Simplified viewport height using CSS calc() for reliability
   const getViewportHeight = () => {
-    const headerHeight = parseFloat(dimensions.headerHeight);
-    const availableHeight = window.innerHeight - headerHeight - 20; // Reduced from 40px to 20px
-    return `${Math.max(availableHeight, 400)}px`; // Increased minimum from 300px to 400px
+    return 'calc(100vh - 100px)'; // Reduced from 120px to 100px for tighter fit
   };
 
-  // Calculate how many rows we need to fill the viewport
+  // Simplified row calculation - just ensure minimum 6 rows for consistency
   const getRequiredRows = () => {
-    const viewportHeight = parseFloat(getViewportHeight());
-    const rowHeight = parseFloat(dimensions.rowHeight);
-    return Math.ceil(viewportHeight / rowHeight);
+    return Math.max(6, orderedCompanies.length); // Always show at least 6 rows
   };
 
-  // Generate empty rows to fill the viewport
+  // Generate empty rows to maintain consistent layout
   const generateEmptyRows = () => {
     const requiredRows = getRequiredRows();
-    const actualCompanies = companies.length;
+    const actualCompanies = orderedCompanies.length;
     const emptyRowsNeeded = Math.max(0, requiredRows - actualCompanies);
     
     return Array.from({ length: emptyRowsNeeded }, (_, index) => ({
@@ -233,12 +311,24 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
   };
 
   const emptyRows = generateEmptyRows();
-  const allRows = [...companies, ...emptyRows];
+  const allRows = [...orderedCompanies, ...emptyRows];
 
   // Type guard to check if row is empty
   const isEmptyRow = (row: any): row is { id: string; isEmpty: boolean } => {
     return row && typeof row === 'object' && 'isEmpty' in row && row.isEmpty === true;
   };
+
+  // Render company calendar view if selected
+  if (viewMode === 'company' && selectedCompany) {
+    return (
+      <CompanyCalendarView
+        company={selectedCompany}
+        events={events}
+        onBack={handleBackToMainCalendar}
+        onEventClick={handleEventClick}
+      />
+    );
+  }
 
   return (
     <div className={`calendar-layout ${className}`} style={{ 
@@ -252,7 +342,9 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
       overflow: 'hidden'
     }}>
       {/* Full Viewport Calendar Grid with Sticky Headers */}
-      <div style={{
+      <div 
+        className="calendar-container"
+        style={{
         height: getViewportHeight(),
         display: 'flex',
         flexDirection: 'column',
@@ -260,7 +352,8 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
         backgroundColor: 'var(--primary-bg)',
         border: '1px solid var(--border-color)',
         borderRadius: '8px',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        minHeight: '300px' // Reduced minimum height to eliminate excess space
       }}>
         {/* Sticky Header - Week Navigation + Day Headers */}
         <div style={{
@@ -310,37 +403,22 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
                 <ChevronLeft size={16} />
               </button>
               
-              <div 
-                ref={weekBoxRef}
-                onClick={() => setShowMiniCalendar(!showMiniCalendar)}
-                style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center',
-                  padding: `${0.5 * parseFloat(dimensions.controlSize)}rem ${1 * parseFloat(dimensions.controlSize)}rem`,
-                  backgroundColor: 'var(--accent-bg)',
-                  color: 'var(--primary-bg)',
-                  borderRadius: '4px',
-                  minWidth: `${80 * parseFloat(dimensions.controlSize)}px`,
-                  transform: `scale(${dimensions.controlSize})`,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  boxShadow: showMiniCalendar ? 'inset 0 2px 4px rgba(0, 0, 0, 0.2)' : '0 2px 4px rgba(0, 0, 0, 0.1)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = `scale(${parseFloat(dimensions.controlSize) * 1.05})`;
-                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(184, 134, 11, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = `scale(${dimensions.controlSize})`;
-                  e.currentTarget.style.boxShadow = showMiniCalendar ? 'inset 0 2px 4px rgba(0, 0, 0, 0.2)' : '0 2px 4px rgba(0, 0, 0, 0.1)';
-                }}
-              >
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center',
+                padding: `${0.5 * parseFloat(dimensions.controlSize)}rem ${1 * parseFloat(dimensions.controlSize)}rem`,
+                backgroundColor: 'var(--accent-bg)',
+                color: 'var(--primary-bg)',
+                borderRadius: '4px',
+                minWidth: `${80 * parseFloat(dimensions.controlSize)}px`,
+                transform: `scale(${dimensions.controlSize})`
+              }}>
                 <div style={{ fontSize: `${0.875 * parseFloat(dimensions.controlSize)}rem`, fontWeight: '600' }}>
                   Week {getCurrentWeekInfo().weekNumber}
                 </div>
                 <div style={{ fontSize: `${0.75 * parseFloat(dimensions.controlSize)}rem`, fontStyle: 'italic', opacity: 0.8 }}>
-                  {getCurrentWeekInfo().month} {getCurrentWeekInfo().yearShort}
+                  {getCurrentWeekInfo().month} {getCurrentWeekInfo().day}
                 </div>
               </div>
               
@@ -370,7 +448,7 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
               </button>
             </div>
 
-            {/* Event Filter Toggle and Search - 30% smaller */}
+            {/* Event Filter Toggle and Reorder Button */}
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
@@ -421,44 +499,74 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
                 </button>
               </div>
 
-              {/* Search Bar */}
-              <div style={{ position: 'relative' }}>
-                <Search 
-                  size={18 * parseFloat(dimensions.controlSize)} 
-                  style={{ 
-                    position: 'absolute', 
-                    left: `${0.75 * parseFloat(dimensions.controlSize)}rem`, 
-                    top: '50%', 
-                    transform: 'translateY(-50%)', 
-                    color: 'var(--muted-text)' 
-                  }} 
-                />
-                <input
-                  type="text"
-                  placeholder="Search events..."
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  style={{
-                    paddingLeft: `${2.5 * parseFloat(dimensions.controlSize)}rem`,
-                    paddingRight: `${1 * parseFloat(dimensions.controlSize)}rem`,
-                    paddingTop: `${0.5 * parseFloat(dimensions.controlSize)}rem`,
-                    paddingBottom: `${0.5 * parseFloat(dimensions.controlSize)}rem`,
-                    backgroundColor: 'var(--tertiary-bg)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: '6px',
-                    color: 'var(--primary-text)',
-                    fontSize: `${0.875 * parseFloat(dimensions.controlSize)}rem`,
-                    width: `${200 * parseFloat(dimensions.controlSize)}px`,
-                    outline: 'none'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = 'var(--accent-bg)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'var(--border-color)';
-                  }}
-                />
-              </div>
+
+              {/* Reorder Companies Button */}
+              <button
+                onClick={handleOpenCompanyOrderPanel}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: `${0.5 * parseFloat(dimensions.controlSize)}rem ${1 * parseFloat(dimensions.controlSize)}rem`,
+                  backgroundColor: 'var(--tertiary-bg)',
+                  color: 'var(--primary-text)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: `${0.875 * parseFloat(dimensions.controlSize)}rem`,
+                  fontWeight: '500',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)';
+                  (e.target as HTMLButtonElement).style.borderColor = 'var(--accent-bg)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.target as HTMLButtonElement).style.backgroundColor = 'var(--tertiary-bg)';
+                  (e.target as HTMLButtonElement).style.borderColor = 'var(--border-color)';
+                }}
+                title="Reorder companies"
+              >
+                <GripVertical size={16} />
+                Reorder
+              </button>
+
+              {/* Refresh Data Button */}
+              <button
+                onClick={refreshData}
+                disabled={loading}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: `${0.5 * parseFloat(dimensions.controlSize)}rem ${1 * parseFloat(dimensions.controlSize)}rem`,
+                  backgroundColor: loading ? 'var(--muted-text)' : 'var(--tertiary-bg)',
+                  color: 'var(--primary-text)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '6px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  fontSize: `${0.875 * parseFloat(dimensions.controlSize)}rem`,
+                  fontWeight: '500',
+                  transition: 'all 0.2s ease',
+                  opacity: loading ? 0.6 : 1
+                }}
+                onMouseEnter={(e) => {
+                  if (!loading) {
+                    (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)';
+                    (e.target as HTMLButtonElement).style.borderColor = 'var(--accent-bg)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!loading) {
+                    (e.target as HTMLButtonElement).style.backgroundColor = 'var(--tertiary-bg)';
+                    (e.target as HTMLButtonElement).style.borderColor = 'var(--border-color)';
+                  }
+                }}
+                title="Refresh calendar data"
+              >
+                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                Refresh
+              </button>
             </div>
           </div>
 
@@ -521,17 +629,39 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
         </div>
 
         {/* Scrollable Company Rows - Fill viewport with actual companies + empty rows */}
-        <div style={{
-          flex: 1,
-          overflowY: allRows.length > getRequiredRows() ? 'auto' : 'hidden', // Only scroll when needed
-          scrollBehavior: 'smooth',
-          scrollbarWidth: 'none', // Firefox
-          msOverflowStyle: 'none', // IE/Edge
-        }}>
+        <div 
+          className="calendar-scroll"
+          style={{
+            flex: 1,
+            overflowY: orderedCompanies.length > 0 ? 'auto' : 'hidden', // Always allow scroll when there are companies
+            scrollBehavior: 'smooth',
+            scrollbarWidth: 'none', // Firefox
+            msOverflowStyle: 'none', // IE/Edge
+          }}>
           <style>
             {`
               .calendar-scroll::-webkit-scrollbar {
                 display: none; /* Chrome, Safari, Opera */
+              }
+              
+              /* Fix ticker text background - ensure no grey background */
+              .ticker-text, .company-name-text {
+                background: none !important;
+                background-color: transparent !important;
+              }
+              
+              /* Mobile responsive adjustments */
+              @media (max-width: 768px) {
+                .calendar-container {
+                  height: calc(100vh - 80px) !important; /* Smaller header on mobile */
+                }
+              }
+              
+              /* Very small screens */
+              @media (max-height: 600px) {
+                .calendar-container {
+                  height: calc(100vh - 60px) !important; /* Even smaller header */
+                }
               }
             `}
           </style>
@@ -582,6 +712,10 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
               <React.Fragment key={`company-row-${company.id}`}>
                   {/* Company Ticker Cell */}
                   <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCompanyTickerClick(company);
+                    }}
                     style={{
                       padding: '0.5rem 0.75rem',
                       backgroundColor: '#0a0a0a !important', // Completely dark background, override CSS variables
@@ -606,24 +740,26 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
                     (e.target as HTMLDivElement).style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.01)';
                   }}
                 >
-                  <div style={{
-                    fontSize: '0.85rem',
-                    fontWeight: '700',
-                    color: '#ffffff',
-                    marginBottom: '0.125rem',
-                    letterSpacing: '0.5px',
-                    backgroundColor: 'transparent'
-                  }}>
+                  <div 
+                    className="ticker-text"
+                    style={{
+                      fontSize: '0.85rem',
+                      fontWeight: '700',
+                      color: '#ffffff',
+                      marginBottom: '0.125rem',
+                      letterSpacing: '0.5px'
+                    }}>
                     {company.ticker_symbol}
                   </div>
-                  <div style={{
-                    fontSize: '0.7rem',
-                    fontStyle: 'italic',
-                    color: '#b0b0b0',
-                    lineHeight: '1.2',
-                    fontWeight: '400',
-                    backgroundColor: 'transparent'
-                  }}>
+                  <div 
+                    className="company-name-text"
+                    style={{
+                      fontSize: '0.7rem',
+                      fontStyle: 'italic',
+                      color: '#b0b0b0',
+                      lineHeight: '1.2',
+                      fontWeight: '400'
+                    }}>
                     {company.company_name}
                   </div>
                 </div>
@@ -697,7 +833,7 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
               Loading Calendar...
             </div>
             <div style={{ fontSize: '0.875rem', color: 'var(--muted-text)' }}>
-              {isUsingMockData ? 'Loading mock data' : 'Connecting to API'}
+              Connecting to API...
             </div>
           </div>
         </div>
@@ -718,7 +854,7 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
           maxWidth: '300px'
         }}>
           <div style={{ fontWeight: '600', marginBottom: '0.5rem' }}>
-            {isUsingMockData ? 'Offline Mode' : 'Connection Error'}
+            Connection Error
           </div>
           <div style={{ fontSize: '0.875rem' }}>
             {error}
@@ -732,87 +868,18 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
         event={selectedEvent}
         isVisible={isEventDetailsVisible}
         onClose={handleCloseEventDetails}
+        onDateSelect={handleDateSelect}
         onRSVPUpdate={handleRSVPUpdate}
+        events={events}
       />
 
-      {/* Mini Calendar Popover */}
-      {showMiniCalendar && weekBoxRef.current && (
-        <>
-          {/* Backdrop - click to close */}
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'transparent',
-              zIndex: 999
-            }}
-            onClick={() => setShowMiniCalendar(false)}
-          />
-          
-          {/* Popover */}
-          <div
-            style={{
-              position: 'fixed',
-              top: (() => {
-                const rect = weekBoxRef.current!.getBoundingClientRect();
-                const popoverHeight = 450; // Increased height for bigger calendar
-                const viewportHeight = window.innerHeight;
-                const spaceBelow = viewportHeight - rect.bottom;
-                
-                // If not enough space below, show above
-                if (spaceBelow < popoverHeight + 20 && rect.top > popoverHeight) {
-                  return `${rect.top - popoverHeight - 8}px`;
-                }
-                // Otherwise show below
-                return `${rect.bottom + 8}px`;
-              })(),
-              left: (() => {
-                const rect = weekBoxRef.current!.getBoundingClientRect();
-                const popoverWidth = 420; // Increased width for bigger calendar
-                const viewportWidth = window.innerWidth;
-                
-                // Center on mobile
-                if (isMobile) {
-                  return '50%';
-                }
-                
-                // Desktop: Position relative to week box
-                let leftPos = rect.left - (popoverWidth / 2) + (rect.width / 2);
-                
-                // Keep within viewport
-                if (leftPos < 10) leftPos = 10;
-                if (leftPos + popoverWidth > viewportWidth - 10) {
-                  leftPos = viewportWidth - popoverWidth - 10;
-                }
-                
-                return `${leftPos}px`;
-              })(),
-              transform: isMobile ? 'translateX(-50%)' : 'none',
-              zIndex: 1000,
-              backgroundColor: 'var(--secondary-bg)',
-              border: '2px solid var(--accent-bg)',
-              borderRadius: '8px',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
-              padding: '1.5rem', // Increased padding
-              animation: 'slideDown 0.2s ease-out',
-              minWidth: isMobile ? '90vw' : '420px',
-              maxWidth: isMobile ? '90vw' : '500px'
-            }}
-          >
-            <MiniCalendar
-              selectedDate={currentWeek}
-              events={events}
-              onDateSelect={(date) => {
-                setCurrentWeek(startOfWeek(date, { weekStartsOn: 1 }));
-                setShowMiniCalendar(false);
-              }}
-            />
-          </div>
-        </>
-      )}
+      {/* Company Order Panel */}
+      <CompanyOrderPanel
+        companies={orderedCompanies}
+        onOrderChange={handleCompanyOrderChange}
+        isVisible={isCompanyOrderPanelVisible}
+        onClose={() => setIsCompanyOrderPanelVisible(false)}
+      />
     </div>
   );
 };

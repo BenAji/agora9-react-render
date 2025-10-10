@@ -6,8 +6,8 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://vermzahfnxjvowompxsa.supabase.co';
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlcm16YWhmbnhqdm93b21weHNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNjE5ODYsImV4cCI6MjA3MjkzNzk4Nn0.LnSFbklmYawaFB31zcjUfVdkXqSB5U7S9YSRcIZkARc';
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'http://127.0.0.1:54321';
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
@@ -19,13 +19,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
 const getGlobalSupabase = () => {
   if (typeof window !== 'undefined') {
     if (!(window as any).__agoraSupabase) {
-      console.log('🔧 Creating new Supabase client instance');
       (window as any).__agoraSupabase = createClient(supabaseUrl, supabaseAnonKey, {
         auth: {
           autoRefreshToken: true,
           persistSession: true,
           detectSessionInUrl: true,
-          storageKey: 'agora-auth' // Unique storage key
+          storageKey: 'agora-auth-user', // Unique storage key for user client
+          flowType: 'pkce' // Use PKCE flow to prevent multiple instances
         },
         realtime: {
           params: {
@@ -39,8 +39,7 @@ const getGlobalSupabase = () => {
         }
       });
     } else {
-      console.log('♻️ Reusing existing Supabase client instance');
-    }
+      }
     return (window as any).__agoraSupabase;
   }
   // Fallback for SSR
@@ -49,7 +48,8 @@ const getGlobalSupabase = () => {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      storageKey: 'agora-auth'
+      storageKey: 'agora-auth-service',
+      flowType: 'pkce' // Use PKCE flow to prevent multiple instances
     },
     realtime: {
       params: {
@@ -65,17 +65,17 @@ const getGlobalSupabase = () => {
 };
 
 // Service role client for server-side operations (bypasses RLS)
-const supabaseServiceKey = process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlcm16YWhmbnhqdm93b21weHNhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzM2MTk4NiwiZXhwIjoyMDcyOTM3OTg2fQ.QnyeDeqMI5wnGg18y11NYP6noLgdNyTiXB4VnhcFYLs';
+const supabaseServiceKey = process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
 
 const getGlobalSupabaseService = () => {
   if (typeof window !== 'undefined') {
     if (!(window as any).__agoraSupabaseService) {
-      console.log('🔧 Creating new Supabase service client instance');
       (window as any).__agoraSupabaseService = createClient(supabaseUrl, supabaseServiceKey, {
         auth: {
           autoRefreshToken: false,
           persistSession: false,
-          detectSessionInUrl: false
+          detectSessionInUrl: false,
+          storageKey: 'agora-auth-service-role' // Different storage key for service client
         },
         realtime: {
           params: {
@@ -89,8 +89,7 @@ const getGlobalSupabaseService = () => {
         }
       });
     } else {
-      console.log('♻️ Reusing existing Supabase service client instance');
-    }
+      }
     return (window as any).__agoraSupabaseService;
   }
   // Fallback for SSR
@@ -98,7 +97,8 @@ const getGlobalSupabaseService = () => {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
-      detectSessionInUrl: false
+      detectSessionInUrl: false,
+      storageKey: 'agora-auth-service-role-fallback' // Different storage key for fallback service client
     },
     realtime: {
       params: {
@@ -122,7 +122,6 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   // Clear instances on page unload to prevent memory leaks
   window.addEventListener('beforeunload', () => {
     if ((window as any).__agoraSupabase) {
-      console.log('🧹 Cleaning up Supabase client instances');
       delete (window as any).__agoraSupabase;
       delete (window as any).__agoraSupabaseService;
     }

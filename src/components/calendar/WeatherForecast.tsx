@@ -2,7 +2,7 @@
  * AGORA Weather Forecast Component
  * 
  * PHASE 3, STEP 3.3: Weather Forecast Integration
- * Dependencies: calendar.ts types, mockCalendarData.ts
+ * Dependencies: calendar.ts types
  * Purpose: 3-day weather forecast display
  * 
  * SAFETY: Uses mock data only, no API calls, no external dependencies
@@ -10,7 +10,7 @@
 
 import React from 'react';
 import { Cloud, Sun, CloudRain, CloudSnow, MapPin } from 'lucide-react';
-import { WeatherForecast as WeatherForecastType } from '../../types/calendar';
+// import { WeatherForecast as WeatherForecastType } from '../../types/calendar';
 import { format, subDays } from 'date-fns';
 
 interface WeatherForecastProps {

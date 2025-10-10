@@ -3,7 +3,7 @@
  * App-wide header with navigation, search, notifications, and user menu
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Calendar, LogOut, User, Settings, Bell, Menu, X } from 'lucide-react';
 import GlobalSearch from './GlobalSearch';
@@ -25,27 +25,43 @@ const GlobalHeader: React.FC<GlobalHeaderProps> = ({
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const location = useLocation();
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isActive = (path: string) => location.pathname === path;
 
+  // Click outside detection for profile dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowProfileDropdown(false);
+      }
+    };
+
+    if (showProfileDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showProfileDropdown]);
+
   const handleSearchResult = (result: any) => {
-    console.log('Search result clicked:', result);
     // Handle search result navigation
   };
 
   const handleNotificationClick = (notification: any) => {
-    console.log('Notification clicked:', notification);
     // Handle notification navigation
   };
 
   const handleProfileClick = () => {
     onProfileClick?.();
-    setShowProfileDropdown(false);
+    // Don't close dropdown - let user click outside to close
   };
 
   const handleManageSubscriptionsClick = () => {
     onManageSubscriptionsClick?.();
-    setShowProfileDropdown(false);
+    // Don't close dropdown - let user click outside to close
   };
 
   return (
@@ -65,14 +81,12 @@ const GlobalHeader: React.FC<GlobalHeaderProps> = ({
           className={`nav-link ${isActive('/calendar') ? 'active' : ''}`}
         >
           Calendar
-          <span className="coming-soon-badge">Coming Soon</span>
         </Link>
         <Link 
           to="/events" 
           className={`nav-link ${isActive('/events') ? 'active' : ''}`}
         >
           Events
-          <span className="coming-soon-badge">Coming Soon</span>
         </Link>
         <Link 
           to="/subscriptions" 
@@ -95,7 +109,7 @@ const GlobalHeader: React.FC<GlobalHeaderProps> = ({
         </div>
 
         {/* User Menu */}
-        <div className="user-menu">
+        <div className="user-menu" ref={dropdownRef}>
           <button 
             className="user-button"
             onClick={() => setShowProfileDropdown(!showProfileDropdown)}
@@ -164,7 +178,6 @@ const GlobalHeader: React.FC<GlobalHeaderProps> = ({
                 onClick={() => setShowMobileMenu(false)}
               >
                 Calendar
-                <span className="coming-soon-badge">Coming Soon</span>
               </Link>
               <Link 
                 to="/events" 
@@ -172,7 +185,6 @@ const GlobalHeader: React.FC<GlobalHeaderProps> = ({
                 onClick={() => setShowMobileMenu(false)}
               >
                 Events
-                <span className="coming-soon-badge">Coming Soon</span>
               </Link>
               <Link 
                 to="/subscriptions" 

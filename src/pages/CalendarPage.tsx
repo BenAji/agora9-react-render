@@ -19,7 +19,6 @@ interface CalendarPageProps {
 
 const CalendarPage: React.FC<CalendarPageProps> = ({ currentUser, onLogout }) => {
   const handleCalendarError = (error: Error, errorInfo: React.ErrorInfo) => {
-    console.error('📅 Calendar page error:', error, errorInfo);
     // In production, you might want to send this to an error tracking service
   };
 

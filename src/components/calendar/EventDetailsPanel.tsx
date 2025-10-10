@@ -2,7 +2,7 @@
  * AGORA Event Details Panel Component - Office Add-in Optimized
  * 
  * PHASE 4: Enhanced UI with Office Add-in Requirements
- * Dependencies: calendar.ts types, mockCalendarData.ts
+ * Dependencies: calendar.ts types
  * Purpose: Right sidebar for event details with compact, touch-friendly design
  * 
  * SAFETY: Uses mock data only, no API calls
@@ -21,24 +21,59 @@ import {
   Shield,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Share2,
+  Plus
 } from 'lucide-react';
+import MiniCalendar from './MiniCalendar';
 import WeatherForecast from './WeatherForecast';
 
 interface EventDetailsPanelProps {
   event: CalendarEvent | null;
   isVisible: boolean;
   onClose: () => void;
+  onDateSelect?: (date: Date) => void;
   onRSVPUpdate?: (eventId: string, status: 'accepted' | 'declined' | 'pending') => Promise<void>;
   className?: string;
+  events?: CalendarEvent[];
 }
+
+// Helper functions for host information
+const getHostTypeIcon = (hostType: string) => {
+  switch (hostType) {
+    case 'single_corp': return '🏢';
+    case 'multi_corp': return '🏢🏢';
+    case 'non_company': return '🏛️';
+    default: return '📅';
+  }
+};
+
+const getHostTypeColor = (hostType: string) => {
+  switch (hostType) {
+    case 'single_corp': return '#FFD700';
+    case 'multi_corp': return '#FFA500';
+    case 'non_company': return '#87CEEB';
+    default: return '#6c757d';
+  }
+};
+
+const getHostTypeLabel = (hostType: string) => {
+  switch (hostType) {
+    case 'single_corp': return 'Corporate Event';
+    case 'multi_corp': return 'Multi-Corporate Event';
+    case 'non_company': return 'Regulatory/Association Event';
+    default: return 'Event';
+  }
+};
 
 const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({ 
   event, 
   isVisible, 
   onClose,
+  onDateSelect,
   onRSVPUpdate,
-  className 
+  className,
+  events = []
 }) => {
   if (!event || !isVisible) return null;
 
@@ -97,24 +132,6 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
       case 'virtual': return <Globe size={16} />;
       case 'hybrid': return <Building2 size={16} />;
       default: return <MapPin size={16} />;
-    }
-  };
-
-  const getHostTypeIcon = (hostType: string) => {
-    switch (hostType) {
-      case 'single_corp': return '🏢';
-      case 'multi_corp': return '🏢🏢';
-      case 'non_company': return '🏛️';
-      default: return '🏢';
-    }
-  };
-
-  const getHostTypeLabel = (hostType: string) => {
-    switch (hostType) {
-      case 'single_corp': return 'Corporate';
-      case 'multi_corp': return 'Multi-Corporate';
-      case 'non_company': return 'Regulatory';
-      default: return 'Corporate';
     }
   };
 
@@ -199,6 +216,137 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           {event.title}
         </h2>
 
+        {/* Host Information Section */}
+        {event.hosts && event.hosts.length > 0 && (
+          <div style={{
+            marginBottom: '1rem',
+            padding: '0.75rem',
+            background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
+            border: '1px solid #333',
+            borderRadius: '8px'
+          }}>
+            <h4 style={{
+              color: '#FFD700',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              marginBottom: '0.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              {getHostTypeIcon(event.primary_host?.host_type || event.hosts[0]?.host_type)} Hosting Information
+            </h4>
+            
+            {event.hosts.map((host, index) => (
+              <div key={host.id} style={{
+                background: '#0a0a0a',
+                border: '1px solid #333',
+                borderRadius: '6px',
+                padding: '0.5rem',
+                marginBottom: index < event.hosts.length - 1 ? '0.5rem' : '0'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  marginBottom: '0.25rem'
+                }}>
+                  <span style={{
+                    background: getHostTypeColor(host.host_type),
+                    color: '#000000',
+                    padding: '0.125rem 0.5rem',
+                    borderRadius: '12px',
+                    fontSize: '0.75rem',
+                    fontWeight: '600'
+                  }}>
+                    {host.primary_company_id === host.host_id ? 'Primary Host' : 'Co-Host'}
+                  </span>
+                  <span style={{
+                    fontWeight: '600',
+                    fontSize: '0.875rem',
+                    color: '#ffffff'
+                  }}>
+                    {host.host_name}
+                  </span>
+                  {host.host_ticker && (
+                    <span style={{
+                      background: '#333',
+                      color: '#FFD700',
+                      padding: '0.125rem 0.5rem',
+                      borderRadius: '8px',
+                      fontSize: '0.75rem',
+                      fontWeight: '500'
+                    }}>
+                      {host.host_ticker}
+                    </span>
+                  )}
+                </div>
+                <div style={{
+                  color: '#b0b0b0',
+                  fontSize: '0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <span>{getHostTypeLabel(host.host_type)}</span>
+                  {host.host_sector && (
+                    <>
+                      <span>•</span>
+                      <span>{host.host_sector}</span>
+                      {host.host_subsector && (
+                        <>
+                          <span>•</span>
+                          <span>{host.host_subsector}</span>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+                
+                {/* Multi-corporate hosts display */}
+                {host.host_type === 'multi_corp' && host.companies_jsonb && (
+                  <div style={{
+                    marginTop: '0.5rem',
+                    padding: '0.5rem',
+                    background: '#111',
+                    borderRadius: '4px',
+                    border: '1px solid #444'
+                  }}>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: '#b0b0b0',
+                      marginBottom: '0.25rem'
+                    }}>
+                      Co-hosting with:
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '0.25rem'
+                    }}>
+                      {host.companies_jsonb.map((comp, compIndex) => (
+                        <span
+                          key={compIndex}
+                          style={{
+                            background: comp.is_primary ? '#FFD700' : '#333',
+                            color: comp.is_primary ? '#000000' : '#ffffff',
+                            padding: '0.125rem 0.5rem',
+                            borderRadius: '8px',
+                            fontSize: '0.75rem',
+                            fontWeight: '500'
+                          }}
+                        >
+                          {comp.ticker} {comp.is_primary && '(Primary)'}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Event Description */}
         <p style={{
           fontSize: '0.875rem',
@@ -209,85 +357,25 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           {event.description}
         </p>
 
-        {/* Host Information */}
+        {/* Company Info */}
         <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
           padding: '0.75rem',
           backgroundColor: 'var(--tertiary-bg)',
           borderRadius: '8px',
           border: '1px solid var(--border-color)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <Building2 size={14} color="var(--accent-color)" />
-            <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
-              Host Information
-            </span>
-          </div>
-          
-          {/* Host Type Badge */}
-          <div style={{
-            display: 'inline-block',
-            padding: '0.25rem 0.5rem',
-            backgroundColor: 'var(--accent-bg)',
-            color: 'var(--primary-text)',
-            borderRadius: '6px',
-            fontSize: '0.7rem',
-            fontWeight: '600',
-            marginBottom: '0.5rem'
-          }}>
-            {getHostTypeIcon(event.primary_host?.host_type || event.hosts?.[0]?.host_type || 'single_corp')} {getHostTypeLabel(event.primary_host?.host_type || event.hosts?.[0]?.host_type || 'single_corp')}
-          </div>
-          
-          {/* Host Details */}
-          {event.primary_host ? (
-            <>
-              <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)', marginBottom: '0.25rem' }}>
-                [{event.primary_host.host_ticker || 'N/A'}] {event.primary_host.host_name || 'Unknown Host'}
-              </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
-                {event.primary_host.host_subsector || event.primary_host.host_sector || 'Industry Information'}
-              </div>
-              
-              {/* Multi-corporate event details */}
-              {event.primary_host.host_type === 'multi_corp' && event.primary_host.companies_jsonb && (
-                <div style={{ marginTop: '0.5rem', fontSize: '0.7rem', color: 'var(--muted-text)' }}>
-                  <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>Co-hosts:</div>
-                  {event.primary_host.companies_jsonb
-                    .filter((company: any) => !company.is_primary)
-                    .map((company: any, index: number) => (
-                      <div key={index} style={{ marginLeft: '0.5rem' }}>
-                        [{company.ticker}] {company.name}
-                      </div>
-                    ))
-                  }
-                </div>
-              )}
-            </>
-          ) : event.companies && event.companies.length > 0 ? (
-            <>
-              <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)', marginBottom: '0.25rem' }}>
-                [{event.companies[0]?.ticker_symbol}] {event.companies[0]?.company_name}
-              </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
-                {event.companies[0]?.gics_subsector || 'Industry Information'}
-              </div>
-              
-              {/* Show multiple companies if present */}
-              {event.companies.length > 1 && (
-                <div style={{ marginTop: '0.5rem', fontSize: '0.7rem', color: 'var(--muted-text)' }}>
-                  <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>Participating companies:</div>
-                  {event.companies.slice(1).map((company: any, index: number) => (
-                    <div key={index} style={{ marginLeft: '0.5rem' }}>
-                      [{company.ticker_symbol}] {company.company_name}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            <div style={{ fontSize: '0.875rem', color: 'var(--muted-text)' }}>
-              Host information not available
+          <Building2 size={16} color="var(--accent-color)" />
+          <div>
+            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
+              {event.companies[0]?.ticker_symbol}
             </div>
-          )}
+            <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
+              {event.companies[0]?.company_name}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -334,7 +422,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
              event.location_type === 'hybrid' ? 'Hybrid Event' : 'In-Person Event'}
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
-            {event.location || 'Location details not available'}
+            {event.parsed_location?.displayText || 'Location details not available'}
           </div>
         </div>
 
@@ -351,11 +439,8 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
               Attendees
             </span>
           </div>
-          <div style={{ fontSize: '0.875rem', color: 'var(--primary-text)', marginBottom: '0.25rem' }}>
-            Companies Attending: {event.companies.map(comp => comp.ticker_symbol).join(', ')}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
-            Analysts Attending: {event.attendees?.length || 0} confirmed
+          <div style={{ fontSize: '0.875rem', color: 'var(--primary-text)' }}>
+            {event.attendees?.length || 0} confirmed
           </div>
         </div>
       </div>
@@ -382,8 +467,8 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           <span style={{ 
             fontSize: '0.875rem', 
             fontWeight: '600', 
-            color: getRSVPStatusColor(event.rsvpStatus || 'pending'), 
-            textTransform: 'capitalize' 
+            color: getRSVPStatusColor(event.rsvpStatus || 'pending'),
+            textTransform: 'capitalize'
           }}>
             {event.rsvpStatus || 'pending'}
           </span>
@@ -434,11 +519,82 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         </div>
       </div>
 
+      {/* Quick Actions */}
+      <div style={{
+        padding: '1rem',
+        backgroundColor: 'var(--tertiary-bg)',
+        borderRadius: '8px',
+        border: '1px solid var(--border-color)',
+        marginBottom: '1.5rem'
+      }}>
+        <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)', marginBottom: '0.75rem' }}>
+          Quick Actions
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button style={{
+            flex: 1,
+            padding: '0.5rem',
+            backgroundColor: 'var(--accent-bg)',
+            color: 'var(--primary-bg)',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '0.75rem',
+            fontWeight: '600',
+            cursor: 'pointer',
+            minHeight: '36px', // Reduced from 44px
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem'
+          }}>
+            <Plus size={12} />
+            Add to Calendar
+          </button>
+          <button style={{
+            flex: 1,
+            padding: '0.5rem',
+            backgroundColor: 'var(--tertiary-bg)',
+            color: 'var(--primary-text)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '6px',
+            fontSize: '0.75rem',
+            fontWeight: '600',
+            cursor: 'pointer',
+            minHeight: '36px', // Reduced from 44px
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem'
+          }}>
+            <Share2 size={12} />
+            Share
+          </button>
+        </div>
+      </div>
+
+
+      {/* Mini Calendar - As per PRD Step 3.2 */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h3 style={{ 
+          fontSize: '1rem', 
+          fontWeight: '600', 
+          color: 'var(--primary-text)', 
+          marginBottom: '0.75rem' 
+        }}>
+          Calendar Navigation
+        </h3>
+        <MiniCalendar
+          selectedDate={event.start_date}
+          onDateSelect={onDateSelect}
+          events={events}
+        />
+      </div>
+
       {/* Weather Forecast - As per PRD Step 3.3 */}
       <div style={{ marginBottom: '1rem' }}>
         <WeatherForecast
           eventDate={event.start_date}
-          location={event.weather_location || event.location || 'Event Location'}
+          location={event.parsed_location?.weatherLocation || event.weather_location || 'Event Location'}
         />
       </div>
     </div>

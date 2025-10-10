@@ -59,9 +59,9 @@ export interface CompanyRowDragState {
 
 export interface EventCell {
   id: string;
-  event: CalendarEventData | any; // TODO: Migrate to CalendarEvent from database.ts
+  event: CalendarEventData;
   rsvpStatus: 'accepted' | 'declined' | 'pending';
-  colorCode: 'green' | 'yellow' | 'grey' | string;
+  colorCode: 'green' | 'yellow' | 'grey';
   isMultiCompany: boolean;
   attendingCompanies: string[];
   position: {
@@ -79,16 +79,25 @@ export interface CalendarEventData {
   start_date: Date;
   end_date: Date;
   location_type: 'physical' | 'virtual' | 'hybrid';
-  location?: string; // Added for EventDetails component
-  location_details: {
-    address?: string;
-    room?: string;
-    building?: string;
-  };
-  virtual_details: {
-    meeting_link?: string;
-    dial_in?: string;
-    meeting_id?: string;
+  location?: string; // Legacy field - will be replaced by parsed_location
+  location_details: Record<string, any>; // Raw JSONB from database
+  virtual_details: Record<string, any>; // Raw JSONB from database
+  weather_location?: string; // Weather location string
+  parsed_location?: {
+    displayText: string;
+    type: 'physical' | 'virtual' | 'hybrid';
+    details: {
+      city?: string;
+      state?: string;
+      venue?: string;
+      room?: string;
+      address?: string;
+      platform?: string;
+      meetingId?: string;
+      dialIn?: string;
+      webinarLink?: string;
+    };
+    weatherLocation?: string;
   };
   event_type: 'standard' | 'catalyst';
   speakers: EventSpeaker[];
@@ -100,9 +109,9 @@ export interface CalendarEventData {
     registration_link?: string;
     contact_email?: string;
   };
-  weather_location?: string;
   // Added properties for event display
   companies: CompanyRow[];
+  hostingCompanies: CompanyRow[];
   rsvpStatus: 'accepted' | 'declined' | 'pending';
   colorCode: 'green' | 'yellow' | 'grey';
   isMultiCompany: boolean;

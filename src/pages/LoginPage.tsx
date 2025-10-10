@@ -85,14 +85,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onSwitchToSignup 
           .eq('id', authData.user.id);
 
         if (updateError) {
-          console.error('Last login update error:', updateError);
           // Non-critical error, don't block login
         }
 
         onLoginSuccess(authData.user);
       }
     } catch (err: any) {
-      console.error('Login error:', err);
       let errorMessage = 'Failed to sign in. Please try again.';
       
       if (err.message.includes('Invalid login credentials')) {

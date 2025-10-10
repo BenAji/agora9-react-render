@@ -2,7 +2,7 @@
  * AGORA Event Cell Component
  * 
  * PHASE 2, STEP 2.1: Event Cell Component
- * Dependencies: calendar.ts types, mockCalendarData.ts
+ * Dependencies: calendar.ts types
  * Purpose: Render individual events in calendar cells
  * 
  * SAFETY: Uses mock data only, no API calls, no external dependencies

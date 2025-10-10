@@ -82,39 +82,6 @@ export interface UserEventResponse {
   notes?: string | null;                         // TEXT - Can be null
 }
 
-export interface EventHost {
-  id: string;                                    // UUID PRIMARY KEY
-  event_id: string;                              // UUID FOREIGN KEY to events
-  host_type: 'single_corp' | 'multi_corp' | 'non_company'; // Host type
-  host_id?: string;                              // Company or Organization ID
-  host_name?: string;                            // Populated from companies or organizations
-  host_ticker?: string;                          // For companies
-  host_sector?: string;
-  host_subsector?: string;
-  companies_jsonb?: Array<{
-    id: string;
-    ticker: string;
-    name: string;
-    is_primary: boolean;
-  }>;                                            // For multi-corporate events
-  primary_company_id?: string;                   // Primary company for multi-corp
-  created_at: Date;                              // TIMESTAMP WITH TIME ZONE
-  updated_at: Date;                              // TIMESTAMP WITH TIME ZONE
-}
-
-export interface Organization {
-  id: string;                                    // UUID PRIMARY KEY
-  name: string;                                  // VARCHAR(255) NOT NULL
-  type: 'government' | 'association' | 'nonprofit' | 'private_company' | 'international';
-  sector?: string;                               // VARCHAR(100)
-  subsector?: string;                            // VARCHAR(100)
-  website?: string;                              // VARCHAR(255)
-  description?: string;                          // TEXT
-  is_active: boolean;                            // BOOLEAN DEFAULT TRUE
-  created_at: Date;                              // TIMESTAMP WITH TIME ZONE
-  updated_at: Date;                              // TIMESTAMP WITH TIME ZONE
-}
-
 export interface UserSubscription {
   id: string;                                    // UUID PRIMARY KEY
   user_id: string;                               // ❗ NOT 'userId' - UUID REFERENCES users(id)
@@ -193,17 +160,59 @@ export type NotificationType = 'event_reminder' | 'subscription_update' | 'ea_no
 // UI-SPECIFIC INTERFACES
 // =====================================================================================
 
+export interface EventHost {
+  id: string;
+  event_id: string;
+  host_type: 'single_corp' | 'multi_corp' | 'non_company';
+  host_id?: string; // Company or Organization ID
+  host_name?: string; // Populated from companies or organizations
+  host_ticker?: string; // For companies
+  host_sector?: string;
+  host_subsector?: string;
+  companies_jsonb?: Array<{
+    id: string;
+    ticker: string;
+    name: string;
+    is_primary: boolean;
+  }>;
+  primary_company_id?: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface Organization {
+  id: string;
+  name: string;
+  type: 'government' | 'association' | 'nonprofit' | 'private_company' | 'international';
+  sector?: string;
+  subsector?: string;
+  website?: string;
+  description?: string;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
 export interface CalendarEvent extends Event {
   companies: Company[];                          // Populated from event_companies join
-  hosts?: EventHost[];                          // Event hosting information
-  primary_host?: EventHost;                     // Primary host for easy access
+  hosts: EventHost[];                           // NEW: Event hosting information
+  primary_host?: EventHost;                     // NEW: Primary host for easy access
   user_response?: UserEventResponse;             // User's RSVP status for this event
   color_code: string;                           // Derived from response_status
-  location?: string;                            // Parsed location for display
-  rsvpStatus?: 'accepted' | 'declined' | 'pending'; // RSVP status for UI
-  attendees?: any[];                            // List of attendees
+  parsed_location?: {                           // Parsed location for UI display
+    displayText: string;
+    fullAddress?: string;
+    isPrimarilyVirtual: boolean;
+    hasPhysicalComponent: boolean;
+    hasVirtualComponent: boolean;
+    meetingUrl?: string;
+    weatherLocation?: string;
+  };
+  user_rsvp_status?: 'accepted' | 'declined' | 'pending'; // For backward compatibility
+  rsvpStatus?: 'accepted' | 'declined' | 'pending';       // For backward compatibility
   isMultiCompany?: boolean;                     // Whether event has multiple companies
   attendingCompanies?: string[];                // IDs of attending companies
+  attendees?: any[];                            // List of attendees
 }
 
 export interface CompanyWithEvents extends Company {

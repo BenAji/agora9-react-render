@@ -58,21 +58,21 @@ const AppWithAuth: React.FC = () => {
     // Check for existing session
     const checkUser = async () => {
       try {
-        console.log('🔍 Checking user session...');
+        // Checking user session
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('❌ Auth session error:', error);
+          
           // Clear corrupted session data
           if (error.message.includes('Invalid Refresh Token') || error.message.includes('Refresh Token Not Found')) {
-            console.log('🧹 Clearing corrupted auth session');
+            // Clearing corrupted auth session
             await supabase.auth.signOut();
             localStorage.removeItem('agora-auth');
             localStorage.removeItem('supabase.auth.token');
           }
         }
         
-        console.log('✅ Session check complete:', { user: session?.user?.email, loading: false });
+        // Session check complete
         setAuthState({
           user: session?.user || null,
           loading: false,
@@ -80,9 +80,9 @@ const AppWithAuth: React.FC = () => {
           showSignup: false
         });
       } catch (error) {
-        console.error('💥 Auth check failed:', error);
+        
         // Clear any corrupted auth data
-        console.log('🧹 Clearing auth data due to error');
+        // Clearing auth data due to error
         await supabase.auth.signOut();
         localStorage.removeItem('agora-auth');
         localStorage.removeItem('supabase.auth.token');
@@ -99,7 +99,6 @@ const AppWithAuth: React.FC = () => {
 
     // Set a timeout to prevent infinite loading
     const loadingTimeout = setTimeout(() => {
-      console.warn('⏰ Auth loading timeout, forcing login state');
       setAuthState(prev => ({
         ...prev,
         loading: false,
@@ -109,7 +108,7 @@ const AppWithAuth: React.FC = () => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
-      console.log('🔄 Auth state changed:', event, session?.user?.email);
+      // Auth state changed
       clearTimeout(loadingTimeout);
       setAuthState({
         user: session?.user || null,

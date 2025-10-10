@@ -407,16 +407,17 @@ strong {
   align-items: center;
   gap: 0.5rem;
   background: none;
-  border: none;
+  border: 1px solid transparent;
   color: #ffffff;
   padding: 0.5rem;
   cursor: pointer;
   border-radius: 6px;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .user-button:hover {
   background: #2d2d2d;
+  border-color: #ffd700;
 }
 
 .dropdown-menu {
@@ -438,16 +439,19 @@ strong {
   gap: 0.75rem;
   width: 100%;
   background: none;
-  border: none;
+  border: 1px solid transparent;
   color: #ffffff;
   padding: 0.75rem 1rem;
   cursor: pointer;
   font-size: 14px;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  margin: 2px;
 }
 
 .dropdown-menu button:hover {
   background: #404040;
+  border-color: #ffd700;
 }
 
 .dropdown-menu hr {
@@ -1554,17 +1558,6 @@ strong {
   }
 }
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 /* ===================================================================================== */
 /* ACCESSIBILITY */
 /* ===================================================================================== */
@@ -1759,16 +1752,19 @@ textarea:focus-visible {
   border-radius: 6px;
   transition: all 0.2s ease;
   position: relative;
+  border: 1px solid transparent;
 }
 
 .nav-link:hover {
   background: rgba(255, 255, 255, 0.1);
   color: #ffd700;
+  border-color: #ffd700;
 }
 
 .nav-link.active {
   background: rgba(255, 215, 0, 0.1);
   color: #ffd700;
+  border-color: #ffd700;
 }
 
 .nav-link.active::after {
@@ -2145,7 +2141,7 @@ textarea:focus-visible {
   align-items: center;
   justify-content: center;
   background: none;
-  border: none;
+  border: 1px solid transparent;
   color: #ffffff;
   padding: 0.5rem;
   border-radius: 8px;
@@ -2156,6 +2152,7 @@ textarea:focus-visible {
 
 .user-button:hover {
   background: rgba(255, 255, 255, 0.1);
+  border-color: #ffd700;
 }
 
 .user-avatar {
@@ -2252,17 +2249,20 @@ textarea:focus-visible {
   gap: 0.75rem;
   width: 100%;
   background: none;
-  border: none;
+  border: 1px solid transparent;
   color: #ffffff;
   padding: 0.75rem 1rem;
   cursor: pointer;
   font-size: 0.875rem;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
   text-align: left;
+  border-radius: 4px;
+  margin: 2px;
 }
 
 .dropdown-menu button:hover {
   background: #404040;
+  border-color: #ffd700;
 }
 
 .dropdown-menu hr {
@@ -2278,16 +2278,17 @@ textarea:focus-visible {
 .mobile-menu-button {
   display: none;
   background: none;
-  border: none;
+  border: 1px solid transparent;
   color: #ffffff;
   cursor: pointer;
   padding: 0.5rem;
   border-radius: 6px;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .mobile-menu-button:hover {
   background: rgba(255, 255, 255, 0.1);
+  border-color: #ffd700;
 }
 
 .mobile-menu {
@@ -2326,12 +2327,15 @@ textarea:focus-visible {
   padding: 0.75rem 1rem;
   color: #ffffff;
   text-decoration: none;
+  border: 1px solid transparent;
   border-radius: 6px;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
+  margin: 2px;
 }
 
 .mobile-nav-link:hover {
   background: rgba(255, 255, 255, 0.1);
+  border-color: #ffd700;
 }
 
 .mobile-user-section {
@@ -2392,7 +2396,7 @@ textarea:focus-visible {
   top: 0;
   right: 0;
   bottom: 0;
-  width: 480px;
+  width: 408px; /* 85% of 480px */
   background: var(--primary-bg);
   border-left: 1px solid var(--border-color);
   box-shadow: -4px 0 12px rgba(0, 0, 0, 0.3);
@@ -2406,7 +2410,7 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.5rem;
+  padding: 1.25rem; /* Reduced from 1.5rem */
   border-bottom: 1px solid var(--border-color);
   background: var(--secondary-bg);
 }
@@ -2422,7 +2426,7 @@ textarea:focus-visible {
 }
 
 .profile-header h2 {
-  font-size: 1.25rem;
+  font-size: 1.125rem; /* Reduced from 1.25rem */
   font-weight: 600;
   color: var(--primary-text);
   margin: 0;
@@ -2455,12 +2459,12 @@ textarea:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 1rem;
+  padding: 0.875rem; /* Reduced from 1rem */
   background: none;
   border: none;
   color: var(--muted-text);
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: 0.8125rem; /* Reduced from 0.875rem */
   font-weight: 500;
   transition: all 0.2s ease;
   border-bottom: 2px solid transparent;
@@ -2479,39 +2483,46 @@ textarea:focus-visible {
 
 .profile-content {
   flex: 1;
-  padding: 1.5rem;
+  padding: 1.25rem; /* Reduced from 1.5rem */
   overflow-y: auto;
   background: var(--primary-bg);
+  /* Hide scrollbar but keep scrolling functionality */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+.profile-content::-webkit-scrollbar {
+  display: none; /* WebKit browsers */
 }
 
 .profile-tab-content {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem; /* Reduced from 1.5rem */
 }
 
 .profile-section {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.875rem; /* Reduced from 1rem */
 }
 
 .profile-section h4 {
   margin: 0;
   color: var(--primary-text);
-  font-size: 1rem;
+  font-size: 0.9375rem; /* Reduced from 1rem */
   font-weight: 600;
 }
 
 .profile-avatar-section {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.875rem; /* Reduced from 1rem */
 }
 
 .profile-avatar-large {
-  width: 80px;
-  height: 80px;
+  width: 70px; /* Reduced from 80px */
+  height: 70px; /* Reduced from 80px */
   background: var(--accent-bg);
   color: #1a1a1a;
   border-radius: 50%;
@@ -2519,7 +2530,7 @@ textarea:focus-visible {
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 1.5rem;
+  font-size: 1.375rem; /* Reduced from 1.5rem */
   flex-shrink: 0;
 }
 
@@ -2530,10 +2541,10 @@ textarea:focus-visible {
   background: var(--secondary-bg);
   border: 1px solid var(--border-color);
   color: var(--primary-text);
-  padding: 0.5rem 1rem;
+  padding: 0.4375rem 0.875rem; /* Reduced from 0.5rem 1rem */
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: 0.8125rem; /* Reduced from 0.875rem */
   transition: all 0.2s ease;
 }
 
@@ -2545,14 +2556,14 @@ textarea:focus-visible {
 .profile-info h3 {
   margin: 0 0 0.25rem 0;
   color: var(--primary-text);
-  font-size: 1.25rem;
+  font-size: 1.125rem; /* Reduced from 1.25rem */
   font-weight: 600;
 }
 
 .profile-info p {
   margin: 0 0 0.5rem 0;
   color: var(--muted-text);
-  font-size: 0.875rem;
+  font-size: 0.8125rem; /* Reduced from 0.875rem */
 }
 
 .user-role-badge {
@@ -2912,6 +2923,34 @@ textarea:focus-visible {
   .profile-drawer {
     width: 100%;
     max-width: 100vw;
+  }
+  
+  /* Additional mobile optimizations for profile panel */
+  .profile-header {
+    padding: 1rem; /* Further reduced for mobile */
+  }
+  
+  .profile-content {
+    padding: 1rem; /* Further reduced for mobile */
+  }
+  
+  .profile-tab {
+    padding: 0.75rem; /* Further reduced for mobile */
+    font-size: 0.75rem; /* Further reduced for mobile */
+  }
+  
+  .profile-avatar-large {
+    width: 60px; /* Smaller on mobile */
+    height: 60px; /* Smaller on mobile */
+    font-size: 1.25rem; /* Smaller on mobile */
+  }
+  
+  .profile-info h3 {
+    font-size: 1rem; /* Smaller on mobile */
+  }
+  
+  .profile-info p {
+    font-size: 0.75rem; /* Smaller on mobile */
   }
   
   .activity-stats {

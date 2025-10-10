@@ -40,7 +40,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, isOpen, onClose, onUser
         setError(null);
       }
     } catch (error) {
-      console.error('Failed to update profile:', error);
       setError('Failed to update profile');
     } finally {
       setLoading(false);
