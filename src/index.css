@@ -16,13 +16,17 @@
   --tertiary-bg: #111111;       /* Dark grey */
   --quaternary-bg: #1a1a1a;     /* Slightly lighter dark */
   --accent-bg: #ffd700;         /* Pure gold */
+  --accent-bg-light: rgba(255, 215, 0, 0.1); /* Light gold background */
   --hover-bg: #1f1f1f;          /* Hover state background */
+  --info-bg: rgba(59, 130, 246, 0.1); /* Info background (blue) */
   
   /* Text Colors */
   --primary-text: #ffffff;      /* Pure white */
   --secondary-text: #ffd700;    /* Gold text */
   --muted-text: #cccccc;        /* Light grey */
   --faded-text: #888888;        /* Darker grey for less important text */
+  --accent-text: #d4af37;       /* Accent text color */
+  --info-text: #3b82f6;         /* Info text color (blue) */
   
   /* Border Colors */
   --border-color: #222222;      /* Dark borders */

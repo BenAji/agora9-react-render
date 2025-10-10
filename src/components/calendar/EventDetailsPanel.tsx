@@ -9,7 +9,7 @@
  * OFFICE: Optimized for 320px+ width, touch targets 44px+
  */
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { CalendarEvent } from '../../types/database';
 import { 
   MapPin, 
@@ -23,7 +23,9 @@ import {
   XCircle,
   AlertCircle,
   Share2,
-  Plus
+  Plus,
+  Link,
+  Mail
 } from 'lucide-react';
 import MiniCalendar from './MiniCalendar';
 import WeatherForecast from './WeatherForecast';
@@ -75,6 +77,24 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
   className,
   events = []
 }) => {
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Click outside to close
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
+    if (isVisible) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [isVisible, onClose]);
+
   if (!event || !isVisible) return null;
 
   const formatEventDate = (date: Date) => {
@@ -137,6 +157,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
 
   return (
     <div
+      ref={panelRef}
       className={`event-details-panel ${className}`}
       style={{
         position: 'fixed',
@@ -216,8 +237,8 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           {event.title}
         </h2>
 
-        {/* Host Information Section */}
-        {event.hosts && event.hosts.length > 0 && (
+        {/* Host Information Section - Enhanced with Fallback */}
+        {(event.hosts && event.hosts.length > 0) || (event.companies && event.companies.length > 0) ? (
           <div style={{
             marginBottom: '1rem',
             padding: '0.75rem',
@@ -234,7 +255,10 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
               alignItems: 'center',
               gap: '0.5rem'
             }}>
-              {getHostTypeIcon(event.primary_host?.host_type || event.hosts[0]?.host_type)} Hosting Information
+              {event.hosts && event.hosts.length > 0 
+                ? `${getHostTypeIcon(event.primary_host?.host_type || event.hosts[0]?.host_type)} Hosting Information`
+                : '🏢 Participating Companies'
+              }
             </h4>
             
             {event.hosts.map((host, index) => (
@@ -344,8 +368,57 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                 )}
               </div>
             ))}
+            
+            {/* Fallback: Show participating companies if no host info */}
+            {(!event.hosts || event.hosts.length === 0) && event.companies && event.companies.length > 0 && (
+              <div style={{
+                background: '#0a0a0a',
+                border: '1px solid #333',
+                borderRadius: '6px',
+                padding: '0.5rem'
+              }}>
+                <div style={{
+                  fontSize: '0.75rem',
+                  color: '#b0b0b0',
+                  marginBottom: '0.5rem'
+                }}>
+                  Companies attending this event:
+                </div>
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.25rem'
+                }}>
+                  {event.companies.map((company, compIndex) => (
+                    <span
+                      key={compIndex}
+                      style={{
+                        background: '#333',
+                        color: '#FFD700',
+                        padding: '0.125rem 0.5rem',
+                        borderRadius: '8px',
+                        fontSize: '0.75rem',
+                        fontWeight: '500'
+                      }}
+                    >
+                      {company.ticker_symbol}
+                    </span>
+                  ))}
+                </div>
+                {event.companies[0]?.gics_sector && (
+                  <div style={{
+                    marginTop: '0.5rem',
+                    fontSize: '0.75rem',
+                    color: '#b0b0b0'
+                  }}>
+                    Sector: {event.companies[0].gics_sector}
+                    {event.companies[0].gics_subsector && ` • ${event.companies[0].gics_subsector}`}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        )}
+        ) : null}
 
         {/* Event Description */}
         <p style={{
@@ -519,7 +592,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions - Enhanced */}
       <div style={{
         padding: '1rem',
         backgroundColor: 'var(--tertiary-bg)',
@@ -530,45 +603,155 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)', marginBottom: '0.75rem' }}>
           Quick Actions
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button style={{
-            flex: 1,
-            padding: '0.5rem',
-            backgroundColor: 'var(--accent-bg)',
-            color: 'var(--primary-bg)',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '0.75rem',
-            fontWeight: '600',
-            cursor: 'pointer',
-            minHeight: '36px', // Reduced from 44px
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem'
-          }}>
-            <Plus size={12} />
-            Add to Calendar
-          </button>
-          <button style={{
-            flex: 1,
-            padding: '0.5rem',
-            backgroundColor: 'var(--tertiary-bg)',
-            color: 'var(--primary-text)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '6px',
-            fontSize: '0.75rem',
-            fontWeight: '600',
-            cursor: 'pointer',
-            minHeight: '36px', // Reduced from 44px
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem'
-          }}>
-            <Share2 size={12} />
-            Share
-          </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          {/* Row 1: Primary Actions */}
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button 
+              onClick={() => {
+                // Add to calendar functionality
+                const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${event.start_date.toISOString().replace(/[-:]/g, '').split('.')[0]}Z/${event.end_date.toISOString().replace(/[-:]/g, '').split('.')[0]}Z&details=${encodeURIComponent(event.description)}`;
+                window.open(calendarUrl, '_blank');
+              }}
+              style={{
+                flex: 1,
+                padding: '0.5rem',
+                backgroundColor: 'var(--accent-bg)',
+                color: 'var(--primary-bg)',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                minHeight: '44px', // Touch-friendly
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                (e.target as HTMLButtonElement).style.opacity = '0.9';
+              }}
+              onMouseLeave={(e) => {
+                (e.target as HTMLButtonElement).style.opacity = '1';
+              }}
+            >
+              <Plus size={14} />
+              Add to Calendar
+            </button>
+            <button 
+              onClick={() => {
+                // Share functionality
+                if (navigator.share) {
+                  navigator.share({
+                    title: event.title,
+                    text: event.description,
+                    url: window.location.href
+                  });
+                } else {
+                  // Fallback: copy to clipboard
+                  navigator.clipboard.writeText(`${event.title}\n${event.description}\n${window.location.href}`);
+                }
+              }}
+              style={{
+                flex: 1,
+                padding: '0.5rem',
+                backgroundColor: 'var(--tertiary-bg)',
+                color: 'var(--primary-text)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '6px',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                minHeight: '44px', // Touch-friendly
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)';
+              }}
+              onMouseLeave={(e) => {
+                (e.target as HTMLButtonElement).style.backgroundColor = 'var(--tertiary-bg)';
+              }}
+            >
+              <Share2 size={14} />
+              Share
+            </button>
+          </div>
+          
+          {/* Row 2: Secondary Actions */}
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {event.virtual_details?.join_url && (
+              <button 
+                onClick={() => {
+                  window.open(event.virtual_details.join_url, '_blank');
+                }}
+                style={{
+                  flex: 1,
+                  padding: '0.5rem',
+                  backgroundColor: 'var(--info-bg, var(--tertiary-bg))',
+                  color: 'var(--info-text, var(--accent-color))',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  minHeight: '44px', // Touch-friendly
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.target as HTMLButtonElement).style.backgroundColor = 'var(--info-bg, var(--tertiary-bg))';
+                }}
+              >
+                <Link size={14} />
+                Join Virtual
+              </button>
+            )}
+            {event.companies[0]?.ticker_symbol && (
+              <button 
+                onClick={() => {
+                  // Email company or contact
+                  window.location.href = `mailto:?subject=${encodeURIComponent(`Question about ${event.title}`)}&body=${encodeURIComponent(`I have a question about the event: ${event.title}\n\nCompany: ${event.companies[0]?.company_name}`)}`;
+                }}
+                style={{
+                  flex: 1,
+                  padding: '0.5rem',
+                  backgroundColor: 'var(--tertiary-bg)',
+                  color: 'var(--primary-text)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  minHeight: '44px', // Touch-friendly
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.target as HTMLButtonElement).style.backgroundColor = 'var(--tertiary-bg)';
+                }}
+              >
+                <Mail size={14} />
+                Contact
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
