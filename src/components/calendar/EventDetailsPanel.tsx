@@ -430,26 +430,74 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           {event.description}
         </p>
 
-        {/* Host Information - Show actual host based on host type */}
-        {event.primary_host && (
+        {/* Host Information - Display based on host type */}
+        {event.hosts && event.hosts.length > 0 && (
           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
             padding: '0.75rem',
             backgroundColor: 'var(--tertiary-bg)',
             borderRadius: '8px',
-            border: '1px solid var(--border-color)'
+            border: '1px solid var(--border-color)',
+            marginBottom: '1rem'
           }}>
-            <Building2 size={16} color="var(--accent-color)" />
-            <div>
-              <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
-                {event.primary_host.host_ticker || 'Event Host'}
-              </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
-                {event.primary_host.host_name || 'Hosting Organization'}
-              </div>
-            </div>
+            {event.hosts.map((host, index) => {
+              // Determine host display based on host_type
+              if (host.host_type === 'single_corp') {
+                return (
+                  <div key={host.id} style={{ marginBottom: index < event.hosts.length - 1 ? '0.5rem' : '0' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem' }}>
+                      Host Company
+                    </div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
+                      {host.host_ticker} - {host.host_name}
+                    </div>
+                    {host.host_sector && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
+                        {host.host_sector}{host.host_subsector && ` • ${host.host_subsector}`}
+                      </div>
+                    )}
+                  </div>
+                );
+              } else if (host.host_type === 'multi_corp') {
+                const coHosts = host.companies_jsonb || [];
+                const primaryHost = coHosts.find((c: any) => c.is_primary);
+                const otherHosts = coHosts.filter((c: any) => !c.is_primary);
+                
+                return (
+                  <div key={host.id} style={{ marginBottom: index < event.hosts.length - 1 ? '0.5rem' : '0' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem' }}>
+                      Co-Hosted by Multiple Companies
+                    </div>
+                    {primaryHost && (
+                      <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
+                        Primary Host: {primaryHost.ticker} - {primaryHost.name}
+                      </div>
+                    )}
+                    {otherHosts.length > 0 && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginTop: '0.25rem' }}>
+                        Co-Hosts: {otherHosts.map((c: any) => c.ticker).join(', ')}
+                      </div>
+                    )}
+                  </div>
+                );
+              } else if (host.host_type === 'non_company') {
+                return (
+                  <div key={host.id} style={{ marginBottom: index < event.hosts.length - 1 ? '0.5rem' : '0' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem' }}>
+                      Host Organization
+                    </div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
+                      {host.host_name}
+                    </div>
+                    {host.host_sector && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
+                        {host.host_sector}{host.host_subsector && ` • ${host.host_subsector}`}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              return null;
+            })}
           </div>
         )}
       </div>
