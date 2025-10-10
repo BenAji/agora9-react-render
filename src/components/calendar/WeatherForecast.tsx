@@ -1,16 +1,16 @@
 /**
  * AGORA Weather Forecast Component
  * 
- * PHASE 3, STEP 3.3: Weather Forecast Integration
- * Dependencies: calendar.ts types
- * Purpose: 3-day weather forecast display
+ * PHASE 2: Real Weather API Integration
+ * Dependencies: weatherService, calendar.ts types
+ * Purpose: 3-day weather forecast display with real weather data
  * 
- * SAFETY: Uses mock data only, no API calls, no external dependencies
+ * SAFETY: Uses real weather API with fallback to mock data
  */
 
-import React from 'react';
-import { Cloud, Sun, CloudRain, CloudSnow, MapPin } from 'lucide-react';
-// import { WeatherForecast as WeatherForecastType } from '../../types/calendar';
+import React, { useState, useEffect } from 'react';
+import { Cloud, Sun, CloudRain, CloudSnow, MapPin, Loader2 } from 'lucide-react';
+import { weatherService, WeatherForecast as WeatherForecastType } from '../../services/weatherService';
 import { format, subDays } from 'date-fns';
 
 interface WeatherForecastProps {
@@ -19,57 +19,36 @@ interface WeatherForecastProps {
   className?: string;
 }
 
-interface MockWeatherData {
-  date: Date;
-  temperature: {
-    high: number;
-    low: number;
-  };
-  condition: 'sunny' | 'cloudy' | 'rainy' | 'snowy';
-  description: string;
-  humidity: number;
-  windSpeed: number;
-}
-
 const WeatherForecast: React.FC<WeatherForecastProps> = ({ 
   eventDate, 
   location = 'Event Location',
   className = '' 
 }) => {
-  
-  // Generate mock weather data for 3 days prior to event
-  const generateMockWeatherData = (): MockWeatherData[] => {
-    const weatherConditions = [
-      { condition: 'sunny' as const, description: 'Sunny', icon: Sun },
-      { condition: 'cloudy' as const, description: 'Partly Cloudy', icon: Cloud },
-      { condition: 'rainy' as const, description: 'Light Rain', icon: CloudRain },
-      { condition: 'cloudy' as const, description: 'Overcast', icon: Cloud }
-    ];
+  const [weatherData, setWeatherData] = useState<WeatherForecastType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    const mockData: MockWeatherData[] = [];
-    
-    // Generate data for 3 days prior to event + event day
-    for (let i = 3; i >= 0; i--) {
-      const date = subDays(eventDate, i);
-      const randomWeather = weatherConditions[Math.floor(Math.random() * weatherConditions.length)];
+  // Load real weather data
+  useEffect(() => {
+    const loadWeatherData = async () => {
+      setIsLoading(true);
+      setError(null);
       
-      mockData.push({
-        date,
-        temperature: {
-          high: Math.floor(Math.random() * 15) + 65, // 65-80°F
-          low: Math.floor(Math.random() * 15) + 50   // 50-65°F
-        },
-        condition: randomWeather.condition,
-        description: randomWeather.description,
-        humidity: Math.floor(Math.random() * 30) + 40, // 40-70%
-        windSpeed: Math.floor(Math.random() * 10) + 5   // 5-15 mph
-      });
-    }
+      try {
+        const forecast = await weatherService.getWeatherForecast(location, eventDate);
+        setWeatherData(forecast);
+      } catch (err) {
+        console.error('Failed to load weather data:', err);
+        setError('Failed to load weather data');
+        // Fallback to empty array - the service will handle mock data internally
+        setWeatherData([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    return mockData;
-  };
-
-  const weatherData = generateMockWeatherData();
+    loadWeatherData();
+  }, [eventDate, location]);
 
   const getWeatherIcon = (condition: string, size: number = 20) => {
     const iconProps = { size, color: 'var(--muted-text)' };
@@ -83,6 +62,8 @@ const WeatherForecast: React.FC<WeatherForecastProps> = ({
         return <CloudRain {...iconProps} color="var(--info-text)" />;
       case 'snowy':
         return <CloudSnow {...iconProps} color="var(--info-text)" />;
+      case 'stormy':
+        return <CloudRain {...iconProps} color="var(--info-text)" />;
       default:
         return <Cloud {...iconProps} />;
     }
@@ -91,6 +72,75 @@ const WeatherForecast: React.FC<WeatherForecastProps> = ({
   const isEventDay = (date: Date) => {
     return date.toDateString() === eventDate.toDateString();
   };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className={`weather-forecast ${className}`} style={{
+        backgroundColor: 'var(--primary-bg)',
+        border: '1px solid var(--border-color)',
+        borderRadius: '8px',
+        padding: '1rem',
+        fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif',
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '200px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Loader2 size={20} className="animate-spin" />
+          <span style={{ color: 'var(--muted-text)' }}>Loading weather forecast...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error || weatherData.length === 0) {
+    return (
+      <div className={`weather-forecast ${className}`} style={{
+        backgroundColor: 'var(--primary-bg)',
+        border: '1px solid var(--border-color)',
+        borderRadius: '8px',
+        padding: '1rem',
+        fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif',
+        width: '100%'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          marginBottom: '1rem'
+        }}>
+          <MapPin size={16} color="var(--muted-text)" />
+          <div>
+            <div style={{
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              color: 'var(--primary-text)'
+            }}>
+              Weather Forecast
+            </div>
+            <div style={{
+              fontSize: '0.75rem',
+              color: 'var(--muted-text)'
+            }}>
+              {location}
+            </div>
+          </div>
+        </div>
+        
+        <div style={{
+          textAlign: 'center',
+          color: 'var(--muted-text)',
+          fontSize: '0.875rem'
+        }}>
+          Weather data temporarily unavailable
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`weather-forecast ${className}`} style={{
@@ -196,13 +246,13 @@ const WeatherForecast: React.FC<WeatherForecastProps> = ({
                 fontWeight: '600',
                 color: 'var(--primary-text)'
               }}>
-                {day.temperature.high}°
+                {day.temperature.max}°
               </span>
               <span style={{
                 fontSize: '0.75rem',
                 color: 'var(--muted-text)'
               }}>
-                {day.temperature.low}°
+                {day.temperature.min}°
               </span>
             </div>
 
@@ -213,18 +263,6 @@ const WeatherForecast: React.FC<WeatherForecastProps> = ({
               marginBottom: '0.25rem'
             }}>
               {day.description}
-            </div>
-
-            {/* Additional Details */}
-            <div style={{
-              fontSize: '0.625rem',
-              color: 'var(--muted-text)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.125rem'
-            }}>
-              <div>Humidity: {day.humidity}%</div>
-              <div>Wind: {day.windSpeed} mph</div>
             </div>
           </div>
         ))}
@@ -254,8 +292,8 @@ const WeatherForecast: React.FC<WeatherForecastProps> = ({
         }}>
           Plan accordingly for weather conditions. Event day forecast: {' '}
           {weatherData[weatherData.length - 1]?.description.toLowerCase()} with temperatures 
-          between {weatherData[weatherData.length - 1]?.temperature.low}° and{' '}
-          {weatherData[weatherData.length - 1]?.temperature.high}°F.
+          between {weatherData[weatherData.length - 1]?.temperature.min}° and{' '}
+          {weatherData[weatherData.length - 1]?.temperature.max}°C.
         </div>
         
         <div style={{

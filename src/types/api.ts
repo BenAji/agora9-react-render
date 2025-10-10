@@ -248,6 +248,10 @@ export interface ApiClient {
   
   // Weather
   getWeatherForLocation(location: string): Promise<ApiResponse<Record<string, any>>>;
+  
+  // Search
+  searchEvents(query: string, params?: { limit?: number; offset?: number }): Promise<ApiResponse<PaginatedResponse<CalendarEvent>>>;
+  searchCompanies(query: string, params?: { limit?: number; offset?: number }): Promise<ApiResponse<PaginatedResponse<Company>>>;
 }
 
 // =====================================================================================

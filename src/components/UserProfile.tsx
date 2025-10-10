@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, User, Calendar, Users, Settings, Camera, Check } from 'lucide-react';
 import { UserWithSubscriptions } from '../types/database';
 import { apiClient } from '../utils/apiClient';
@@ -21,12 +21,35 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, isOpen, onClose, onUser
     email: user.email
   });
 
-  // Mock activity stats - in real app, this would come from API
-  const activityStats = {
+  // Real activity stats from API
+  const [activityStats, setActivityStats] = useState({
     subscriptions: user.subscriptions?.length || 0,
-    eventsAttended: 8, // Mock data
+    eventsAttended: 0,
     memberSince: new Date(user.created_at || Date.now())
-  };
+  });
+
+  // Load real activity stats
+  useEffect(() => {
+    const loadActivityStats = async () => {
+      try {
+        // Get user's accepted event responses
+        const eventsResponse = await apiClient.getEvents();
+        if (eventsResponse.success) {
+          const acceptedEvents = eventsResponse.data.events.filter(event => 
+            event.user_rsvp_status === 'accepted'
+          );
+          setActivityStats(prev => ({
+            ...prev,
+            eventsAttended: acceptedEvents.length
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to load activity stats:', error);
+      }
+    };
+
+    loadActivityStats();
+  }, [user.id]);
 
   const handleUpdateProfile = async () => {
     try {

@@ -783,8 +783,60 @@ class SupabaseApiClient implements ApiClient {
     throw new ApiClientError({ message: 'Delete event not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
   }
 
-  async getEventAttendance(): Promise<ApiResponse<EventAttendanceResponse>> {
-    throw new ApiClientError({ message: 'Event attendance not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
+  async getEventAttendance(eventId: string): Promise<ApiResponse<EventAttendanceResponse>> {
+    try {
+      // Get all user responses for this event
+      const { data: responsesData, error: responsesError } = await supabaseService
+        .from('user_event_responses')
+        .select(`
+          *,
+          users(
+            id,
+            full_name,
+            email
+          )
+        `)
+        .eq('event_id', eventId);
+
+      if (responsesError) {
+        throw new ApiClientError({
+          message: `Failed to fetch event attendance: ${responsesError.message}`,
+          code: 'ATTENDANCE_FETCH_ERROR',
+          details: { originalError: responsesError }
+        });
+      }
+
+      // Count responses by status
+      const attending_count = responsesData?.filter((r: any) => r.response_status === 'accepted').length || 0;
+      const not_attending_count = responsesData?.filter((r: any) => r.response_status === 'declined').length || 0;
+      const pending_count = responsesData?.filter((r: any) => r.response_status === 'pending').length || 0;
+      const total_responses = responsesData?.length || 0;
+
+      // Build attendees list
+      const attendees = responsesData?.filter((r: any) => r.response_status === 'accepted').map((response: any) => ({
+        user_id: response.user_id,
+        full_name: response.users?.full_name || 'Unknown User',
+        response_status: response.response_status as 'accepted' | 'declined' | 'pending',
+        response_date: response.response_date ? new Date(response.response_date) : null
+      })) || [];
+
+      return this.success({
+        attending_count,
+        not_attending_count,
+        pending_count,
+        total_responses,
+        attendees
+      });
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw error;
+      }
+      throw new ApiClientError({
+        message: `Failed to get event attendance: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        code: 'ATTENDANCE_FETCH_ERROR',
+        details: { originalError: error }
+      });
+    }
   }
 
   async updateEventResponse(eventId: string, responseStatus: 'accepted' | 'declined' | 'pending', notes?: string): Promise<ApiResponse<UserEventResponse>> {
@@ -967,7 +1019,73 @@ class SupabaseApiClient implements ApiClient {
   }
 
   async getSubscriptionSummary(): Promise<ApiResponse<SubscriptionSummaryResponse>> {
-    throw new ApiClientError({ message: 'Subscription summary not implemented in minimal schema', code: 'NOT_IMPLEMENTED' });
+    try {
+      const currentUserResponse = await this.getCurrentUser();
+      const userId = currentUserResponse.data.id;
+
+      // Get all user subscriptions
+      const { data: subscriptionsData, error: subscriptionsError } = await supabaseService
+        .from('user_subscriptions')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (subscriptionsError) {
+        throw new ApiClientError({
+          message: `Failed to fetch subscription summary: ${subscriptionsError.message}`,
+          code: 'SUBSCRIPTION_SUMMARY_ERROR',
+          details: { originalError: subscriptionsError }
+        });
+      }
+
+      const total_subscriptions = subscriptionsData?.length || 0;
+      const active_subscriptions = subscriptionsData?.filter((sub: any) => sub.is_active).length || 0;
+      const paid_subscriptions = subscriptionsData?.filter((sub: any) => sub.payment_status === 'paid').length || 0;
+      const pending_subscriptions = subscriptionsData?.filter((sub: any) => sub.payment_status === 'pending').length || 0;
+
+      // Get unique subsectors
+      const subscribed_subsectors = Array.from(new Set(subscriptionsData?.map((sub: any) => sub.subsector) || []));
+
+      // Build sectors array with proper structure
+      const sectors = subscribed_subsectors.map(subsector => {
+        const subscription = subscriptionsData?.find((sub: any) => sub.subsector === subsector);
+        return {
+          subsector: subsector as string,
+          payment_status: subscription?.payment_status || 'pending',
+          is_active: subscription?.is_active || false,
+          expires_at: subscription?.expires_at ? new Date(subscription.expires_at) : undefined
+        };
+      });
+
+      return this.success({
+        total_subscriptions,
+        active_subscriptions,
+        paid_subscriptions,
+        pending_subscriptions,
+        subscribed_subsectors,
+        sectors,
+        subscriptions: subscriptionsData?.map((sub: any) => ({
+          id: sub.id,
+          user_id: sub.user_id,
+          subsector: sub.subsector,
+          payment_status: sub.payment_status as 'pending' | 'paid' | 'failed' | 'canceled',
+          is_active: sub.is_active,
+          expires_at: sub.expires_at ? new Date(sub.expires_at) : null,
+          stripe_subscription_id: sub.stripe_subscription_id,
+          stripe_customer_id: sub.stripe_customer_id,
+          created_at: new Date(sub.created_at),
+          updated_at: new Date(sub.updated_at)
+        })) || []
+      });
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw error;
+      }
+      throw new ApiClientError({
+        message: `Failed to get subscription summary: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        code: 'SUBSCRIPTION_SUMMARY_ERROR',
+        details: { originalError: error }
+      });
+    }
   }
 
   async activateSubscription(): Promise<ApiResponse<UserSubscription>> {
@@ -1645,6 +1763,249 @@ class SupabaseApiClient implements ApiClient {
       
       if (error instanceof ApiClientError) throw error;
       return this.handleSupabaseError(error, 'get ordered companies');
+    }
+  }
+
+  // =====================================================================================
+  // SEARCH METHODS
+  // =====================================================================================
+
+  async searchEvents(query: string, params?: { limit?: number; offset?: number }): Promise<ApiResponse<PaginatedResponse<CalendarEvent>>> {
+    try {
+      const limit = params?.limit || 20;
+      const offset = params?.offset || 0;
+
+      // Search events by title and description
+      const { data: eventsData, error: eventsError } = await supabaseService
+        .from('events')
+        .select(`
+          *,
+          event_hosts(
+            id,
+            host_type,
+            host_id,
+            companies_jsonb,
+            primary_company_id
+          ),
+          event_companies(
+            companies(
+              id,
+              company_name,
+              ticker_symbol,
+              gics_sector,
+              gics_subsector,
+              is_active
+            )
+          ),
+          user_event_responses(
+            response_status,
+            response_date,
+            notes,
+            user_id
+          )
+        `)
+        .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
+        .eq('is_active', true)
+        .order('start_date', { ascending: true })
+        .range(offset, offset + limit - 1);
+
+      if (eventsError) {
+        throw new ApiClientError({
+          message: `Failed to search events: ${eventsError.message}`,
+          code: 'SEARCH_EVENTS_ERROR',
+          details: { originalError: eventsError }
+        });
+      }
+
+      // Get total count for pagination
+      const { count, error: countError } = await supabaseService
+        .from('events')
+        .select('*', { count: 'exact', head: true })
+        .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
+        .eq('is_active', true);
+
+      if (countError) {
+        throw new ApiClientError({
+          message: `Failed to count search results: ${countError.message}`,
+          code: 'SEARCH_COUNT_ERROR',
+          details: { originalError: countError }
+        });
+      }
+
+      // Transform events data (reuse existing transformation logic)
+      const currentUserResponse = await this.getCurrentUser();
+      const userId = currentUserResponse.data.id;
+
+      const events = eventsData?.map((event: any) => {
+        const companies = event.event_companies?.map((ec: any) => ec.companies).filter(Boolean) || [];
+        const hosts = Array.isArray(event.event_hosts) ? event.event_hosts.map((eh: any) => ({
+          id: eh.id,
+          event_id: event.id,
+          host_type: eh.host_type,
+          host_id: eh.host_id,
+          host_name: '',
+          host_ticker: '',
+          host_sector: '',
+          host_subsector: '',
+          companies_jsonb: eh.companies_jsonb,
+          primary_company_id: eh.primary_company_id,
+          created_at: new Date(eh.created_at),
+          updated_at: new Date(eh.updated_at),
+        })) : [];
+
+        const primary_host = hosts.find((h: any) => h.primary_company_id) || hosts[0] || null;
+        const userResponse = event.user_event_responses?.find((response: any) => response.user_id === userId);
+
+        const parsedLocation = event.location_details ? {
+          displayText: event.location_details.venue || event.location_details.address || 'Location details available',
+          fullAddress: event.location_details.address || '',
+          isPrimarilyVirtual: event.location_type === 'virtual',
+          hasPhysicalComponent: event.location_type === 'physical' || event.location_type === 'hybrid',
+          hasVirtualComponent: event.location_type === 'virtual' || event.location_type === 'hybrid',
+          meetingUrl: event.virtual_details?.join_url,
+          weatherLocation: event.weather_location || event.location_details.city || 'Unknown location'
+        } : undefined;
+
+        return {
+          id: event.id,
+          title: event.title,
+          description: event.description || '',
+          start_date: new Date(event.start_date),
+          end_date: new Date(event.end_date),
+          location_type: event.location_type as 'physical' | 'virtual' | 'hybrid',
+          location_details: event.location_details,
+          virtual_details: event.virtual_details,
+          weather_location: event.weather_location,
+          weather_coordinates: event.weather_coordinates,
+          parsed_location: parsedLocation,
+          event_type: event.event_type as 'standard' | 'catalyst',
+          is_active: event.is_active,
+          created_at: new Date(event.created_at),
+          updated_at: new Date(event.updated_at),
+          companies: companies,
+          hostingCompanies: companies,
+          hosts: hosts,
+          primary_host: primary_host,
+          speakers: [],
+          agenda: [],
+          tags: [],
+          access_info: {
+            is_free: true,
+            registration_required: false,
+            registration_link: undefined,
+            contact_email: undefined
+          },
+          rsvpStatus: (userResponse?.response_status || 'pending') as 'accepted' | 'declined' | 'pending',
+          colorCode: this.getEventColor(userResponse?.response_status || 'pending'),
+          isMultiCompany: companies.length > 1,
+          attendingCompanies: companies.map((c: any) => c.ticker_symbol),
+          attendees: event.user_event_responses?.filter((response: any) => response.response_status === 'accepted') || [],
+          user_response: userResponse ? {
+            id: userResponse.id,
+            user_id: userId,
+            event_id: event.id,
+            response_status: (userResponse.response_status || 'pending') as 'accepted' | 'declined' | 'pending',
+            response_date: new Date(userResponse.response_date || new Date()),
+            notes: userResponse.notes || '',
+            created_at: new Date(userResponse.created_at || new Date()),
+            updated_at: new Date(userResponse.updated_at || new Date())
+          } : undefined,
+          user_rsvp_status: (userResponse?.response_status || 'pending') as 'accepted' | 'declined' | 'pending',
+          color_code: this.getEventColor(userResponse?.response_status || 'pending')
+        };
+      }) || [];
+
+      return this.success({
+        data: events,
+        total_count: count || 0,
+        total: count || 0,
+        page: Math.floor(offset / limit) + 1,
+        limit,
+        offset,
+        has_more: (count || 0) > offset + limit
+      });
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw error;
+      }
+      throw new ApiClientError({
+        message: `Failed to search events: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        code: 'SEARCH_EVENTS_ERROR',
+        details: { originalError: error }
+      });
+    }
+  }
+
+  async searchCompanies(query: string, params?: { limit?: number; offset?: number }): Promise<ApiResponse<PaginatedResponse<Company>>> {
+    try {
+      const limit = params?.limit || 20;
+      const offset = params?.offset || 0;
+
+      // Search companies by name and ticker
+      const { data: companiesData, error: companiesError } = await supabaseService
+        .from('companies')
+        .select('*')
+        .or(`company_name.ilike.%${query}%,ticker_symbol.ilike.%${query}%`)
+        .eq('is_active', true)
+        .order('company_name', { ascending: true })
+        .range(offset, offset + limit - 1);
+
+      if (companiesError) {
+        throw new ApiClientError({
+          message: `Failed to search companies: ${companiesError.message}`,
+          code: 'SEARCH_COMPANIES_ERROR',
+          details: { originalError: companiesError }
+        });
+      }
+
+      // Get total count for pagination
+      const { count, error: countError } = await supabaseService
+        .from('companies')
+        .select('*', { count: 'exact', head: true })
+        .or(`company_name.ilike.%${query}%,ticker_symbol.ilike.%${query}%`)
+        .eq('is_active', true);
+
+      if (countError) {
+        throw new ApiClientError({
+          message: `Failed to count company search results: ${countError.message}`,
+          code: 'SEARCH_COUNT_ERROR',
+          details: { originalError: countError }
+        });
+      }
+
+      const companies = companiesData?.map((company: any) => ({
+        id: company.id,
+        ticker_symbol: company.ticker_symbol,
+        company_name: company.company_name,
+        gics_sector: company.gics_sector,
+        gics_subsector: company.gics_subsector,
+        gics_industry: company.gics_industry,
+        gics_sub_industry: company.gics_sub_industry,
+        classification_status: company.classification_status as 'pending' | 'complete',
+        is_active: company.is_active,
+        created_at: new Date(company.created_at),
+        updated_at: new Date(company.updated_at),
+        events: [] // Will be populated if needed
+      })) || [];
+
+      return this.success({
+        data: companies,
+        total_count: count || 0,
+        total: count || 0,
+        page: Math.floor(offset / limit) + 1,
+        limit,
+        offset,
+        has_more: (count || 0) > offset + limit
+      });
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw error;
+      }
+      throw new ApiClientError({
+        message: `Failed to search companies: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        code: 'SEARCH_COMPANIES_ERROR',
+        details: { originalError: error }
+      });
     }
   }
 }

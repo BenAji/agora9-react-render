@@ -66,59 +66,61 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onResultClick }) => {
     setIsLoading(true);
     
     try {
-      const query = searchQuery.toLowerCase();
       const searchResults: SearchResult[] = [];
 
-      // Search events
-      searchData.events.forEach(event => {
-        if (
-          event.title.toLowerCase().includes(query) ||
-          (event.description && event.description.toLowerCase().includes(query)) ||
-          event.companies.some(company => 
-            company.company_name.toLowerCase().includes(query) ||
-            company.ticker_symbol.toLowerCase().includes(query)
-          )
-        ) {
-          searchResults.push({
-            id: event.id,
-            type: 'event',
-            title: event.title,
-            subtitle: `${event.companies[0]?.company_name || 'Unknown'} - ${new Date(event.start_date).toLocaleDateString()}`,
-            icon: <Calendar size={16} />
+      // Search events using real API
+      try {
+        const eventsResponse = await apiClient.searchEvents(searchQuery, { limit: 5 });
+        if (eventsResponse.success) {
+          eventsResponse.data.data.forEach(event => {
+            searchResults.push({
+              id: event.id,
+              type: 'event',
+              title: event.title,
+              subtitle: `${event.companies[0]?.company_name || 'Unknown'} - ${new Date(event.start_date).toLocaleDateString()}`,
+              icon: <Calendar size={16} />
+            });
           });
         }
-      });
+      } catch (error) {
+        console.error('Event search error:', error);
+      }
 
-      // Search companies
-      searchData.companies.forEach(company => {
-        if (
-          company.company_name.toLowerCase().includes(query) ||
-          company.ticker_symbol.toLowerCase().includes(query) ||
-          company.gics_subsector.toLowerCase().includes(query)
-        ) {
-          searchResults.push({
-            id: company.id,
-            type: 'company',
-            title: company.company_name,
-            subtitle: `${company.gics_subsector} - ${company.ticker_symbol}`,
-            icon: <Building2 size={16} />
+      // Search companies using real API
+      try {
+        const companiesResponse = await apiClient.searchCompanies(searchQuery, { limit: 5 });
+        if (companiesResponse.success) {
+          companiesResponse.data.data.forEach(company => {
+            searchResults.push({
+              id: company.id,
+              type: 'company',
+              title: company.company_name,
+              subtitle: `${company.gics_subsector} - ${company.ticker_symbol}`,
+              icon: <Building2 size={16} />
+            });
           });
         }
-      });
+      } catch (error) {
+        console.error('Company search error:', error);
+      }
 
-      // Search subsectors
-      searchData.subsectors.forEach(subsector => {
-        if (subsector.toLowerCase().includes(query)) {
-          const companyCount = searchData.companies.filter(c => c.gics_subsector === subsector).length;
-          searchResults.push({
-            id: `subsector-${subsector}`,
-            type: 'subscription',
-            title: subsector,
-            subtitle: `${companyCount} companies`,
-            icon: <Bell size={16} />
-          });
-        }
-      });
+      // Search subsectors from cached data (fallback to local search)
+      try {
+        searchData.subsectors.forEach(subsector => {
+          if (subsector.toLowerCase().includes(searchQuery.toLowerCase())) {
+            const companyCount = searchData.companies.filter(c => c.gics_subsector === subsector).length;
+            searchResults.push({
+              id: `subsector-${subsector}`,
+              type: 'subscription',
+              title: subsector,
+              subtitle: `${companyCount} companies`,
+              icon: <Bell size={16} />
+            });
+          }
+        });
+      } catch (error) {
+        console.error('Subsector search error:', error);
+      }
 
       // Limit results to top 10
       setResults(searchResults.slice(0, 10));
