@@ -430,8 +430,8 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           {event.description}
         </p>
 
-        {/* Company Info - Show primary host or first company */}
-        {event.companies && event.companies.length > 0 && (
+        {/* Host Information - Show actual host based on host type */}
+        {event.primary_host && (
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -444,10 +444,10 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
             <Building2 size={16} color="var(--accent-color)" />
             <div>
               <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
-                {event.primary_host?.host_ticker || event.companies[0]?.ticker_symbol}
+                {event.primary_host.host_ticker || 'Event Host'}
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
-                {event.primary_host?.host_name || event.companies[0]?.company_name}
+                {event.primary_host.host_name || 'Hosting Organization'}
               </div>
             </div>
           </div>
