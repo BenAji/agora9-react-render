@@ -609,7 +609,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
             <button 
               onClick={() => {
                 // Add to calendar functionality
-                const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${event.start_date.toISOString().replace(/[-:]/g, '').split('.')[0]}Z/${event.end_date.toISOString().replace(/[-:]/g, '').split('.')[0]}Z&details=${encodeURIComponent(event.description)}`;
+                const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${event.start_date.toISOString().replace(/[-:]/g, '').split('.')[0]}Z/${event.end_date.toISOString().replace(/[-:]/g, '').split('.')[0]}Z&details=${encodeURIComponent(event.description || '')}`;
                 window.open(calendarUrl, '_blank');
               }}
               style={{
@@ -645,12 +645,12 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                 if (navigator.share) {
                   navigator.share({
                     title: event.title,
-                    text: event.description,
+                    text: event.description || '',
                     url: window.location.href
                   });
                 } else {
                   // Fallback: copy to clipboard
-                  navigator.clipboard.writeText(`${event.title}\n${event.description}\n${window.location.href}`);
+                  navigator.clipboard.writeText(`${event.title}\n${event.description || ''}\n${window.location.href}`);
                 }
               }}
               style={{
@@ -687,7 +687,9 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
             {event.virtual_details?.join_url && (
               <button 
                 onClick={() => {
-                  window.open(event.virtual_details.join_url, '_blank');
+                  if (event.virtual_details?.join_url) {
+                    window.open(event.virtual_details.join_url, '_blank');
+                  }
                 }}
                 style={{
                   flex: 1,
