@@ -1282,7 +1282,7 @@ class SupabaseApiClient implements ApiClient {
         subsector: updatedData.subsector,
         payment_status: updatedData.payment_status as 'pending' | 'paid' | 'failed' | 'cancelled',
         is_active: updatedData.is_active,
-        expires_at: updatedData.expires_at ? new Date(updatedData.expires_at) : null,
+        expires_at: updatedData.expires_at ? new Date(updatedData.expires_at) : undefined,
         stripe_subscription_id: updatedData.stripe_subscription_id,
         stripe_customer_id: updatedData.stripe_customer_id,
         created_at: new Date(updatedData.created_at),
