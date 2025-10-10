@@ -51,6 +51,11 @@ export const useCalendarData = (
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
 
+      // Safety check for apiClient
+      if (!apiClient) {
+        throw new Error('API client is not initialized');
+      }
+
       // Load companies and events in parallel
       const [companiesResponse, eventsResponse] = await Promise.all([
         apiClient.getSubscribedCompanies(),

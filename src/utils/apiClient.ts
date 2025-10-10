@@ -53,6 +53,65 @@ class SupabaseApiClient implements ApiClient {
     };
   }
 
+  // Helper method to fetch host details based on host_type and host_id
+  private async fetchHostDetails(host: any): Promise<any> {
+    if (!host.host_id) return host;
+
+    try {
+      if (host.host_type === 'single_corp') {
+        // Fetch company details
+        const { data: companyData, error: companyError } = await supabaseService
+          .from('companies')
+          .select('id, ticker_symbol, company_name, gics_sector, gics_subsector')
+          .eq('id', host.host_id)
+          .single();
+
+        if (!companyError && companyData) {
+          return {
+            ...host,
+            host_name: companyData.company_name,
+            host_ticker: companyData.ticker_symbol,
+            host_sector: companyData.gics_sector,
+            host_subsector: companyData.gics_subsector,
+          };
+        }
+      } else if (host.host_type === 'non_company') {
+        // Fetch organization details
+        const { data: orgData, error: orgError } = await supabaseService
+          .from('organizations')
+          .select('id, name, type, sector, subsector')
+          .eq('id', host.host_id)
+          .single();
+
+        if (!orgError && orgData) {
+          return {
+            ...host,
+            host_name: orgData.name,
+            host_ticker: '', // Organizations don't have tickers
+            host_sector: orgData.sector,
+            host_subsector: orgData.subsector,
+          };
+        }
+      } else if (host.host_type === 'multi_corp' && host.companies_jsonb) {
+        // For multi-corp, extract details from companies_jsonb
+        const primaryCompany = host.companies_jsonb.find((c: any) => c.is_primary);
+        if (primaryCompany) {
+          return {
+            ...host,
+            host_name: primaryCompany.name,
+            host_ticker: primaryCompany.ticker,
+            host_sector: primaryCompany.sector,
+            host_subsector: primaryCompany.subsector,
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching host details:', error);
+    }
+
+    return host; // Return original host if fetching fails
+  }
+
   private async handleSupabaseError(error: any, operation: string): Promise<never> {
     throw new ApiClientError({
       message: error.message || `Failed to ${operation}`,
@@ -320,23 +379,21 @@ class SupabaseApiClient implements ApiClient {
             classification_status: 'complete' as const
           }));
 
-        // Extract event hosts information - will fetch detailed info separately
-        const hosts = Array.isArray(event.event_hosts) ? event.event_hosts.map((eh: any) => {
-          return {
-            id: eh.id,
-            event_id: event.id,
-            host_type: eh.host_type,
-            host_id: eh.host_id,
-            host_name: '', // Will be populated by separate queries if needed
-            host_ticker: '', // Will be populated by separate queries if needed
-            host_sector: '', // Will be populated by separate queries if needed
-            host_subsector: '', // Will be populated by separate queries if needed
-            companies_jsonb: eh.companies_jsonb,
-            primary_company_id: eh.primary_company_id,
-            created_at: new Date(eh.created_at),
-            updated_at: new Date(eh.updated_at),
-          };
-        }) : [];
+        // Extract event hosts information - simplified for now
+        const hosts = Array.isArray(event.event_hosts) ? event.event_hosts.map((eh: any) => ({
+          id: eh.id,
+          event_id: event.id,
+          host_type: eh.host_type,
+          host_id: eh.host_id,
+          host_name: '', // Will be populated when needed
+          host_ticker: '', // Will be populated when needed
+          host_sector: '', // Will be populated when needed
+          host_subsector: '', // Will be populated when needed
+          companies_jsonb: eh.companies_jsonb,
+          primary_company_id: eh.primary_company_id,
+          created_at: new Date(eh.created_at),
+          updated_at: new Date(eh.updated_at),
+        })) : [];
 
         // Get primary host for easy access
         const primary_host = hosts.find((h: any) => h.primary_company_id === h.host_id) || hosts[0];
@@ -487,22 +544,20 @@ class SupabaseApiClient implements ApiClient {
 
       // Transform the event data to match CalendarEvent format
       const companies = eventData.event_companies?.map((ec: any) => ec.companies).filter(Boolean) || [];
-      const hosts = Array.isArray(eventData.event_hosts) ? eventData.event_hosts.map((eh: any) => {
-        return {
-          id: eh.id,
-          event_id: eventData.id,
-          host_type: eh.host_type,
-          host_id: eh.host_id,
-          host_name: '', // Will be populated by separate queries if needed
-          host_ticker: '', // Will be populated by separate queries if needed
-          host_sector: '', // Will be populated by separate queries if needed
-          host_subsector: '', // Will be populated by separate queries if needed
-          companies_jsonb: eh.companies_jsonb,
-          primary_company_id: eh.primary_company_id,
-          created_at: new Date(eh.created_at),
-          updated_at: new Date(eh.updated_at),
-        };
-      }) : [];
+      const hosts = Array.isArray(eventData.event_hosts) ? eventData.event_hosts.map((eh: any) => ({
+        id: eh.id,
+        event_id: eventData.id,
+        host_type: eh.host_type,
+        host_id: eh.host_id,
+        host_name: '', // Will be populated when needed
+        host_ticker: '', // Will be populated when needed
+        host_sector: '', // Will be populated when needed
+        host_subsector: '', // Will be populated when needed
+        companies_jsonb: eh.companies_jsonb,
+        primary_company_id: eh.primary_company_id,
+        created_at: new Date(eh.created_at),
+        updated_at: new Date(eh.updated_at),
+      })) : [];
 
       const primary_host = hosts.find((h: any) => h.primary_company_id) || hosts[0] || null;
 
@@ -2118,22 +2173,20 @@ class SupabaseApiClient implements ApiClient {
 
       const events = eventsData?.map((event: any) => {
         const companies = event.event_companies?.map((ec: any) => ec.companies).filter(Boolean) || [];
-        const hosts = Array.isArray(event.event_hosts) ? event.event_hosts.map((eh: any) => {
-          return {
-            id: eh.id,
-            event_id: event.id,
-            host_type: eh.host_type,
-            host_id: eh.host_id,
-            host_name: '', // Will be populated by separate queries if needed
-            host_ticker: '', // Will be populated by separate queries if needed
-            host_sector: '', // Will be populated by separate queries if needed
-            host_subsector: '', // Will be populated by separate queries if needed
-            companies_jsonb: eh.companies_jsonb,
-            primary_company_id: eh.primary_company_id,
-            created_at: new Date(eh.created_at),
-            updated_at: new Date(eh.updated_at),
-          };
-        }) : [];
+        const hosts = Array.isArray(event.event_hosts) ? event.event_hosts.map((eh: any) => ({
+          id: eh.id,
+          event_id: event.id,
+          host_type: eh.host_type,
+          host_id: eh.host_id,
+          host_name: '', // Will be populated when needed
+          host_ticker: '', // Will be populated when needed
+          host_sector: '', // Will be populated when needed
+          host_subsector: '', // Will be populated when needed
+          companies_jsonb: eh.companies_jsonb,
+          primary_company_id: eh.primary_company_id,
+          created_at: new Date(eh.created_at),
+          updated_at: new Date(eh.updated_at),
+        })) : [];
 
         const primary_host = hosts.find((h: any) => h.primary_company_id) || hosts[0] || null;
         const userResponse = event.user_event_responses?.find((response: any) => response.user_id === userId);
