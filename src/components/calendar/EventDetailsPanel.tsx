@@ -523,7 +523,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         </p>
 
         {/* Host Information - Display based on host type */}
-        {enrichedHosts && enrichedHosts.length > 0 && (
+        {(enrichedHosts && enrichedHosts.length > 0) || (event.hosts && event.hosts.length > 0) ? (
           <div style={{
             padding: '0.75rem',
             backgroundColor: 'var(--tertiary-bg)',
@@ -541,11 +541,12 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                 Loading host information...
               </div>
             )}
-            {enrichedHosts.map((host, index) => {
+            {(enrichedHosts.length > 0 ? enrichedHosts : event.hosts || []).map((host, index) => {
+              const hostsToShow = enrichedHosts.length > 0 ? enrichedHosts : event.hosts || [];
               // Determine host display based on host_type
               if (host.host_type === 'single_corp') {
                 return (
-                  <div key={host.id} style={{ marginBottom: index < enrichedHosts.length - 1 ? '0.5rem' : '0' }}>
+                  <div key={host.id} style={{ marginBottom: index < hostsToShow.length - 1 ? '0.5rem' : '0' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem' }}>
                       Host Company
                     </div>
@@ -565,7 +566,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                 const otherHosts = coHosts.filter((c: any) => !c.is_primary);
                 
                 return (
-                  <div key={host.id} style={{ marginBottom: index < enrichedHosts.length - 1 ? '0.5rem' : '0' }}>
+                  <div key={host.id} style={{ marginBottom: index < hostsToShow.length - 1 ? '0.5rem' : '0' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem' }}>
                       Co-Hosted by Multiple Companies
                     </div>
@@ -583,7 +584,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                 );
               } else if (host.host_type === 'non_company') {
                 return (
-                  <div key={host.id} style={{ marginBottom: index < enrichedHosts.length - 1 ? '0.5rem' : '0' }}>
+                  <div key={host.id} style={{ marginBottom: index < hostsToShow.length - 1 ? '0.5rem' : '0' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem' }}>
                       Host Organization
                     </div>
@@ -601,7 +602,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
               return null;
             })}
           </div>
-        )}
+        ) : null}
         
         {/* Show message when no host information is available */}
         {(!enrichedHosts || enrichedHosts.length === 0) && event.hosts && event.hosts.length > 0 && !loadingHosts && (
