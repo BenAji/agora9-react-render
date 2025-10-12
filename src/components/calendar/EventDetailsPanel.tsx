@@ -9,8 +9,9 @@
  * OFFICE: Optimized for 320px+ width, touch targets 44px+
  */
 
-import React, { useRef, useEffect } from 'react';
-import { CalendarEvent } from '../../types/database';
+import React, { useRef, useEffect, useState } from 'react';
+import { CalendarEvent, EventHost } from '../../types/database';
+import { supabaseService } from '../../lib/supabase';
 import { 
   MapPin, 
   Users, 
@@ -78,6 +79,8 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
   events = []
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
+  const [enrichedHosts, setEnrichedHosts] = useState<EventHost[]>([]);
+  const [loadingHosts, setLoadingHosts] = useState(false);
 
   // Click outside to close
   useEffect(() => {
@@ -94,6 +97,95 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
       };
     }
   }, [isVisible, onClose]);
+
+  // Fetch host details when panel opens
+  useEffect(() => {
+    const fetchHostDetails = async () => {
+      if (!event || !isVisible || !event.hosts || event.hosts.length === 0) {
+        setEnrichedHosts([]);
+        return;
+      }
+
+      // Check if hosts already have detailed information
+      const hasDetailedInfo = event.hosts.some(host => host.host_name && host.host_name !== '');
+      if (hasDetailedInfo) {
+        setEnrichedHosts(event.hosts);
+        return;
+      }
+
+      setLoadingHosts(true);
+      try {
+        // Fetch detailed host information for each host
+        const enrichedHostsPromises = event.hosts.map(async (host) => {
+          if (!host.host_id) return host;
+
+          try {
+            if (host.host_type === 'single_corp') {
+              // Fetch company details
+              const { data: companyData, error: companyError } = await supabaseService
+                .from('companies')
+                .select('id, ticker_symbol, company_name, gics_sector, gics_subsector')
+                .eq('id', host.host_id)
+                .single();
+
+              if (!companyError && companyData) {
+                return {
+                  ...host,
+                  host_name: companyData.company_name,
+                  host_ticker: companyData.ticker_symbol,
+                  host_sector: companyData.gics_sector,
+                  host_subsector: companyData.gics_subsector,
+                };
+              }
+            } else if (host.host_type === 'non_company') {
+              // Fetch organization details
+              const { data: orgData, error: orgError } = await supabaseService
+                .from('organizations')
+                .select('id, name, type, sector, subsector')
+                .eq('id', host.host_id)
+                .single();
+
+              if (!orgError && orgData) {
+                return {
+                  ...host,
+                  host_name: orgData.name,
+                  host_ticker: '', // Organizations don't have tickers
+                  host_sector: orgData.sector,
+                  host_subsector: orgData.subsector,
+                };
+              }
+            } else if (host.host_type === 'multi_corp' && host.companies_jsonb) {
+              // For multi-corp, extract details from companies_jsonb
+              const primaryCompany = host.companies_jsonb.find((c: any) => c.is_primary);
+              if (primaryCompany) {
+                return {
+                  ...host,
+                  host_name: primaryCompany.name,
+                  host_ticker: primaryCompany.ticker,
+                  host_sector: '', // Multi-corp companies_jsonb doesn't include sector info
+                  host_subsector: '', // Multi-corp companies_jsonb doesn't include subsector info
+                };
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching host details:', error);
+          }
+
+          return host; // Return original host if fetching fails
+        });
+
+        const enrichedHosts = await Promise.all(enrichedHostsPromises);
+        setEnrichedHosts(enrichedHosts);
+      } catch (error) {
+        console.error('Error fetching host details:', error);
+        setEnrichedHosts(event.hosts); // Fallback to original hosts
+      } finally {
+        setLoadingHosts(false);
+      }
+    };
+
+    fetchHostDetails();
+  }, [event, isVisible]);
 
   if (!event || !isVisible) return null;
 
@@ -431,7 +523,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         </p>
 
         {/* Host Information - Display based on host type */}
-        {event.hosts && event.hosts.length > 0 && (
+        {enrichedHosts && enrichedHosts.length > 0 && (
           <div style={{
             padding: '0.75rem',
             backgroundColor: 'var(--tertiary-bg)',
@@ -439,11 +531,21 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
             border: '1px solid var(--border-color)',
             marginBottom: '1rem'
           }}>
-            {event.hosts.map((host, index) => {
+            {loadingHosts && (
+              <div style={{ 
+                fontSize: '0.75rem', 
+                color: 'var(--muted-text)', 
+                marginBottom: '0.5rem',
+                fontStyle: 'italic'
+              }}>
+                Loading host information...
+              </div>
+            )}
+            {enrichedHosts.map((host, index) => {
               // Determine host display based on host_type
               if (host.host_type === 'single_corp') {
                 return (
-                  <div key={host.id} style={{ marginBottom: index < event.hosts.length - 1 ? '0.5rem' : '0' }}>
+                  <div key={host.id} style={{ marginBottom: index < enrichedHosts.length - 1 ? '0.5rem' : '0' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem' }}>
                       Host Company
                     </div>
@@ -463,7 +565,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                 const otherHosts = coHosts.filter((c: any) => !c.is_primary);
                 
                 return (
-                  <div key={host.id} style={{ marginBottom: index < event.hosts.length - 1 ? '0.5rem' : '0' }}>
+                  <div key={host.id} style={{ marginBottom: index < enrichedHosts.length - 1 ? '0.5rem' : '0' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem' }}>
                       Co-Hosted by Multiple Companies
                     </div>
@@ -481,7 +583,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                 );
               } else if (host.host_type === 'non_company') {
                 return (
-                  <div key={host.id} style={{ marginBottom: index < event.hosts.length - 1 ? '0.5rem' : '0' }}>
+                  <div key={host.id} style={{ marginBottom: index < enrichedHosts.length - 1 ? '0.5rem' : '0' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem' }}>
                       Host Organization
                     </div>
@@ -498,6 +600,21 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
               }
               return null;
             })}
+          </div>
+        )}
+        
+        {/* Show message when no host information is available */}
+        {(!enrichedHosts || enrichedHosts.length === 0) && event.hosts && event.hosts.length > 0 && !loadingHosts && (
+          <div style={{
+            padding: '0.75rem',
+            backgroundColor: 'var(--tertiary-bg)',
+            borderRadius: '8px',
+            border: '1px solid var(--border-color)',
+            marginBottom: '1rem'
+          }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
+              Host Information Not Available
+            </div>
           </div>
         )}
       </div>
