@@ -101,7 +101,12 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
   // Fetch host details when panel opens
   useEffect(() => {
     const fetchHostDetails = async () => {
-      if (!event || !isVisible || !event.hosts || event.hosts.length === 0) {
+      if (!event || !isVisible) {
+        setEnrichedHosts([]);
+        return;
+      }
+
+      if (!event.hosts || event.hosts.length === 0) {
         setEnrichedHosts([]);
         return;
       }
@@ -522,8 +527,8 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           {event.description}
         </p>
 
-        {/* Host Information - Display based on host type */}
-        {(enrichedHosts && enrichedHosts.length > 0) || (event.hosts && event.hosts.length > 0) ? (
+              {/* Host Information - Display based on host type */}
+              {(enrichedHosts && enrichedHosts.length > 0) || (event.hosts && event.hosts.length > 0) ? (
           <div style={{
             padding: '0.75rem',
             backgroundColor: 'var(--tertiary-bg)',

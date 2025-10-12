@@ -361,39 +361,46 @@ class SupabaseApiClient implements ApiClient {
       });
 
       // Transform the filtered query data to match CalendarEvent format
-      const events: CalendarEvent[] = filteredEvents.map((event: any) => {
+      const events: CalendarEvent[] = await Promise.all(filteredEvents.map(async (event: any) => {
         // Extract companies from the nested event_companies structure
         const companies = (event.event_companies || [])
           .filter((ec: any) => ec.companies && ec.companies.is_active)
           .map((ec: any) => ({
-            id: ec.companies.id,
-            ticker_symbol: ec.companies.ticker_symbol,
-            company_name: ec.companies.company_name,
-            gics_sector: ec.companies.gics_sector,
-            gics_subsector: ec.companies.gics_subsector,
-            gics_industry: '',
-            gics_sub_industry: '',
-            created_at: new Date(),
-            updated_at: new Date(),
-            is_active: true,
-            classification_status: 'complete' as const
-          }));
+          id: ec.companies.id,
+          ticker_symbol: ec.companies.ticker_symbol,
+          company_name: ec.companies.company_name,
+          gics_sector: ec.companies.gics_sector,
+          gics_subsector: ec.companies.gics_subsector,
+          gics_industry: '',
+          gics_sub_industry: '',
+      created_at: new Date(),
+          updated_at: new Date(),
+      is_active: true,
+          classification_status: 'complete' as const
+        }));
 
-        // Extract event hosts information - simplified for now
-        const hosts = Array.isArray(event.event_hosts) ? event.event_hosts.map((eh: any) => ({
-          id: eh.id,
-          event_id: event.id,
-          host_type: eh.host_type,
-          host_id: eh.host_id,
-          host_name: '', // Will be populated when needed
-          host_ticker: '', // Will be populated when needed
-          host_sector: '', // Will be populated when needed
-          host_subsector: '', // Will be populated when needed
-          companies_jsonb: eh.companies_jsonb,
-          primary_company_id: eh.primary_company_id,
-          created_at: new Date(eh.created_at),
-          updated_at: new Date(eh.updated_at),
-        })) : [];
+        // Extract event hosts information and fetch details
+        const hosts = Array.isArray(event.event_hosts) ? await Promise.all(
+          event.event_hosts.map(async (eh: any) => {
+            const basicHost = {
+              id: eh.id,
+              event_id: event.id,
+              host_type: eh.host_type,
+              host_id: eh.host_id,
+              host_name: '', // Will be populated by fetchHostDetails
+              host_ticker: '', // Will be populated by fetchHostDetails
+              host_sector: '', // Will be populated by fetchHostDetails
+              host_subsector: '', // Will be populated by fetchHostDetails
+              companies_jsonb: eh.companies_jsonb,
+              primary_company_id: eh.primary_company_id,
+              created_at: new Date(eh.created_at),
+              updated_at: new Date(eh.updated_at),
+            };
+
+            // Fetch detailed host information
+            return await this.fetchHostDetails(basicHost);
+          })
+        ) : [];
 
         // Get primary host for easy access
         const primary_host = hosts.find((h: any) => h.primary_company_id === h.host_id) || hosts[0];
@@ -465,7 +472,7 @@ class SupabaseApiClient implements ApiClient {
           user_rsvp_status: (userResponse?.response_status || 'pending') as 'accepted' | 'declined' | 'pending',
           color_code: this.getEventColor(userResponse?.response_status || 'pending')
         };
-      });
+      }));
 
     
     return this.success({
@@ -528,7 +535,7 @@ class SupabaseApiClient implements ApiClient {
         .single();
 
       if (eventError) {
-        throw new ApiClientError({
+    throw new ApiClientError({
           message: `Failed to fetch event: ${eventError.message}`,
           code: 'EVENT_FETCH_ERROR',
           details: { originalError: eventError }
@@ -544,20 +551,28 @@ class SupabaseApiClient implements ApiClient {
 
       // Transform the event data to match CalendarEvent format
       const companies = eventData.event_companies?.map((ec: any) => ec.companies).filter(Boolean) || [];
-      const hosts = Array.isArray(eventData.event_hosts) ? eventData.event_hosts.map((eh: any) => ({
-        id: eh.id,
-        event_id: eventData.id,
-        host_type: eh.host_type,
-        host_id: eh.host_id,
-        host_name: '', // Will be populated when needed
-        host_ticker: '', // Will be populated when needed
-        host_sector: '', // Will be populated when needed
-        host_subsector: '', // Will be populated when needed
-        companies_jsonb: eh.companies_jsonb,
-        primary_company_id: eh.primary_company_id,
-        created_at: new Date(eh.created_at),
-        updated_at: new Date(eh.updated_at),
-      })) : [];
+      // Extract event hosts information and fetch details
+      const hosts = Array.isArray(eventData.event_hosts) ? await Promise.all(
+        eventData.event_hosts.map(async (eh: any) => {
+          const basicHost = {
+            id: eh.id,
+            event_id: eventData.id,
+            host_type: eh.host_type,
+            host_id: eh.host_id,
+            host_name: '', // Will be populated by fetchHostDetails
+            host_ticker: '', // Will be populated by fetchHostDetails
+            host_sector: '', // Will be populated by fetchHostDetails
+            host_subsector: '', // Will be populated by fetchHostDetails
+            companies_jsonb: eh.companies_jsonb,
+            primary_company_id: eh.primary_company_id,
+            created_at: new Date(eh.created_at),
+            updated_at: new Date(eh.updated_at),
+          };
+
+          // Fetch detailed host information
+          return await this.fetchHostDetails(basicHost);
+        })
+      ) : [];
 
       const primary_host = hosts.find((h: any) => h.primary_company_id) || hosts[0] || null;
 
@@ -685,7 +700,7 @@ class SupabaseApiClient implements ApiClient {
       const subscribedSubsectors = subscriptions?.map((s: any) => s.subsector) || [];
 
       if (subscribedSubsectors.length === 0) {
-        return this.success({
+    return this.success({
           companies: [],
           total_count: 0
         });
@@ -1751,22 +1766,22 @@ class SupabaseApiClient implements ApiClient {
       // If RSVP exists, update it
       if (existingRsvp) {
         const { data: updatedRsvp, error: updateError } = await supabaseService
-          .from('user_event_responses')
-          .update({
-            response_status: responseStatus,
-            response_date: new Date().toISOString(),
-            notes: notes || null
-          })
-          .eq('user_id', userId)
-          .eq('event_id', eventId)
-          .select()
+        .from('user_event_responses')
+        .update({
+          response_status: responseStatus,
+          response_date: new Date().toISOString(),
+          notes: notes || null
+        })
+        .eq('user_id', userId)
+        .eq('event_id', eventId)
+        .select()
           .single();
 
         if (updateError) {
           
-          throw new ApiClientError({
+      throw new ApiClientError({
             message: `Failed to update RSVP: ${updateError.message}`,
-            code: 'RSVP_UPDATE_ERROR',
+          code: 'RSVP_UPDATE_ERROR',
             details: { originalError: updateError }
           });
         }
@@ -2171,22 +2186,31 @@ class SupabaseApiClient implements ApiClient {
       const currentUserResponse = await this.getCurrentUser();
       const userId = currentUserResponse.data.id;
 
-      const events = eventsData?.map((event: any) => {
+      const events = await Promise.all((eventsData || []).map(async (event: any) => {
         const companies = event.event_companies?.map((ec: any) => ec.companies).filter(Boolean) || [];
-        const hosts = Array.isArray(event.event_hosts) ? event.event_hosts.map((eh: any) => ({
-          id: eh.id,
-          event_id: event.id,
-          host_type: eh.host_type,
-          host_id: eh.host_id,
-          host_name: '', // Will be populated when needed
-          host_ticker: '', // Will be populated when needed
-          host_sector: '', // Will be populated when needed
-          host_subsector: '', // Will be populated when needed
-          companies_jsonb: eh.companies_jsonb,
-          primary_company_id: eh.primary_company_id,
-          created_at: new Date(eh.created_at),
-          updated_at: new Date(eh.updated_at),
-        })) : [];
+        
+        // Extract event hosts information and fetch details
+        const hosts = Array.isArray(event.event_hosts) ? await Promise.all(
+          event.event_hosts.map(async (eh: any) => {
+            const basicHost = {
+              id: eh.id,
+              event_id: event.id,
+              host_type: eh.host_type,
+              host_id: eh.host_id,
+              host_name: '', // Will be populated by fetchHostDetails
+              host_ticker: '', // Will be populated by fetchHostDetails
+              host_sector: '', // Will be populated by fetchHostDetails
+              host_subsector: '', // Will be populated by fetchHostDetails
+              companies_jsonb: eh.companies_jsonb,
+              primary_company_id: eh.primary_company_id,
+              created_at: new Date(eh.created_at),
+              updated_at: new Date(eh.updated_at),
+            };
+
+            // Fetch detailed host information
+            return await this.fetchHostDetails(basicHost);
+          })
+        ) : [];
 
         const primary_host = hosts.find((h: any) => h.primary_company_id) || hosts[0] || null;
         const userResponse = event.user_event_responses?.find((response: any) => response.user_id === userId);
@@ -2254,7 +2278,7 @@ class SupabaseApiClient implements ApiClient {
           user_rsvp_status: (userResponse?.response_status || 'pending') as 'accepted' | 'declined' | 'pending',
           color_code: this.getEventColor(userResponse?.response_status || 'pending')
         };
-      }) || [];
+      }));
 
       return this.success({
         data: events,
