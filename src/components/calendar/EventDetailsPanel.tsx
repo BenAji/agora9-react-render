@@ -33,8 +33,10 @@ interface EventDetailsPanelProps {
   event: CalendarEvent | null;
   isVisible: boolean;
   onClose: () => void;
+  onDateSelect?: (date: Date) => void;
   onRSVPUpdate?: (eventId: string, status: 'accepted' | 'declined' | 'pending') => Promise<void>;
   className?: string;
+  events?: CalendarEvent[];
 }
 
 // Helper functions for event type colors
@@ -113,8 +115,10 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
   event,
   isVisible,
   onClose,
+  onDateSelect,
   onRSVPUpdate,
-  className
+  className,
+  events
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const [enrichedHosts, setEnrichedHosts] = useState<EventHost[]>([]);
