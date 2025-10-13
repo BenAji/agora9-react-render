@@ -341,7 +341,16 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         </p>
 
               {/* Host Information - Display based on host type */}
-              {(enrichedHosts && enrichedHosts.length > 0) || (event.hosts && event.hosts.length > 0) ? (
+              {(() => {
+                console.log('Host display debug:', {
+                  enrichedHosts: enrichedHosts,
+                  enrichedHostsLength: enrichedHosts?.length || 0,
+                  eventHosts: event.hosts,
+                  eventHostsLength: event.hosts?.length || 0,
+                  shouldShow: (enrichedHosts && enrichedHosts.length > 0) || (event.hosts && event.hosts.length > 0)
+                });
+                return (enrichedHosts && enrichedHosts.length > 0) || (event.hosts && event.hosts.length > 0);
+              })() ? (
           <div style={{
             padding: '0.75rem',
             backgroundColor: 'var(--tertiary-bg)',
@@ -422,20 +431,32 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           </div>
         ) : null}
         
-        {/* Show message when no host information is available */}
-        {(!enrichedHosts || enrichedHosts.length === 0) && event.hosts && event.hosts.length > 0 && !loadingHosts && (
-          <div style={{
-            padding: '0.75rem',
-            backgroundColor: 'var(--tertiary-bg)',
-            borderRadius: '8px',
-            border: '1px solid var(--border-color)',
-            marginBottom: '1rem'
-          }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
-              Host Information Not Available
-            </div>
-          </div>
-        )}
+         {/* Debug: Always show host information status */}
+         <div style={{
+           padding: '0.75rem',
+           backgroundColor: 'var(--tertiary-bg)',
+           borderRadius: '8px',
+           border: '1px solid var(--border-color)',
+           marginBottom: '1rem'
+         }}>
+           <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.5rem' }}>
+             Debug: Host Information Status
+           </div>
+           <div style={{ fontSize: '0.75rem', color: 'var(--primary-text)' }}>
+             enrichedHosts: {enrichedHosts?.length || 0} hosts
+           </div>
+           <div style={{ fontSize: '0.75rem', color: 'var(--primary-text)' }}>
+             event.hosts: {event.hosts?.length || 0} hosts
+           </div>
+           <div style={{ fontSize: '0.75rem', color: 'var(--primary-text)' }}>
+             loadingHosts: {loadingHosts ? 'true' : 'false'}
+           </div>
+           {event.hosts && event.hosts.length > 0 && (
+             <div style={{ fontSize: '0.75rem', color: 'var(--primary-text)', marginTop: '0.5rem' }}>
+               First host: {JSON.stringify(event.hosts[0], null, 2)}
+             </div>
+           )}
+         </div>
       </div>
 
       {/* Event Information Cards */}
