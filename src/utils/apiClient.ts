@@ -55,7 +55,12 @@ class SupabaseApiClient implements ApiClient {
 
   // Helper method to fetch host details based on host_type and host_id
   private async fetchHostDetails(host: any): Promise<any> {
-    if (!host.host_id) return host;
+    console.log('fetchHostDetails called with:', host);
+    
+    if (!host.host_id) {
+      console.log('No host_id provided, returning original host');
+      return host;
+    }
 
     try {
       if (host.host_type === 'single_corp') {
@@ -76,6 +81,7 @@ class SupabaseApiClient implements ApiClient {
           };
         }
       } else if (host.host_type === 'non_company') {
+        console.log('Fetching organization details for host_id:', host.host_id);
         // Fetch organization details
         const { data: orgData, error: orgError } = await supabaseService
           .from('organizations')
@@ -83,7 +89,10 @@ class SupabaseApiClient implements ApiClient {
           .eq('id', host.host_id)
           .single();
 
+        console.log('Organization fetch result:', { orgData, orgError });
+
         if (!orgError && orgData) {
+          console.log('Successfully fetched organization:', orgData);
           return {
             ...host,
             host_name: orgData.name,
@@ -91,6 +100,8 @@ class SupabaseApiClient implements ApiClient {
             host_sector: orgData.sector,
             host_subsector: orgData.subsector,
           };
+        } else {
+          console.log('Failed to fetch organization:', orgError);
         }
       } else if (host.host_type === 'multi_corp' && host.companies_jsonb) {
         // For multi-corp, extract details from companies_jsonb
