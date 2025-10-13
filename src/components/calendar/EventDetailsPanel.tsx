@@ -1,15 +1,12 @@
 /**
  * AGORA Event Details Panel Component - Office Add-in Optimized
  * 
- * Rebuilt from scratch based on EventDetailsPanel_Documentation.md
- * Purpose: Fixed-position right sidebar with touch-friendly design
+ * PHASE 4: Enhanced UI with Office Add-in Requirements
+ * Dependencies: calendar.ts types
+ * Purpose: Right sidebar for event details with compact, touch-friendly design
  * 
- * Features:
- * - Host Information Section (single_corp, multi_corp, non_company)
- * - Event Information Cards (Date, Location, Attendees)
- * - RSVP Section with status indicators
- * - Weather Forecast integration
- * - Click-outside-to-close functionality
+ * SAFETY: Uses mock data only, no API calls
+ * OFFICE: Optimized for 320px+ width, touch targets 44px+
  */
 
 import React, { useRef, useEffect, useState } from 'react';
@@ -39,86 +36,42 @@ interface EventDetailsPanelProps {
   events?: CalendarEvent[];
 }
 
-// Helper functions for event type colors
-const getEventTypeColor = (eventType: string) => {
-  switch (eventType) {
-    case 'earnings': return '#3B82F6'; // Blue
-    case 'conference': return '#10B981'; // Green
-    case 'webinar': return '#8B5CF6'; // Purple
-    case 'catalyst': return '#F59E0B'; // Orange
-    default: return '#6B7280'; // Gray
+// Helper functions for host information
+const getHostTypeIcon = (hostType: string) => {
+  switch (hostType) {
+    case 'single_corp': return '🏢';
+    case 'multi_corp': return '🏢🏢';
+    case 'non_company': return '🏛️';
+    default: return '📅';
   }
 };
 
-// Helper functions for date formatting
-const formatEventDate = (date: Date) => {
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-};
-
-const formatEventTime = (startDate: Date, endDate: Date) => {
-  const startTime = startDate.toLocaleTimeString('en-US', { 
-    hour: 'numeric', 
-    minute: '2-digit',
-    hour12: true 
-  });
-  const endTime = endDate.toLocaleTimeString('en-US', { 
-    hour: 'numeric', 
-    minute: '2-digit',
-    hour12: true 
-  });
-  return `${startTime} - ${endTime}`;
-};
-
-// Helper functions for RSVP status
-const getRSVPStatusIcon = (status: string) => {
-  switch (status) {
-    case 'accepted': return <CheckCircle size={16} />;
-    case 'declined': return <XCircle size={16} />;
-    default: return <AlertCircle size={16} />;
+const getHostTypeColor = (hostType: string) => {
+  switch (hostType) {
+    case 'single_corp': return '#FFD700';
+    case 'multi_corp': return '#FFA500';
+    case 'non_company': return '#87CEEB';
+    default: return '#6c757d';
   }
 };
 
-const getRSVPStatusColor = (status: string) => {
-  switch (status) {
-    case 'accepted': return '#10B981';
-    case 'declined': return '#EF4444';
-    default: return '#6B7280';
-  }
-};
-
-// Helper functions for location type icons
-const getLocationTypeIcon = (locationType: string) => {
-  switch (locationType) {
-    case 'physical': return <MapPin size={16} />;
-    case 'virtual': return <Globe size={16} />;
-    case 'hybrid': return <Building2 size={16} />;
-    default: return <MapPin size={16} />;
-  }
-};
-
-// Helper functions for host type display
 const getHostTypeLabel = (hostType: string) => {
   switch (hostType) {
-    case 'single_corp': return 'Host Company';
-    case 'multi_corp': return 'Co-Hosted by Multiple Companies';
-    case 'non_company': return 'Host Organization';
-    default: return 'Host Information';
+    case 'single_corp': return 'Corporate Event';
+    case 'multi_corp': return 'Multi-Corporate Event';
+    case 'non_company': return 'Regulatory/Association Event';
+    default: return 'Event';
   }
 };
 
-const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
-  event,
-  isVisible,
+const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({ 
+  event, 
+  isVisible, 
   onClose,
   onDateSelect,
   onRSVPUpdate,
   className,
-  events
+  events = []
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const [enrichedHosts, setEnrichedHosts] = useState<EventHost[]>([]);
@@ -236,6 +189,64 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
 
   if (!event || !isVisible) return null;
 
+  const formatEventDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const formatEventTime = (startDate: Date, endDate: Date) => {
+    const startTime = startDate.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    const endTime = endDate.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    return `${startTime} - ${endTime}`;
+  };
+
+  const getEventTypeColor = (eventType: string) => {
+    switch (eventType) {
+      case 'earnings': return '#3B82F6'; // Blue
+      case 'conference': return '#10B981'; // Green
+      case 'webinar': return '#8B5CF6'; // Purple
+      case 'catalyst': return '#F59E0B'; // Orange
+      default: return '#6B7280'; // Gray
+    }
+  };
+
+  const getRSVPStatusIcon = (status: string) => {
+    switch (status) {
+      case 'accepted': return <CheckCircle size={16} />;
+      case 'declined': return <XCircle size={16} />;
+      default: return <AlertCircle size={16} />;
+    }
+  };
+
+  const getRSVPStatusColor = (status: string) => {
+    switch (status) {
+      case 'accepted': return '#10B981';
+      case 'declined': return '#EF4444';
+      default: return '#6B7280';
+    }
+  };
+
+  const getLocationTypeIcon = (locationType: string) => {
+    switch (locationType) {
+      case 'physical': return <MapPin size={16} />;
+      case 'virtual': return <Globe size={16} />;
+      case 'hybrid': return <Building2 size={16} />;
+      default: return <MapPin size={16} />;
+    }
+  };
+
   return (
     <div
       ref={panelRef}
@@ -245,7 +256,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         top: 0,
         right: 0,
         height: '100vh',
-        width: 'min(420px, max(320px, 25vw))',
+        width: 'min(420px, max(320px, 25vw))', // Responsive width: 320px min, 420px max (increased for mini calendar dots)
         backgroundColor: 'var(--secondary-bg)',
         borderLeft: '1px solid var(--border-color)',
         boxShadow: '-4px 0 12px rgba(0,0,0,0.1)',
@@ -268,16 +279,16 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
             position: 'absolute',
             top: '1rem',
             right: '1rem',
-            width: '44px',
+            width: '44px', // Touch-friendly
             height: '44px',
-            borderRadius: '50%',
             backgroundColor: 'transparent',
             border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            cursor: 'pointer',
-            color: 'var(--primary-text)',
+            color: 'var(--muted-text)',
             transition: 'background-color 0.2s ease'
           }}
           onMouseEnter={(e) => {
@@ -290,47 +301,47 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           <X size={20} />
         </button>
 
-        {/* Event Type Badge */}
+        {/* Event Type Badge - Reduced Size */}
         <div style={{
           display: 'inline-block',
-          padding: '0.25rem 0.75rem',
-          borderRadius: '9999px',
+          padding: '0.2rem 0.5rem',
           backgroundColor: getEventTypeColor(event.event_type),
           color: 'white',
-          fontSize: '0.75rem',
+          borderRadius: '8px',
+          fontSize: '0.65rem',
           fontWeight: '600',
           textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-          marginBottom: '1rem'
+          letterSpacing: '0.3px',
+          marginBottom: '0.75rem'
         }}>
           {event.event_type}
         </div>
 
         {/* Event Title */}
         <h2 style={{
-          fontSize: '1.5rem',
+          fontSize: '1.25rem',
           fontWeight: '700',
           color: 'var(--primary-text)',
-          margin: '0 0 0.75rem 0',
-          lineHeight: '1.3'
+          marginBottom: '0.5rem',
+          lineHeight: '1.3',
+          paddingRight: '2rem' // Space for close button
         }}>
           {event.title}
         </h2>
 
-        {/* Event Description */}
-        {event.description && (
-          <p style={{
-            fontSize: '0.875rem',
-            color: 'var(--muted-text)',
-            lineHeight: '1.5',
-            margin: '0 0 1rem 0'
-          }}>
-            {event.description}
-          </p>
-        )}
 
-        {/* Host Information - Display based on host type */}
-        {(enrichedHosts && enrichedHosts.length > 0) || (event.hosts && event.hosts.length > 0) ? (
+        {/* Event Description */}
+        <p style={{
+          fontSize: '0.875rem',
+          color: 'var(--muted-text)',
+          lineHeight: '1.5',
+          marginBottom: '1rem'
+        }}>
+          {event.description}
+        </p>
+
+              {/* Host Information - Display based on host type */}
+              {(enrichedHosts && enrichedHosts.length > 0) || (event.hosts && event.hosts.length > 0) ? (
           <div style={{
             padding: '0.75rem',
             backgroundColor: 'var(--tertiary-bg)',
@@ -339,9 +350,9 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
             marginBottom: '1rem'
           }}>
             {loadingHosts && (
-              <div style={{
-                fontSize: '0.75rem',
-                color: 'var(--muted-text)',
+              <div style={{ 
+                fontSize: '0.75rem', 
+                color: 'var(--muted-text)', 
                 marginBottom: '0.5rem',
                 fontStyle: 'italic'
               }}>
@@ -350,13 +361,12 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
             )}
             {(enrichedHosts.length > 0 ? enrichedHosts : event.hosts || []).map((host, index) => {
               const hostsToShow = enrichedHosts.length > 0 ? enrichedHosts : event.hosts || [];
-              
               // Determine host display based on host_type
               if (host.host_type === 'single_corp') {
                 return (
                   <div key={host.id} style={{ marginBottom: index < hostsToShow.length - 1 ? '0.5rem' : '0' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem' }}>
-                      {getHostTypeLabel(host.host_type)}
+                      Host Company
                     </div>
                     <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
                       {host.host_ticker} - {host.host_name}
@@ -372,11 +382,11 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                 const coHosts = host.companies_jsonb || [];
                 const primaryHost = coHosts.find((c: any) => c.is_primary);
                 const otherHosts = coHosts.filter((c: any) => !c.is_primary);
-
+                
                 return (
                   <div key={host.id} style={{ marginBottom: index < hostsToShow.length - 1 ? '0.5rem' : '0' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem' }}>
-                      {getHostTypeLabel(host.host_type)}
+                      Co-Hosted by Multiple Companies
                     </div>
                     {primaryHost && (
                       <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
@@ -394,7 +404,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                 return (
                   <div key={host.id} style={{ marginBottom: index < hostsToShow.length - 1 ? '0.5rem' : '0' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem' }}>
-                      {getHostTypeLabel(host.host_type)}
+                      Host Organization
                     </div>
                     <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
                       {host.host_name}
@@ -411,7 +421,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
             })}
           </div>
         ) : null}
-
+        
         {/* Show message when no host information is available */}
         {(!enrichedHosts || enrichedHosts.length === 0) && event.hosts && event.hosts.length > 0 && !loadingHosts && (
           <div style={{
@@ -428,32 +438,11 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         )}
       </div>
 
-      {/* Participating Companies Section */}
-      <div style={{
-        padding: '0.75rem',
-        backgroundColor: 'var(--tertiary-bg)',
-        borderRadius: '8px',
-        border: '1px solid var(--border-color)',
-        marginBottom: '1.5rem'
-      }}>
-        <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.5rem' }}>
-          🏢 Participating Companies
-        </div>
-        <div style={{ fontSize: '0.875rem', color: 'var(--primary-text)', marginBottom: '0.25rem' }}>
-          Companies attending this event: {event.companies.map((c: any) => c.ticker_symbol).join(', ') || 'None'}
-        </div>
-        {event.companies.length > 0 && event.companies[0].gics_sector && (
-          <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
-            Sector: {event.companies[0].gics_sector}{event.companies[0].gics_subsector && ` • ${event.companies[0].gics_subsector}`}
-          </div>
-        )}
-      </div>
-
       {/* Event Information Cards */}
       <div style={{ marginBottom: '1.5rem' }}>
         {/* Date & Time Card */}
         <div style={{
-          padding: '0.75rem',
+          padding: '1rem',
           backgroundColor: 'var(--tertiary-bg)',
           borderRadius: '8px',
           border: '1px solid var(--border-color)',
@@ -475,20 +464,20 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
 
         {/* Location Card */}
         <div style={{
-          padding: '0.75rem',
+          padding: '1rem',
           backgroundColor: 'var(--tertiary-bg)',
           borderRadius: '8px',
           border: '1px solid var(--border-color)',
           marginBottom: '0.75rem'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            {React.cloneElement(getLocationTypeIcon(event.location_type), { size: 14, color: 'var(--accent-color)' })}
+            {React.cloneElement(getLocationTypeIcon(event.location_type), { size: 14 })}
             <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
               Location
             </span>
           </div>
           <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)', marginBottom: '0.25rem' }}>
-            {event.location_type === 'virtual' ? 'Virtual Event' :
+            {event.location_type === 'virtual' ? 'Virtual Event' : 
              event.location_type === 'hybrid' ? 'Hybrid Event' : 'In-Person Event'}
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
@@ -498,7 +487,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
 
         {/* Attendees Card */}
         <div style={{
-          padding: '0.75rem',
+          padding: '1rem',
           backgroundColor: 'var(--tertiary-bg)',
           borderRadius: '8px',
           border: '1px solid var(--border-color)'
@@ -517,7 +506,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
 
       {/* RSVP Section */}
       <div style={{
-        padding: '0.75rem',
+        padding: '1rem',
         backgroundColor: 'var(--tertiary-bg)',
         borderRadius: '8px',
         border: '1px solid var(--border-color)',
@@ -529,14 +518,14 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
             Your Response
           </span>
         </div>
-
+        
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
           <div style={{ color: getRSVPStatusColor(event.rsvpStatus || 'pending') }}>
             {React.cloneElement(getRSVPStatusIcon(event.rsvpStatus || 'pending'), { size: 14 })}
           </div>
-          <span style={{
-            fontSize: '0.875rem',
-            fontWeight: '600',
+          <span style={{ 
+            fontSize: '0.875rem', 
+            fontWeight: '600', 
             color: getRSVPStatusColor(event.rsvpStatus || 'pending'),
             textTransform: 'capitalize'
           }}>
@@ -544,62 +533,44 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           </span>
         </div>
 
-        {/* RSVP Action Buttons */}
+        {/* RSVP Action Buttons - Improved Colors */}
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button
+          <button 
             onClick={() => onRSVPUpdate?.(event.id, 'accepted')}
             disabled={!onRSVPUpdate}
             style={{
               flex: 1,
-              height: '44px',
-              backgroundColor: '#10B981',
+              padding: '0.75rem',
+              backgroundColor: event.rsvpStatus === 'accepted' ? '#10B981' : '#374151',
               color: 'white',
-              border: 'none',
+              border: '1px solid #374151',
               borderRadius: '6px',
               fontSize: '0.875rem',
               fontWeight: '600',
               cursor: onRSVPUpdate ? 'pointer' : 'not-allowed',
-              opacity: onRSVPUpdate ? 1 : 0.5,
-              transition: 'opacity 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              if (onRSVPUpdate) {
-                (e.target as HTMLButtonElement).style.opacity = '0.9';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (onRSVPUpdate) {
-                (e.target as HTMLButtonElement).style.opacity = '1';
-              }
+              opacity: !onRSVPUpdate ? 0.6 : 1,
+              minHeight: '44px', // Touch-friendly
+              transition: 'all 0.2s ease'
             }}
           >
             Accept
           </button>
-          <button
+          <button 
             onClick={() => onRSVPUpdate?.(event.id, 'declined')}
             disabled={!onRSVPUpdate}
             style={{
               flex: 1,
-              height: '44px',
-              backgroundColor: '#EF4444',
+              padding: '0.75rem',
+              backgroundColor: event.rsvpStatus === 'declined' ? '#EF4444' : '#374151',
               color: 'white',
-              border: 'none',
+              border: '1px solid #374151',
               borderRadius: '6px',
               fontSize: '0.875rem',
               fontWeight: '600',
               cursor: onRSVPUpdate ? 'pointer' : 'not-allowed',
-              opacity: onRSVPUpdate ? 1 : 0.5,
-              transition: 'opacity 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              if (onRSVPUpdate) {
-                (e.target as HTMLButtonElement).style.opacity = '0.9';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (onRSVPUpdate) {
-                (e.target as HTMLButtonElement).style.opacity = '1';
-              }
+              opacity: !onRSVPUpdate ? 0.6 : 1,
+              minHeight: '44px', // Touch-friendly
+              transition: 'all 0.2s ease'
             }}
           >
             Decline
@@ -607,7 +578,8 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         </div>
       </div>
 
-      {/* Weather Forecast */}
+
+      {/* Weather Forecast - As per PRD Step 3.3 */}
       <div style={{ marginBottom: '1rem' }}>
         <WeatherForecast
           eventDate={event.start_date}
