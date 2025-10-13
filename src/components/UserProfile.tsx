@@ -32,12 +32,8 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, isOpen, onClose, onUser
   useEffect(() => {
     const loadActivityStats = async () => {
       try {
-        // Get user's accepted event responses and subscription summary
-        const [eventsResponse, subscriptionResponse] = await Promise.all([
-          apiClient.getEvents(),
-          apiClient.getSubscriptionSummary(user.id)
-        ]);
-        
+        // Get user's accepted event responses
+        const eventsResponse = await apiClient.getEvents();
         if (eventsResponse.success) {
           const acceptedEvents = eventsResponse.data.events.filter(event => 
             event.user_rsvp_status === 'accepted'
@@ -45,13 +41,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, isOpen, onClose, onUser
           setActivityStats(prev => ({
             ...prev,
             eventsAttended: acceptedEvents.length
-          }));
-        }
-
-        if (subscriptionResponse.success) {
-          setActivityStats(prev => ({
-            ...prev,
-            subscriptions: subscriptionResponse.data.active_subscriptions
           }));
         }
       } catch (error) {
