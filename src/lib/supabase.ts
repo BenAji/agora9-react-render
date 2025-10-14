@@ -7,15 +7,18 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Direct environment variable access for better reliability
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://vermzahfnxjvowompxsa.supabase.co';
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlcm16YWhmbnhqdm93b21weHNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNjE5ODYsImV4cCI6MjA3MjkzNzk4Nn0.LnSFbklmYawaFB31zcjUfVdkXqSB5U7S9YSRcIZkARc';
 
 // Validate configuration
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase configuration:', {
     url: supabaseUrl ? 'Set' : 'Missing',
     anonKey: supabaseAnonKey ? 'Set' : 'Missing',
-    allEnvVars: Object.keys(process.env).filter(key => key.startsWith('REACT_APP_'))
+    allEnvVars: Object.keys(process.env).filter(key => key.startsWith('REACT_APP_')),
+    NODE_ENV: process.env.NODE_ENV,
+    REACT_APP_ENVIRONMENT: process.env.REACT_APP_ENVIRONMENT,
+    fullProcessEnv: process.env
   });
   throw new Error('Supabase configuration is missing. Please check your environment variables.');
 }
