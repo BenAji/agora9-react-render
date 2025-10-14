@@ -5,16 +5,17 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { getSupabaseConfig } from '../config/environment';
 
-// Get Supabase configuration from environment
-const { url: supabaseUrl, anonKey: supabaseAnonKey } = getSupabaseConfig();
+// Direct environment variable access for better reliability
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
 // Validate configuration
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase configuration:', {
     url: supabaseUrl ? 'Set' : 'Missing',
-    anonKey: supabaseAnonKey ? 'Set' : 'Missing'
+    anonKey: supabaseAnonKey ? 'Set' : 'Missing',
+    allEnvVars: Object.keys(process.env).filter(key => key.startsWith('REACT_APP_'))
   });
   throw new Error('Supabase configuration is missing. Please check your environment variables.');
 }
