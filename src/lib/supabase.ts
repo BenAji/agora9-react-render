@@ -10,6 +10,15 @@ import { getSupabaseConfig } from '../config/environment';
 // Get Supabase configuration from environment
 const { url: supabaseUrl, anonKey: supabaseAnonKey } = getSupabaseConfig();
 
+// Validate configuration
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Missing Supabase configuration:', {
+    url: supabaseUrl ? 'Set' : 'Missing',
+    anonKey: supabaseAnonKey ? 'Set' : 'Missing'
+  });
+  throw new Error('Supabase configuration is missing. Please check your environment variables.');
+}
+
 // Global singleton instances using window object to persist across hot reloads
 const getGlobalSupabase = () => {
   if (typeof window !== 'undefined') {
