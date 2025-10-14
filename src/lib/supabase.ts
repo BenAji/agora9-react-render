@@ -72,53 +72,10 @@ const getGlobalSupabase = () => {
   });
 };
 
-// Service role client for server-side operations (bypasses RLS)
-const supabaseServiceKey = process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY || '';
-
+// Use the same client for both user and service operations
+// This simplifies the setup and avoids the service key requirement
 const getGlobalSupabaseService = () => {
-  if (typeof window !== 'undefined') {
-    if (!(window as any).__agoraSupabaseService) {
-      (window as any).__agoraSupabaseService = createClient(supabaseUrl, supabaseServiceKey, {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-          detectSessionInUrl: false,
-          storageKey: 'agora-auth-service-role' // Different storage key for service client
-        },
-        realtime: {
-          params: {
-            eventsPerSecond: 10, // Enable realtime updates with rate limiting
-            reconnect: false   // Disable reconnection attempts
-          }
-        },
-        global: {
-          fetch: fetch,
-          headers: { 'X-Client-Info': 'agora-web-service' }
-        }
-      });
-    } else {
-      }
-    return (window as any).__agoraSupabaseService;
-  }
-  // Fallback for SSR
-  return createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-      detectSessionInUrl: false,
-      storageKey: 'agora-auth-service-role-fallback' // Different storage key for fallback service client
-    },
-    realtime: {
-      params: {
-        eventsPerSecond: 10, // Enable realtime updates with rate limiting
-        reconnect: false   // Disable reconnection attempts
-      }
-    },
-    global: {
-      fetch: fetch,
-      headers: { 'X-Client-Info': 'agora-web-service' }
-    }
-  });
+  return getGlobalSupabase();
 };
 
 // Export singleton instances
