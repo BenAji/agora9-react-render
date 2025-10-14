@@ -125,7 +125,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
             }
           }
         } catch (error) {
-          console.error('Error fetching host details for host:', host.id, error);
+          // Error fetching host details for specific host
           // Add the basic host info if detailed fetch fails
           detailedHosts.push(host);
         }
@@ -133,7 +133,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
       
       setHostDetails(detailedHosts);
     } catch (error) {
-      console.error('Error fetching host details:', error);
+      // Error fetching host details
       // Fallback to basic host info
       setHostDetails(event.hosts);
     } finally {

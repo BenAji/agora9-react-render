@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, Calendar, Building2, Bell } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
 import { CalendarEvent } from '../types/database';
@@ -57,7 +57,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onResultClick }) => {
     loadSearchData();
   }, []);
 
-  const handleSearch = async (searchQuery: string) => {
+  const handleSearch = useCallback(async (searchQuery: string) => {
     if (searchQuery.length < 2) {
       setResults([]);
       return;
@@ -83,7 +83,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onResultClick }) => {
           });
         }
       } catch (error) {
-        console.error('Event search error:', error);
+        // Error handling for event search
       }
 
       // Search companies using real API
@@ -101,7 +101,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onResultClick }) => {
           });
         }
       } catch (error) {
-        console.error('Company search error:', error);
+        // Error handling for company search
       }
 
       // Search subsectors from cached data (fallback to local search)
@@ -119,7 +119,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onResultClick }) => {
           }
         });
       } catch (error) {
-        console.error('Subsector search error:', error);
+        // Error handling for subsector search
       }
 
       // Limit results to top 10
@@ -129,7 +129,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onResultClick }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [searchData.companies, searchData.subsectors]);
 
   // Debounced search
   useEffect(() => {

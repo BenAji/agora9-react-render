@@ -1,13 +1,12 @@
 /**
  * GlobalHeader Component
- * App-wide header with navigation, search, notifications, and user menu
+ * App-wide header with navigation, search, and user menu
  */
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Calendar, LogOut, User, Settings, Bell, Menu, X } from 'lucide-react';
+import { Calendar, LogOut, User, Settings, Menu, X } from 'lucide-react';
 import GlobalSearch from './GlobalSearch';
-import Notifications from './Notifications';
 
 interface GlobalHeaderProps {
   currentUser: any;
@@ -50,9 +49,6 @@ const GlobalHeader: React.FC<GlobalHeaderProps> = ({
     // Handle search result navigation
   };
 
-  const handleNotificationClick = (notification: any) => {
-    // Handle notification navigation
-  };
 
   const handleProfileClick = () => {
     onProfileClick?.();
@@ -96,16 +92,11 @@ const GlobalHeader: React.FC<GlobalHeaderProps> = ({
         </Link>
       </nav>
 
-      {/* Right Side - Search, Notifications, User Menu */}
+      {/* Right Side - Search, User Menu */}
       <div className="header-right">
         {/* Global Search */}
         <div className="header-search">
           <GlobalSearch onResultClick={handleSearchResult} />
-        </div>
-
-        {/* Notifications */}
-        <div className="header-notifications">
-          <Notifications onNotificationClick={handleNotificationClick} />
         </div>
 
         {/* User Menu */}
@@ -144,10 +135,6 @@ const GlobalHeader: React.FC<GlobalHeaderProps> = ({
               <button onClick={handleManageSubscriptionsClick}>
                 <Settings size={16} />
                 Manage Subscriptions
-              </button>
-              <button>
-                <Bell size={16} />
-                Notifications
               </button>
               <hr />
               <button onClick={onLogout}>
@@ -215,6 +202,7 @@ const GlobalHeader: React.FC<GlobalHeaderProps> = ({
           </div>
         </div>
       )}
+
     </header>
   );
 };

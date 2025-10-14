@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { X, User, Calendar, Users, Settings, Camera, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, User, Calendar, Settings } from 'lucide-react';
 import { UserWithSubscriptions } from '../types/database';
-import { apiClient } from '../utils/apiClient';
 
 interface UserProfileProps {
   user: UserWithSubscriptions;
@@ -11,63 +10,7 @@ interface UserProfileProps {
 }
 
 const UserProfile: React.FC<UserProfileProps> = ({ user, isOpen, onClose, onUserUpdate }) => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'activity'>('profile');
-  
-  // Profile form state
-  const [profileForm, setProfileForm] = useState({
-    full_name: user.full_name,
-    email: user.email
-  });
-
-  // Real activity stats from API
-  const [activityStats, setActivityStats] = useState({
-    subscriptions: user.subscriptions?.length || 0,
-    eventsAttended: 0,
-    memberSince: new Date(user.created_at || Date.now())
-  });
-
-  // Load real activity stats
-  useEffect(() => {
-    const loadActivityStats = async () => {
-      try {
-        // Get user's accepted event responses
-        const eventsResponse = await apiClient.getEvents();
-        if (eventsResponse.success) {
-          const acceptedEvents = eventsResponse.data.events.filter(event => 
-            event.user_rsvp_status === 'accepted'
-          );
-          setActivityStats(prev => ({
-            ...prev,
-            eventsAttended: acceptedEvents.length
-          }));
-        }
-      } catch (error) {
-        console.error('Failed to load activity stats:', error);
-      }
-    };
-
-    loadActivityStats();
-  }, [user.id]);
-
-  const handleUpdateProfile = async () => {
-    try {
-      setLoading(true);
-      const response = await apiClient.updateUser(user.id, {
-        full_name: profileForm.full_name
-      } as any);
-      
-      if (response.success) {
-        onUserUpdate(response.data as any);
-        setError(null);
-      }
-    } catch (error) {
-      setError('Failed to update profile');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (!isOpen) return null;
 
@@ -122,76 +65,15 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, isOpen, onClose, onUser
 
         {/* Content */}
         <div className="profile-content">
-          {error && (
-            <div className="profile-error">
-              {error}
-            </div>
-          )}
 
           {activeTab === 'profile' && (
             <div className="profile-tab-content">
-              {/* Profile Header Section */}
               <div className="profile-section">
-                <div className="profile-avatar-section">
-                  <div className="profile-avatar-large">
-                    {user.full_name ? 
-                      user.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase() :
-                      'U'
-                    }
-                  </div>
-                  <button className="change-avatar-button">
-                    <Camera size={16} />
-                    Change Photo
-                    <span className="coming-soon-badge">Coming Soon</span>
-                  </button>
-                </div>
-                <div className="profile-info">
-                  <h3>{user.full_name}</h3>
-                  <p>{user.email}</p>
-                  <span className="user-role-badge">{user.role}</span>
-                  <p className="member-since">
-                    Member since {activityStats.memberSince.toLocaleDateString('en-US', { 
-                      month: 'long', 
-                      year: 'numeric' 
-                    })}
-                  </p>
-                </div>
-              </div>
-
-              {/* Personal Information */}
-              <div className="profile-section">
-                <h4>Personal Information</h4>
-                <div className="profile-form">
-                  <div className="form-group">
-                    <label>Full Name</label>
-                    <input
-                      type="text"
-                      value={profileForm.full_name}
-                      onChange={(e) => setProfileForm(prev => ({ ...prev, full_name: e.target.value }))}
-                      className="profile-input"
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Email</label>
-                    <input
-                      type="email"
-                      value={profileForm.email}
-                      disabled
-                      className="profile-input disabled"
-                    />
-                    <p className="input-help">Email cannot be changed</p>
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Role</label>
-                    <input
-                      type="text"
-                      value={user.role}
-                      disabled
-                      className="profile-input disabled"
-                    />
-                  </div>
+                <div className="coming-soon-section">
+                  <User size={48} className="coming-soon-icon" />
+                  <h4>Profile Settings</h4>
+                  <p>Advanced profile customization features are coming soon!</p>
+                  <div className="coming-soon-badge">Coming Soon</div>
                 </div>
               </div>
             </div>
@@ -200,40 +82,11 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, isOpen, onClose, onUser
           {activeTab === 'activity' && (
             <div className="profile-tab-content">
               <div className="profile-section">
-                <h4>Activity Stats</h4>
-                <div className="activity-stats">
-                  <div className="stat-card">
-                    <div className="stat-icon">
-                      <Users size={24} />
-                    </div>
-                    <div className="stat-content">
-                      <div className="stat-number">{activityStats.subscriptions}</div>
-                      <div className="stat-label">Subscriptions</div>
-                    </div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-icon">
-                      <Calendar size={24} />
-                    </div>
-                    <div className="stat-content">
-                      <div className="stat-number">{activityStats.eventsAttended}</div>
-                      <div className="stat-label">Events Attended</div>
-                    </div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-icon">
-                      <User size={24} />
-                    </div>
-                    <div className="stat-content">
-                  <div className="stat-text">
-                    {activityStats.memberSince.toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      year: 'numeric' 
-                    })}
-                  </div>
-                      <div className="stat-label">Member Since</div>
-                    </div>
-                  </div>
+                <div className="coming-soon-section">
+                  <Calendar size={48} className="coming-soon-icon" />
+                  <h4>Activity Tracking</h4>
+                  <p>Detailed activity analytics and insights are coming soon!</p>
+                  <div className="coming-soon-badge">Coming Soon</div>
                 </div>
               </div>
             </div>
@@ -242,35 +95,11 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, isOpen, onClose, onUser
           {activeTab === 'preferences' && (
             <div className="profile-tab-content">
               <div className="profile-section">
-                <h4>Preferences</h4>
-                <div className="preferences-content">
-                  <div className="coming-soon-section">
-                    <Settings size={32} />
-                    <h5>Preferences Coming Soon</h5>
-                    <p>We're working on bringing you customizable preferences for notifications, timezone, and more.</p>
-                  </div>
-                  
-                  <div className="preference-item disabled">
-                    <div className="preference-info">
-                      <h6>Email Notifications</h6>
-                      <p>Receive email updates about events and subscriptions</p>
-                    </div>
-                    <div className="preference-toggle disabled">
-                      <input type="checkbox" disabled />
-                    </div>
-                  </div>
-                  
-                  <div className="preference-item disabled">
-                    <div className="preference-info">
-                      <h6>Timezone</h6>
-                      <p>Set your preferred timezone for event times</p>
-                    </div>
-                    <div className="preference-select disabled">
-                      <select disabled>
-                        <option>UTC-5 (EST)</option>
-                      </select>
-                    </div>
-                  </div>
+                <div className="coming-soon-section">
+                  <Settings size={48} className="coming-soon-icon" />
+                  <h4>User Preferences</h4>
+                  <p>Customizable settings for notifications, timezone, and more are coming soon!</p>
+                  <div className="coming-soon-badge">Coming Soon</div>
                 </div>
               </div>
             </div>
@@ -281,26 +110,9 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, isOpen, onClose, onUser
         <div className="profile-footer">
           <button
             onClick={onClose}
-            className="profile-cancel-button"
+            className="profile-close-button-full"
           >
-            Cancel
-          </button>
-          <button
-            onClick={handleUpdateProfile}
-            disabled={loading}
-            className="profile-save-button"
-          >
-            {loading ? (
-              <>
-                <div className="loading-spinner"></div>
-                Updating...
-              </>
-            ) : (
-              <>
-                <Check size={16} />
-                Save Changes
-              </>
-            )}
+            Close
           </button>
         </div>
       </div>

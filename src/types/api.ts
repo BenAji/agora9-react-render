@@ -237,9 +237,10 @@ export interface ApiClient {
   removeAssignment(id: string): Promise<ApiResponse<null>>;
   
   // Notifications
-  getNotifications(params: NotificationsQueryParams): Promise<ApiResponse<PaginatedResponse<Notification>>>;
+  getNotifications(params?: { limit?: number; offset?: number; unread_only?: boolean }): Promise<ApiResponse<PaginatedResponse<Notification>>>;
   markNotificationRead(id: string, userId: string): Promise<ApiResponse<null>>;
   markAllNotificationsRead(userId: string): Promise<ApiResponse<null>>;
+  deleteNotification(id: string): Promise<ApiResponse<null>>;
   createNotification(data: CreateNotificationRequest): Promise<ApiResponse<Notification>>;
   
   // Calendar Views

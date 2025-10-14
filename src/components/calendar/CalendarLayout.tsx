@@ -182,13 +182,11 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
     const weekNumber = getWeek(currentWeek, { weekStartsOn: 1 });
     const year = getYear(currentWeek);
     const month = format(currentWeek, 'MMM');
-    const day = format(currentWeek, 'd');
     
     return {
       weekNumber,
       year,
-      month,
-      day
+      month
     };
   };
 
@@ -418,7 +416,7 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
                   Week {getCurrentWeekInfo().weekNumber}
                 </div>
                 <div style={{ fontSize: `${0.75 * parseFloat(dimensions.controlSize)}rem`, fontStyle: 'italic', opacity: 0.8 }}>
-                  {getCurrentWeekInfo().month} {getCurrentWeekInfo().day}
+                  {getCurrentWeekInfo().month} {getCurrentWeekInfo().year}
                 </div>
               </div>
               

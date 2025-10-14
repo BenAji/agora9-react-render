@@ -4,6 +4,7 @@ A Bloomberg-style investment calendar for tracking corporate events, earnings ca
 
 ## 🚀 Quick Start
 
+### Development
 ```bash
 # Install dependencies
 npm install
@@ -13,6 +14,19 @@ npm start
 
 # Open browser to http://localhost:3000
 ```
+
+### Production Deployment
+```bash
+# Build for production
+npm run build
+
+# Deploy to Vercel (recommended)
+npm install -g vercel
+vercel login
+vercel --prod
+```
+
+See [DEPLOYMENT_STRATEGY.md](./DEPLOYMENT_STRATEGY.md) for detailed deployment options.
 
 ## 🏗️ Architecture
 

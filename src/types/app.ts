@@ -39,9 +39,7 @@ export interface AppState {
   selectedManagedUser: UserWithSubscriptions | null;
 }
 
-import { DragEndEvent as DndKitDragEndEvent } from '@dnd-kit/core';
-
-export type DragEndEvent = DndKitDragEndEvent;
+// DragEndEvent type removed - DnD functionality not used in production
 
 export interface EventBadge {
   type: 'host' | 'multi' | 'attend';

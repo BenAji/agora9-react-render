@@ -11,7 +11,7 @@
 import React, { useState, useEffect } from 'react';
 import { Cloud, Sun, CloudRain, CloudSnow, MapPin, Loader2 } from 'lucide-react';
 import { weatherService, WeatherForecast as WeatherForecastType } from '../../services/weatherService';
-import { format, subDays } from 'date-fns';
+import { format } from 'date-fns';
 
 interface WeatherForecastProps {
   eventDate: Date;
@@ -38,7 +38,7 @@ const WeatherForecast: React.FC<WeatherForecastProps> = ({
         const forecast = await weatherService.getWeatherForecast(location, eventDate);
         setWeatherData(forecast);
       } catch (err) {
-        console.error('Failed to load weather data:', err);
+        // Weather data loading failed
         setError('Failed to load weather data');
         // Fallback to empty array - the service will handle mock data internally
         setWeatherData([]);

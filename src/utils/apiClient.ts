@@ -106,7 +106,7 @@ class SupabaseApiClient implements ApiClient {
         }
       }
     } catch (error) {
-      console.error('Error fetching host details:', error);
+      // Error fetching host details
     }
 
     return host; // Return original host if fetching fails
@@ -719,7 +719,7 @@ class SupabaseApiClient implements ApiClient {
         is_active: company.is_active,
         created_at: new Date(company.created_at),
         updated_at: new Date(company.created_at),
-        events: [] // TODO: Load company events if needed
+        events: []
       }));
     
     return this.success({
@@ -1518,11 +1518,8 @@ class SupabaseApiClient implements ApiClient {
     }
   }
 
-  async markNotificationRead(notificationId: string): Promise<ApiResponse<null>> {
+  async markNotificationRead(notificationId: string, userId: string): Promise<ApiResponse<null>> {
     try {
-      const currentUserResponse = await this.getCurrentUser();
-      const userId = currentUserResponse.data.id;
-
       const { error } = await supabaseService
         .from('notifications')
         .update({
@@ -1553,11 +1550,8 @@ class SupabaseApiClient implements ApiClient {
     }
   }
 
-  async markAllNotificationsRead(): Promise<ApiResponse<null>> {
+  async markAllNotificationsRead(userId: string): Promise<ApiResponse<null>> {
     try {
-      const currentUserResponse = await this.getCurrentUser();
-      const userId = currentUserResponse.data.id;
-
       const { error } = await supabaseService
         .from('notifications')
         .update({
@@ -1583,6 +1577,38 @@ class SupabaseApiClient implements ApiClient {
       throw new ApiClientError({
         message: `Failed to mark all notifications as read: ${error instanceof Error ? error.message : 'Unknown error'}`,
         code: 'NOTIFICATIONS_UPDATE_ERROR',
+        details: { originalError: error }
+      });
+    }
+  }
+
+  async deleteNotification(notificationId: string): Promise<ApiResponse<null>> {
+    try {
+      const currentUserResponse = await this.getCurrentUser();
+      const userId = currentUserResponse.data.id;
+
+      const { error } = await supabaseService
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId)
+        .eq('user_id', userId);
+
+      if (error) {
+        throw new ApiClientError({
+          message: `Failed to delete notification: ${error.message}`,
+          code: 'NOTIFICATION_DELETE_ERROR',
+          details: { originalError: error }
+        });
+      }
+
+      return this.success(null);
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw error;
+      }
+      throw new ApiClientError({
+        message: `Failed to delete notification: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        code: 'NOTIFICATION_DELETE_ERROR',
         details: { originalError: error }
       });
     }
