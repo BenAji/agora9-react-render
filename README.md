@@ -16,17 +16,9 @@ npm start
 ```
 
 ### Production Deployment
-```bash
-# Build for production
-npm run build
+This app is configured for deployment on **Render** (recommended).
 
-# Deploy to Vercel (recommended)
-npm install -g vercel
-vercel login
-vercel --prod
-```
-
-See [DEPLOYMENT_STRATEGY.md](./DEPLOYMENT_STRATEGY.md) for detailed deployment options.
+See [RENDER_DEPLOYMENT_GUIDE.md](./RENDER_DEPLOYMENT_GUIDE.md) for detailed deployment instructions.
 
 ## 🏗️ Architecture
 

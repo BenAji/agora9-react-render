@@ -1,0 +1,241 @@
+═══════════════════════════════════════════════════════════
+    AGORA REACT - RENDER DEPLOYMENT CHECKLIST
+═══════════════════════════════════════════════════════════
+
+📋 QUICK REFERENCE CHECKLIST
+Print this or keep it open during deployment!
+
+═══════════════════════════════════════════════════════════
+PHASE 1: PREPARATION
+═══════════════════════════════════════════════════════════
+
+□ Read QUICK_START_RENDER.md
+□ GitHub repo is ready: https://github.com/BenAji/agora9
+□ Latest code is pushed to main branch
+□ Have access to Supabase dashboard
+
+Environment Variables Ready:
+□ REACT_APP_SUPABASE_URL
+   Value: ___________________________________________
+   
+□ REACT_APP_SUPABASE_ANON_KEY (NOT service_role!)
+   Value: ___________________________________________
+   
+□ REACT_APP_ENVIRONMENT
+   Value: production
+   
+□ REACT_APP_WEATHER_API_KEY (optional)
+   Value: ___________________________________________
+
+═══════════════════════════════════════════════════════════
+PHASE 2: RENDER SETUP (10 MIN)
+═══════════════════════════════════════════════════════════
+
+Step 1: Create Account
+□ Go to render.com
+□ Click "Get Started for Free"
+□ Sign up with GitHub
+□ Authorize Render
+
+Step 2: Create Static Site
+□ Click "New +" → "Static Site"
+□ Connect BenAji/agora9 repository
+□ Configure settings:
+   Name: agora-react
+   Branch: main
+   Root Directory: agora-react (if subdirectory)
+   Build Command: npm install && npm run build
+   Publish Directory: build
+   Auto-Deploy: Yes
+
+Step 3: Add Environment Variables
+□ Add REACT_APP_SUPABASE_URL
+□ Add REACT_APP_SUPABASE_ANON_KEY
+□ Add REACT_APP_ENVIRONMENT
+□ Add REACT_APP_WEATHER_API_KEY (if using)
+
+Step 4: Deploy
+□ Click "Create Static Site"
+□ Watch build logs (2-3 minutes)
+□ Note your URL: _________________________________
+
+═══════════════════════════════════════════════════════════
+PHASE 3: SUPABASE CONFIGURATION (2 MIN)
+═══════════════════════════════════════════════════════════
+
+□ Go to app.supabase.com
+□ Select your project
+□ Navigate to: Authentication → URL Configuration
+□ Add your Render URL to Redirect URLs:
+   https://your-app.onrender.com/**
+□ Save changes
+
+═══════════════════════════════════════════════════════════
+PHASE 4: TESTING (5 MIN)
+═══════════════════════════════════════════════════════════
+
+Basic Tests:
+□ Homepage loads without errors
+□ No errors in browser console (F12)
+□ Sign up with new test account works
+□ Login with existing account works
+□ Calendar page displays
+□ Events show correctly
+□ RSVP functionality works
+□ Search works
+□ Profile page loads
+
+Mobile Tests:
+□ Test on phone/tablet
+□ Responsive design works
+□ All features functional
+
+Performance:
+□ Page loads in < 3 seconds
+□ No broken images
+□ All links work
+
+═══════════════════════════════════════════════════════════
+PHASE 5: MIGRATION FROM VERCEL (IF APPLICABLE)
+═══════════════════════════════════════════════════════════
+
+□ Keep Vercel running for 24-48 hours
+□ Monitor Render performance
+□ Check Render logs daily
+□ Collect user feedback
+□ No critical issues found
+
+After 48 hours:
+□ Update custom domain DNS (if applicable)
+□ Remove Vercel environment variables
+□ Delete/archive Vercel project
+□ Remove Vercel URLs from Supabase
+□ Update documentation with new URL
+
+═══════════════════════════════════════════════════════════
+PHASE 6: POST-DEPLOYMENT
+═══════════════════════════════════════════════════════════
+
+Communication:
+□ Share new URL with team
+□ Notify users (if applicable)
+□ Update bookmarks
+□ Update any monitoring tools
+
+Documentation:
+□ Update README.md with new URL
+□ Update internal docs
+□ Archive old deployment docs
+
+Monitoring:
+□ Set up alerts (if using paid plan)
+□ Check Render dashboard daily (first week)
+□ Monitor Supabase API usage
+□ Review performance metrics
+
+═══════════════════════════════════════════════════════════
+OPTIONAL: CUSTOM DOMAIN
+═══════════════════════════════════════════════════════════
+
+□ Purchase domain (if don't have one)
+□ In Render: Settings → Custom Domains → Add
+□ Update DNS records at registrar:
+   Type: A
+   Name: @
+   Value: (provided by Render)
+   
+   Type: CNAME
+   Name: www
+   Value: your-app.onrender.com
+   
+□ Wait for DNS propagation (5-30 min)
+□ Verify SSL certificate active
+□ Update Supabase with custom domain
+□ Test custom domain
+
+═══════════════════════════════════════════════════════════
+OPTIONAL: UPGRADE TO PAID TIER
+═══════════════════════════════════════════════════════════
+
+Consider upgrading if:
+□ You have consistent traffic
+□ Cold starts are affecting users (free tier)
+□ You need custom domain support
+□ You want instant response times
+□ You're exceeding 100 GB bandwidth
+
+Cost: $7/month (vs Vercel Pro $20/month)
+Savings: $156/year
+
+═══════════════════════════════════════════════════════════
+TROUBLESHOOTING QUICK REFERENCE
+═══════════════════════════════════════════════════════════
+
+Build Fails:
+→ Check build logs in Render dashboard
+→ Verify package.json has all dependencies
+→ Clear build cache and redeploy
+
+Can't Login:
+→ Check Render URL is in Supabase redirect URLs
+→ Verify using "anon" key (not service_role)
+→ Check Supabase URL is correct
+
+Environment Variables Not Working:
+→ Verify prefixed with REACT_APP_
+→ Check for typos (case-sensitive)
+→ Redeploy after adding variables
+
+Routes Return 404:
+→ Verify render.yaml exists in root
+→ Check publish directory is "build"
+→ Redeploy from Render dashboard
+
+Slow Performance:
+→ Free tier has cold starts (15 min inactivity)
+→ Upgrade to $7/month for instant response
+→ Check bundle size optimization
+
+═══════════════════════════════════════════════════════════
+IMPORTANT LINKS
+═══════════════════════════════════════════════════════════
+
+Render Dashboard: https://dashboard.render.com
+Supabase Dashboard: https://app.supabase.com
+GitHub Repo: https://github.com/BenAji/agora9
+
+Render Support: support@render.com
+Render Docs: https://render.com/docs
+Render Status: https://status.render.com
+
+═══════════════════════════════════════════════════════════
+YOUR DEPLOYMENT INFO
+═══════════════════════════════════════════════════════════
+
+Render URL: ____________________________________________
+
+Deployment Date: ________________________________________
+
+Deployed By: ____________________________________________
+
+Notes:
+_________________________________________________________
+_________________________________________________________
+_________________________________________________________
+_________________________________________________________
+
+═══════════════════════════════════════════════════════════
+
+✅ DEPLOYMENT COMPLETE!
+
+Total Time: ~10-30 minutes
+Status: □ Testing  □ Live  □ Migrating from Vercel
+
+Next Steps:
+1. Monitor for 24-48 hours
+2. Collect user feedback
+3. Consider custom domain
+4. Consider paid tier upgrade ($7/mo)
+
+═══════════════════════════════════════════════════════════
+
