@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CalendarEvent } from '../types/database';
 import { useCalendarData } from '../hooks/useCalendarData';
 import EventsPageHeader from '../components/events/EventsPageHeader';
 import EventsTable from '../components/events/EventsTable';
 import EventDetailsPanel from '../components/calendar/EventDetailsPanel';
+import MobileEventsPage from '../components/events/MobileEventsPage';
 
 interface EventsPageProps {
   currentUser: any;
@@ -11,6 +12,9 @@ interface EventsPageProps {
 }
 
 const EventsPage: React.FC<EventsPageProps> = ({ currentUser, onLogout }) => {
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+  
   // State for search and filtering
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBy, setFilterBy] = useState<'upcoming' | 'need_response' | 'responded' | 'all_events'>('all_events');
@@ -22,7 +26,7 @@ const EventsPage: React.FC<EventsPageProps> = ({ currentUser, onLogout }) => {
   // Use calendar data hook
   const { events, loading, error, updateRSVP, refreshData } = useCalendarData();
 
-  // Calculate event counts for filters
+  // Calculate event counts for filters (moved before conditional return)
   const eventCounts = React.useMemo(() => {
     const now = new Date();
     const upcoming = events.filter(event => new Date(event.start_date) >= now).length;
@@ -51,6 +55,23 @@ const EventsPage: React.FC<EventsPageProps> = ({ currentUser, onLogout }) => {
     });
     return Array.from(subsectors).sort();
   }, [events]);
+
+  // Mobile detection effect
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Use mobile component for mobile devices
+  if (isMobile) {
+    return <MobileEventsPage events={events} loading={loading} error={error} onRSVPUpdate={updateRSVP} onRefresh={refreshData} />;
+  }
 
   // Handle RSVP updates
   const handleRSVPUpdate = async (eventId: string, status: 'accepted' | 'declined' | 'pending') => {
