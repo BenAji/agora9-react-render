@@ -73,6 +73,17 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Recalculate rows when window size changes
+  useEffect(() => {
+    const handleResize = () => {
+      // Force re-render to recalculate rows for new viewport size
+      setCurrentWeek(prev => new Date(prev.getTime() + 1));
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Force re-render when companies change to recalculate empty rows
   useEffect(() => {
     // This will trigger a re-render when companies change
@@ -291,9 +302,21 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
     return 'calc(100vh - 100px)'; // Reduced from 120px to 100px for tighter fit
   };
 
-  // Simplified row calculation - just ensure minimum 6 rows for consistency
+  // Responsive row calculation based on viewport height
   const getRequiredRows = () => {
-    return Math.max(6, orderedCompanies.length); // Always show at least 6 rows
+    const viewportHeight = window.innerHeight;
+    const headerHeight = 200; // Approximate height of headers and controls
+    const availableHeight = viewportHeight - headerHeight;
+    const rowHeight = 60; // Approximate height per row
+    
+    // Calculate how many rows can fit in the viewport
+    const maxRowsForViewport = Math.floor(availableHeight / rowHeight);
+    
+    // Use the larger of: actual companies, minimum 4 rows, or viewport-filling rows
+    const minRows = Math.min(4, orderedCompanies.length); // Reduced minimum for small screens
+    const viewportRows = Math.max(minRows, maxRowsForViewport - 2); // Leave some padding
+    
+    return Math.max(viewportRows, orderedCompanies.length);
   };
 
   // Generate empty rows to maintain consistent layout
