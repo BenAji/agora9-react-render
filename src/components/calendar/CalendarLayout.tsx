@@ -351,6 +351,95 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
     );
   }
 
+  // Empty state when no companies are subscribed
+  if (orderedCompanies.length === 0 && !loading) {
+    return (
+      <div className={`calendar-layout ${className}`} style={{ 
+        background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%)',
+        minHeight: '100vh',
+        width: '100%',
+        maxWidth: '100%',
+        fontFamily: '"Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '2rem'
+      }}>
+        <div style={{
+          textAlign: 'center',
+          backgroundColor: 'var(--secondary-bg)',
+          padding: '3rem',
+          borderRadius: '16px',
+          border: '1px solid var(--border-color)',
+          maxWidth: '600px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+        }}>
+          <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>📅</div>
+          <h2 style={{ 
+            fontSize: '2rem', 
+            fontWeight: '700', 
+            marginBottom: '1rem',
+            color: 'var(--primary-text)',
+            background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
+          }}>
+            Welcome to AGORA Calendar
+          </h2>
+          <p style={{ 
+            color: 'var(--muted-text)', 
+            marginBottom: '2rem',
+            lineHeight: '1.6',
+            fontSize: '1.1rem'
+          }}>
+            To get started, you need to subscribe to companies you want to track. 
+            This will populate your calendar with their earnings calls, conferences, and other important events.
+          </p>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+            alignItems: 'center'
+          }}>
+            <button
+              onClick={() => window.location.href = '/subscriptions'}
+              style={{
+                padding: '1rem 2rem',
+                backgroundColor: 'var(--accent-bg)',
+                color: 'var(--primary-bg)',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '1.1rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 4px 16px rgba(255, 215, 0, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 215, 0, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 16px rgba(255, 215, 0, 0.3)';
+              }}
+            >
+              Manage Subscriptions
+            </button>
+            <p style={{
+              color: 'var(--muted-text)',
+              fontSize: '0.9rem',
+              margin: 0
+            }}>
+              Choose from 100+ companies across different sectors
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`calendar-layout ${className}`} style={{ 
       background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%)',

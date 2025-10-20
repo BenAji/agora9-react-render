@@ -122,7 +122,7 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
         
         <SubscriptionProvider>
           <Routes>
-            <Route path="/" element={<Navigate to="/subscriptions" replace />} />
+            <Route path="/" element={<Navigate to="/calendar" replace />} />
             <Route 
               path="/subscriptions" 
               element={
