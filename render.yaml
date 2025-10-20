@@ -1,7 +1,6 @@
 services:
-  - type: web
+  - type: static
     name: agora-react
-    env: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./build
     pullRequestPreviewsEnabled: true
@@ -41,7 +40,7 @@ services:
         name: Cache-Control
         value: public, max-age=86400
     
-    # Routes for SPA (React Router)
+    # Routes for SPA (React Router) - Fallback to index.html for all routes
     routes:
       - type: rewrite
         source: /*
