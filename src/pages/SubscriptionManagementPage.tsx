@@ -4,6 +4,7 @@ import { format, parseISO, differenceInDays } from 'date-fns';
 import { apiClient } from '../utils/apiClient';
 import { UserSubscription, UserWithSubscriptions } from '../types/database';
 import { useSubscriptionContext } from '../contexts/SubscriptionContext';
+import MobileSubscriptionPage from '../components/subscriptions/MobileSubscriptionPage';
 
 interface SubscriptionManagementPageProps {
   currentUser: UserWithSubscriptions | null;
@@ -45,6 +46,53 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
   // Get subscription context for global refresh
   const { triggerRefresh } = useSubscriptionContext();
   
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // All other state variables (moved to top to avoid conditional hooks)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [subsectorFilter, setSubsectorFilter] = useState('all');
+  const [sortBy, setSortBy] = useState<'date' | 'subsector' | 'company' | 'status'>('date');
+  const [subsectors, setSubsectors] = useState<SubsectorData[]>([]);
+  const [stats, setStats] = useState<SubscriptionStats>({
+    totalCompanies: 0,
+    subscribedCompanies: 0,
+    totalSectors: 0,
+    subscribedSectors: 0,
+    totalSubsectors: 0,
+    subscribedSubsectors: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Additional state for desktop version
+  const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
+  const [selectedSector, setSelectedSector] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<'view' | 'add'>('view');
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  useEffect(() => {
+    if (currentUser?.id) {
+      loadSubscriptionData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
+  
+  // Use mobile component for mobile devices
+  if (isMobile) {
+    return <MobileSubscriptionPage currentUser={currentUser} onSubscriptionChange={onSubscriptionChange} />;
+  }
+  
   // Helper function to format expiration date
   const formatExpirationDate = (expiresAt: string) => {
     // Handle null, undefined, or empty string
@@ -77,22 +125,6 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
       return { text: 'Invalid date', color: 'var(--error-color)', days: 0 };
     }
   };
-
-  const [subsectors, setSubsectors] = useState<SubsectorData[]>([]);
-  const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSector, setSelectedSector] = useState<string>('all');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<SubscriptionStats>({
-    totalCompanies: 0,
-    subscribedCompanies: 0,
-    totalSectors: 0,
-    subscribedSectors: 0,
-    totalSubsectors: 0,
-    subscribedSubsectors: 0
-  });
-  const [activeTab, setActiveTab] = useState<'view' | 'add'>('view');
 
   // Load subscription data
   const loadSubscriptionData = async () => {
@@ -180,13 +212,6 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (currentUser?.id) {
-      loadSubscriptionData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser?.id]);
 
   // Early return if no user
   if (!currentUser) {
