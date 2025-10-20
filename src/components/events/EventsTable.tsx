@@ -26,6 +26,13 @@ interface EventRow {
   date: string;
   time: string;
   location: string;
+  locationType: 'virtual' | 'physical' | 'hybrid';
+  locationDetail: string;
+  hostName: string;
+  hostTicker: string;
+  hostType: 'single_corp' | 'multi_corp' | 'non_company';
+  hostSector: string;
+  multiCompanyCount: number;
   isSelected: boolean;
 }
 
@@ -60,17 +67,59 @@ const EventsTable: React.FC<EventsTableProps> = ({
         status = 'upcoming';
       }
 
-      // Get subsector from first company
-      const subsector = event.companies?.[0]?.gics_subsector || 'Unknown';
+      // Get host information
+      const primaryHost = event.hosts?.[0];
+      let hostName = 'Unknown Host';
+      let hostTicker = '';
+      let hostType: 'single_corp' | 'multi_corp' | 'non_company' = 'single_corp';
+      let hostSector = '';
+      let multiCompanyCount = 0;
+
+      if (primaryHost) {
+        hostType = primaryHost.host_type;
+        hostSector = primaryHost.host_sector || '';
+        
+        if (hostType === 'single_corp') {
+          hostName = primaryHost.host_name || 'Unknown';
+          hostTicker = primaryHost.host_ticker || '';
+        } else if (hostType === 'multi_corp') {
+          const companies = primaryHost.companies_jsonb || [];
+          multiCompanyCount = companies.length;
+          if (companies.length > 0) {
+            const tickers = companies.slice(0, 2).map(c => c.ticker).join(', ');
+            hostName = tickers;
+            hostTicker = tickers;
+          } else {
+            hostName = 'Multiple Companies';
+          }
+        } else {
+          hostName = primaryHost.host_name || 'Non-Company Host';
+        }
+      }
+
+      // Get subsector from first company or host
+      const subsector = event.companies?.[0]?.gics_subsector || hostSector || 'Unknown';
+
+      // Location details
+      const locationType = event.location_type;
+      let locationDetail = '';
+      
+      if (locationType === 'virtual') {
+        locationDetail = event.virtual_details?.platform || 'Virtual';
+      } else if (locationType === 'physical') {
+        locationDetail = event.parsed_location?.displayText || 'Physical';
+      } else {
+        locationDetail = 'Hybrid';
+      }
 
       return {
         id: event.id,
         title: event.title,
-        ticker: event.companies?.[0]?.ticker_symbol || 'N/A',
+        ticker: event.companies?.[0]?.ticker_symbol || hostTicker || 'N/A',
         eventType: event.event_type?.toUpperCase() || 'EVENT',
         status,
         rsvpStatus: event.rsvpStatus || 'pending',
-        companyName: event.companies?.[0]?.company_name || 'Unknown Company',
+        companyName: event.companies?.[0]?.company_name || hostName,
         subsector,
         date: eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         time: eventDate.toLocaleTimeString('en-US', { 
@@ -79,6 +128,13 @@ const EventsTable: React.FC<EventsTableProps> = ({
           hour12: true 
         }),
         location: event.parsed_location?.displayText || 'TBD',
+        locationType,
+        locationDetail,
+        hostName,
+        hostTicker,
+        hostType,
+        hostSector,
+        multiCompanyCount,
         isSelected: selectedEvents.includes(event.id)
       } as EventRow;
     });
@@ -214,7 +270,7 @@ const EventsTable: React.FC<EventsTableProps> = ({
 
   return (
     <div style={{ width: '100%', overflowX: 'auto' }}>
-      {/* Desktop Table */}
+      {/* Desktop Table - Optimized Layout */}
       <div style={{ display: 'none' }} className="desktop-table">
         <table style={{
           width: '100%',
@@ -222,38 +278,27 @@ const EventsTable: React.FC<EventsTableProps> = ({
           backgroundColor: '#1A1A1A',
           borderRadius: '8px',
           overflow: 'hidden',
-          border: '1px solid #333333'
+          border: '1px solid #333333',
+          tableLayout: 'fixed'
         }}>
           <thead>
             <tr style={{ backgroundColor: '#333333' }}>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700' }}>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700', width: '18%' }}>
                 Event
               </th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700' }}>
-                Ticker
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700', width: '22%' }}>
+                Host / Type
               </th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700' }}>
-                Type
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700', width: '12%' }}>
+                Date/Time
               </th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700' }}>
-                Status
-              </th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700' }}>
-                Company
-              </th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700' }}>
-                Subsector
-              </th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700' }}>
-                Date
-              </th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700' }}>
-                Time
-              </th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700' }}>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700', width: '16%' }}>
                 Location
               </th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700' }}>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700', width: '14%' }}>
+                Status
+              </th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700', width: '18%' }}>
                 Actions
               </th>
             </tr>
@@ -261,120 +306,255 @@ const EventsTable: React.FC<EventsTableProps> = ({
           <tbody>
             {eventRows.map((row) => {
               const rsvpDisplay = getRSVPDisplay(row.status, row.rsvpStatus);
+              
+              // Get event type badge styling
+              const getHostTypeBadge = (hostType: string) => {
+                switch (hostType) {
+                  case 'single_corp':
+                    return { bg: '#333333', color: '#FFD700', text: 'Single Corp', icon: '🏢' };
+                  case 'multi_corp':
+                    return { bg: '#FFA50020', color: '#FFA500', text: 'Multi Corp', icon: '🏢🏢' };
+                  case 'non_company':
+                    return { bg: '#87CEEB20', color: '#87CEEB', text: 'Non-Company', icon: '🏛️' };
+                  default:
+                    return { bg: '#333333', color: '#666666', text: 'Unknown', icon: '🏢' };
+                }
+              };
+
+              const hostBadge = getHostTypeBadge(row.hostType);
+              
+              // Get location icon
+              const getLocationIcon = () => {
+                switch (row.locationType) {
+                  case 'virtual': return '💻';
+                  case 'physical': return '📍';
+                  case 'hybrid': return '🌐';
+                  default: return '📍';
+                }
+              };
+
               return (
                 <tr 
                   key={row.id}
                   style={{
                     borderBottom: '1px solid #333333',
                     cursor: 'pointer',
-                    transition: 'background-color 0.2s ease',
+                    transition: 'all 0.2s ease',
                     backgroundColor: '#1A1A1A'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#333333';
+                    e.currentTarget.style.backgroundColor = '#2A2A2A';
+                    e.currentTarget.style.borderColor = '#FFD700';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = '#1A1A1A';
                   }}
                 >
-                  <td style={{ padding: '12px 16px', fontSize: '0.9rem', fontWeight: '500', color: '#FFFFFF' }}>
+                  {/* Column 1: Event Title */}
+                  <td style={{ padding: '12px 16px', fontSize: '0.9rem', fontWeight: '500', color: '#FFFFFF', verticalAlign: 'top' }}>
                     {row.title}
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{
-                      backgroundColor: '#FFD700',
-                      color: '#000000',
-                      padding: '4px 8px',
-                      borderRadius: '12px',
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      border: '1px solid #FFD700'
-                    }}>
-                      {row.ticker}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{
-                      backgroundColor: '#333333',
-                      color: '#FFFFFF',
-                      padding: '4px 8px',
-                      borderRadius: '12px',
-                      fontSize: '0.75rem',
-                      fontWeight: '500',
-                      border: '1px solid #555555'
-                    }}>
-                      {row.eventType}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.875rem', color: '#FFFFFF' }}>
-                        {rsvpDisplay.text}
-                      </span>
-                      <span style={{ color: rsvpDisplay.color }}>
-                        {rsvpDisplay.icon}
-                      </span>
-                      <span style={{ fontSize: '0.875rem', color: rsvpDisplay.color, fontWeight: '600' }}>
-                        {rsvpDisplay.rsvp}
-                      </span>
-                    </div>
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#FFFFFF' }}>
-                    {row.companyName}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#FFFFFF' }}>
-                    {row.subsector}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#FFFFFF' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Calendar size={14} color="#FFD700" />
-                      {row.date}
-                    </div>
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#FFFFFF' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Clock size={14} color="#FFD700" />
-                      {row.time}
-                    </div>
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#FFFFFF' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <MapPin size={14} color="#FFD700" />
-                      {row.location}
-                    </div>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onViewEvent(events.find(e => e.id === row.id)!);
-                      }}
-                      style={{
-                        backgroundColor: 'transparent',
-                        color: '#FFD700',
-                        border: '1px solid #FFD700',
-                        padding: '6px 12px',
-                        borderRadius: '6px',
-                        fontSize: '0.8rem',
+
+                  {/* Column 2: Host / Type (Multi-line) */}
+                  <td style={{ padding: '12px 16px', verticalAlign: 'top' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '0.9rem' }}>{hostBadge.icon}</span>
+                        <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#FFD700' }}>
+                          {row.hostName}
+                        </span>
+                        {row.hostType === 'multi_corp' && row.multiCompanyCount > 2 && (
+                          <span style={{ fontSize: '0.75rem', color: '#cccccc' }}>
+                            +{row.multiCompanyCount - 2} more
+                          </span>
+                        )}
+                      </div>
+                      <span style={{
+                        backgroundColor: hostBadge.bg,
+                        color: hostBadge.color,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        fontSize: '0.7rem',
                         fontWeight: '600',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#FFD700';
-                        e.currentTarget.style.color = '#000000';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.color = '#FFD700';
-                      }}
-                    >
-                      <Eye size={14} />
-                      View
-                    </button>
+                        border: `1px solid ${hostBadge.color}50`,
+                        display: 'inline-block',
+                        width: 'fit-content'
+                      }}>
+                        [{hostBadge.text}]
+                      </span>
+                      {row.hostSector && (
+                        <span style={{ fontSize: '0.75rem', color: '#cccccc' }}>
+                          {row.hostSector}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+
+                  {/* Column 3: Date/Time (Stacked) */}
+                  <td style={{ padding: '12px 16px', verticalAlign: 'top' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF' }}>
+                        {row.date}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: '#cccccc' }}>
+                        {row.time}
+                      </span>
+                    </div>
+                  </td>
+
+                  {/* Column 4: Location (Type + Detail) */}
+                  <td style={{ padding: '12px 16px', verticalAlign: 'top' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span>{getLocationIcon()}</span>
+                        <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF' }}>
+                          {row.locationType === 'virtual' ? 'Virtual' : row.locationType === 'hybrid' ? 'Hybrid' : 'Physical'}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '0.75rem', color: '#cccccc', wordBreak: 'break-word' }}>
+                        {row.locationDetail}
+                      </span>
+                    </div>
+                  </td>
+
+                  {/* Column 5: Status (RSVP + Event Status Stacked) */}
+                  <td style={{ padding: '12px 16px', verticalAlign: 'top' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span>{rsvpDisplay.icon}</span>
+                        <span style={{ fontSize: '0.875rem', color: rsvpDisplay.color, fontWeight: '600' }}>
+                          {rsvpDisplay.rsvp}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '0.75rem', color: '#cccccc' }}>
+                        Event {rsvpDisplay.text}
+                      </span>
+                    </div>
+                  </td>
+
+                  {/* Column 6: Actions */}
+                  <td style={{ padding: '12px 16px', verticalAlign: 'top' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onViewEvent(events.find(e => e.id === row.id)!);
+                        }}
+                        style={{
+                          backgroundColor: 'transparent',
+                          color: '#FFD700',
+                          border: '1px solid #FFD700',
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px',
+                          width: '100%'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#FFD700';
+                          e.currentTarget.style.color = '#000000';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.color = '#FFD700';
+                        }}
+                      >
+                        <Eye size={12} />
+                        View
+                      </button>
+                      {row.rsvpStatus === 'pending' && (
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRSVPUpdate(row.id, 'accepted');
+                            }}
+                            style={{
+                              backgroundColor: '#28a745',
+                              color: '#FFFFFF',
+                              border: 'none',
+                              padding: '6px 12px',
+                              borderRadius: '6px',
+                              fontSize: '0.7rem',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              width: '100%'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#218838';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = '#28a745';
+                            }}
+                          >
+                            ✓ Accept
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRSVPUpdate(row.id, 'declined');
+                            }}
+                            style={{
+                              backgroundColor: '#dc3545',
+                              color: '#FFFFFF',
+                              border: 'none',
+                              padding: '6px 12px',
+                              borderRadius: '6px',
+                              fontSize: '0.7rem',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              width: '100%'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#c82333';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = '#dc3545';
+                            }}
+                          >
+                            ✗ Decline
+                          </button>
+                        </>
+                      )}
+                      {row.rsvpStatus !== 'pending' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRSVPUpdate(row.id, 'pending');
+                          }}
+                          style={{
+                            backgroundColor: '#333333',
+                            color: '#FFFFFF',
+                            border: '1px solid #555555',
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            fontSize: '0.7rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            width: '100%'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#444444';
+                            e.currentTarget.style.borderColor = '#FFD700';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#333333';
+                            e.currentTarget.style.borderColor = '#555555';
+                          }}
+                        >
+                          Change RSVP
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
