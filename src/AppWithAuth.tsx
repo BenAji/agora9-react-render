@@ -20,6 +20,13 @@ const AppWithAuth: React.FC = () => {
   });
 
   // Auth handlers
+  const redirectToCalendar = () => {
+    // Force post-auth landing on calendar
+    if (window.location.pathname !== '/calendar') {
+      window.location.replace('/calendar');
+    }
+  };
+
   const handleLoginSuccess = (user: any) => {
     setAuthState({
       user,
@@ -27,6 +34,7 @@ const AppWithAuth: React.FC = () => {
       showLogin: false,
       showSignup: false
     });
+    redirectToCalendar();
   };
 
   const handleSignupSuccess = (user: any) => {
@@ -36,6 +44,7 @@ const AppWithAuth: React.FC = () => {
       showLogin: false,
       showSignup: false
     });
+    redirectToCalendar();
   };
 
   const handleSwitchToSignup = () => {

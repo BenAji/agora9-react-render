@@ -5,7 +5,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Calendar, LogOut, User, Settings, Menu, X } from 'lucide-react';
+import { Calendar, LogOut, Settings, Menu, X } from 'lucide-react';
 import GlobalSearch from './GlobalSearch';
 
 interface GlobalHeaderProps {
@@ -50,14 +50,14 @@ const GlobalHeader: React.FC<GlobalHeaderProps> = ({
   };
 
 
-  const handleProfileClick = () => {
-    onProfileClick?.();
-    // Don't close dropdown - let user click outside to close
+  const handleSettingsClick = () => {
+    setShowProfileDropdown(false);
+    window.location.href = '/settings';
   };
 
   const handleManageSubscriptionsClick = () => {
     onManageSubscriptionsClick?.();
-    // Don't close dropdown - let user click outside to close
+    setShowProfileDropdown(false);
   };
 
   return (
@@ -128,9 +128,9 @@ const GlobalHeader: React.FC<GlobalHeaderProps> = ({
                 </div>
               </div>
               <hr />
-              <button onClick={handleProfileClick}>
-                <User size={16} />
-                Profile Settings
+              <button onClick={handleSettingsClick}>
+                <Settings size={16} />
+                Settings
               </button>
               <button onClick={handleManageSubscriptionsClick}>
                 <Settings size={16} />
@@ -185,9 +185,9 @@ const GlobalHeader: React.FC<GlobalHeaderProps> = ({
             <div className="mobile-user-section">
               
               <div className="mobile-user-actions">
-                <button onClick={handleProfileClick}>
-                  <User size={16} />
-                  Profile Settings
+                <button onClick={handleSettingsClick}>
+                  <Settings size={16} />
+                  Settings
                 </button>
                 <button onClick={handleManageSubscriptionsClick}>
                   <Settings size={16} />

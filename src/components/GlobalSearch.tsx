@@ -147,10 +147,14 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onResultClick }) => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setQuery(value);
+    // Broadcast query changes for unified search handling
+    window.dispatchEvent(new CustomEvent('global-search', { detail: value }));
   };
 
   const handleResultClick = (result: SearchResult) => {
     onResultClick?.(result);
+    // Also broadcast selection text to allow downstream handlers
+    window.dispatchEvent(new CustomEvent('global-search', { detail: result.title }));
     setQuery('');
     setIsOpen(false);
   };
@@ -208,6 +212,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onResultClick }) => {
             onClick={() => {
               setQuery('');
               setResults([]);
+              window.dispatchEvent(new CustomEvent('global-search', { detail: '' }));
             }}
             style={{
               background: 'none',

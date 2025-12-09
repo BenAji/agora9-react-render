@@ -13,6 +13,7 @@ import CalendarPage from './pages/CalendarPage';
 import EventsPage from './pages/EventsPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import SettingsPage from './pages/SettingsPage';
 import UserProfile from './components/UserProfile';
 
 // Context
@@ -77,8 +78,35 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
     };
   }, []);
 
-  const handleLoginSuccess = () => {};
-  const handleSignupSuccess = () => {};
+  const redirectToCalendar = () => {
+    // Always land on calendar after auth
+    if (window.location.pathname !== '/calendar') {
+      window.location.replace('/calendar');
+    }
+  };
+
+  const handleLoginSuccess = (user: any) => {
+    // Set user immediately and send to calendar
+    if (user) {
+      setCurrentUser({
+        id: user.id,
+        email: user.email || '',
+        full_name: user.user_metadata?.full_name || user.email || '',
+        role: user.user_metadata?.role || 'user',
+        created_at: new Date(user.created_at),
+        updated_at: new Date(user.updated_at || user.created_at),
+        is_active: true,
+        preferences: {},
+        subscriptions: [],
+        managed_users: []
+      });
+    }
+    redirectToCalendar();
+  };
+
+  const handleSignupSuccess = () => {
+    redirectToCalendar();
+  };
   
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -127,6 +155,14 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
               path="/subscriptions" 
               element={
                 <SubscriptionManagementPage 
+                  currentUser={currentUser}
+                />
+              } 
+            />
+            <Route 
+              path="/settings" 
+              element={
+                <SettingsPage 
                   currentUser={currentUser}
                 />
               } 

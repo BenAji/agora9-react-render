@@ -7,9 +7,9 @@
  * SAFETY: Uses API data with mock fallbacks, error boundaries
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronLeft, ChevronRight, GripVertical, RefreshCw } from 'lucide-react';
-import { format, startOfWeek, addWeeks, subWeeks, getWeek, getYear, addDays } from 'date-fns';
+import { format, startOfWeek, addWeeks, subWeeks, getWeek, getYear, addDays, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval, parse, isValid, startOfDay } from 'date-fns';
 import {
   CompanyRow
 } from '../../types/calendar';
@@ -53,6 +53,19 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
   const [showMyEventsOnly, setShowMyEventsOnly] = useState(false);
   const [currentWeek, setCurrentWeek] = useState(new Date());
   
+  // Search state for calendar filtering
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Calendar view mode state (week, month, 2month, 3month) with localStorage persistence
+  const [calendarViewMode, setCalendarViewMode] = useState<'week' | 'month' | '2month' | '3month'>(() => {
+    // Load from localStorage on initial render
+    const savedViewMode = localStorage.getItem('agora-calendar-view-mode');
+    if (savedViewMode && ['week', 'month', '2month', '3month'].includes(savedViewMode)) {
+      return savedViewMode as 'week' | 'month' | '2month' | '3month';
+    }
+    return 'week'; // Default to week view
+  });
+  
   // Company calendar view state
   const [viewMode, setViewMode] = useState<'main' | 'company'>('main');
   const [selectedCompany, setSelectedCompany] = useState<CompanyRow | null>(null);
@@ -60,6 +73,10 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
   // Company reordering state
   const [companyOrder, setCompanyOrder] = useState<string[]>([]);
   const [isCompanyOrderPanelVisible, setIsCompanyOrderPanelVisible] = useState(false);
+  
+  // Refs for scroll synchronization
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const rowsScrollRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   // Mobile detection and viewport height recalculation
   useEffect(() => {
@@ -88,6 +105,11 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
   useEffect(() => {
     // This will trigger a re-render when companies change
   }, [companies.length]);
+
+  // Persist calendar view mode to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('agora-calendar-view-mode', calendarViewMode);
+  }, [calendarViewMode]);
 
   // Load company order from database and localStorage on mount
   useEffect(() => {
@@ -138,29 +160,189 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
     });
   }, [companies, companyOrder]);
 
-  // Generate day columns for the current week
-  const generateDayColumns = () => {
-    const startOfCurrentWeek = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Monday start
-    const days = [];
+  // Generate date range based on view mode
+  function getDateRangeForViewMode(viewMode: 'week' | 'month' | '2month' | '3month', baseDate: Date) {
+    if (viewMode === 'week') {
+      const start = startOfWeek(baseDate, { weekStartsOn: 1 }); // Monday start
+      return { start, end: addDays(start, 6) };
+    } else {
+      // For month views, start from the first day of the first month
+      const start = startOfMonth(baseDate);
+      let end: Date;
+      
+      if (viewMode === 'month') {
+        end = endOfMonth(baseDate);
+      } else if (viewMode === '2month') {
+        end = endOfMonth(addMonths(baseDate, 1));
+      } else { // 3month
+        end = endOfMonth(addMonths(baseDate, 2));
+      }
+      
+      return { start, end };
+    }
+  }
+
+  // Filtered ticker data based on search query
+  const filteredTickerData = useMemo(() => {
+    // If no search query, return all ordered companies
+    if (!searchQuery.trim()) {
+      return orderedCompanies;
+    }
     
-    for (let i = 0; i < 7; i++) {
-      const date = addDays(startOfCurrentWeek, i);
-      const dayNames = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-      const dayName = dayNames[i];
+    const queryLower = searchQuery.toLowerCase().trim();
+    const { start, end } = getDateRangeForViewMode(calendarViewMode, currentWeek);
+    const startDay = startOfDay(start);
+    const endDay = startOfDay(end);
+    
+    return orderedCompanies.filter((company) => {
+      // Condition 1: Ticker symbol or company name match
+      const tickerMatch = company.ticker_symbol?.toLowerCase().includes(queryLower);
+      const nameMatch = company.company_name?.toLowerCase().includes(queryLower);
+      
+      if (tickerMatch || nameMatch) {
+        return true;
+      }
+      
+      // Condition 2: Event match (check events in current date range)
+      const hasMatchingEvent = events.some((event) => {
+        // Check if event is for this company
+        const isForCompany = event.companies.some((comp: any) => comp.id === company.id);
+        if (!isForCompany) return false;
+        
+        // Check if event is in current date range
+        const eventDate = new Date(event.start_date);
+        const eventDay = startOfDay(eventDate);
+        const isInRange = eventDay >= startDay && eventDay <= endDay;
+        if (!isInRange) return false;
+        
+        // Check if event title or description matches query
+        const titleMatch = event.title?.toLowerCase().includes(queryLower);
+        const descriptionMatch = event.description?.toLowerCase().includes(queryLower);
+        
+        return titleMatch || descriptionMatch;
+      });
+      
+      return hasMatchingEvent;
+    });
+  }, [orderedCompanies, events, searchQuery, calendarViewMode, currentWeek]);
+
+  // Generate day columns based on view mode
+  const generateDayColumns = (): Array<{ dayName: string; dayNumber: number; date: Date; fullLabel: string }> => {
+    const { start, end } = getDateRangeForViewMode(calendarViewMode, currentWeek);
+    const allDates = eachDayOfInterval({ start, end });
+    const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    
+    return allDates.map((date: Date) => {
+      const dayIndex = date.getDay();
+      const dayName = dayNames[dayIndex];
       const dayNumber = date.getDate();
       
-      days.push({
+      return {
         dayName,
         dayNumber,
         date,
         fullLabel: `${dayName} ${dayNumber}`
-      });
-    }
-    
-    return days;
+      };
+    });
   };
 
   const dayColumns = generateDayColumns();
+
+  // Date parsing utility functions
+  const parseDateQuery = (query: string): Date | null => {
+    const normalizedQuery = query.trim().toLowerCase();
+    
+    // Check for relative dates
+    if (normalizedQuery === 'today') {
+      return startOfDay(new Date());
+    }
+    if (normalizedQuery === 'tomorrow') {
+      return startOfDay(addDays(new Date(), 1));
+    }
+    if (normalizedQuery === 'yesterday') {
+      return startOfDay(addDays(new Date(), -1));
+    }
+    if (normalizedQuery.startsWith('next ')) {
+      const dayName = normalizedQuery.replace('next ', '');
+      const dayMap: { [key: string]: number } = {
+        'monday': 1, 'mon': 1,
+        'tuesday': 2, 'tue': 2, 'tues': 2,
+        'wednesday': 3, 'wed': 3,
+        'thursday': 4, 'thu': 4, 'thur': 4, 'thurs': 4,
+        'friday': 5, 'fri': 5,
+        'saturday': 6, 'sat': 6,
+        'sunday': 0, 'sun': 0
+      };
+      const targetDay = dayMap[dayName];
+      if (targetDay !== undefined) {
+        const today = new Date();
+        const currentDay = today.getDay();
+        let daysToAdd = (targetDay - currentDay + 7) % 7;
+        if (daysToAdd === 0) daysToAdd = 7; // Next week if today
+        return startOfDay(addDays(today, daysToAdd));
+      }
+    }
+    
+    // Check for date formats: MM/DD, MM-DD, M/D, Dec 31, December 31
+    const dateFormats = [
+      'MM/dd/yyyy', 'MM-dd-yyyy', 'M/d/yyyy', 'M-dd-yyyy',
+      'MMM dd', 'MMMM dd', 'MMM dd yyyy', 'MMMM dd yyyy',
+      'MM/dd', 'M/d', 'MM-dd', 'M-dd'
+    ];
+    
+    for (const formatStr of dateFormats) {
+      try {
+        const parsed = parse(normalizedQuery, formatStr, new Date());
+        if (isValid(parsed)) {
+          // If no year specified, use current year
+          if (!formatStr.includes('yyyy')) {
+            const currentYear = new Date().getFullYear();
+            parsed.setFullYear(currentYear);
+          }
+          return startOfDay(parsed);
+        }
+      } catch (e) {
+        // Continue to next format
+      }
+    }
+    
+    return null;
+  };
+
+  // Global search handler with intent detection
+  const handleGlobalSearch = (query: string) => {
+    const trimmedQuery = query.trim();
+    setSearchQuery(trimmedQuery);
+    
+    // If empty, clear search
+    if (!trimmedQuery) {
+      return;
+    }
+    
+    // Check for date intent
+    const parsedDate = parseDateQuery(trimmedQuery);
+    if (parsedDate) {
+      // Navigate calendar to the parsed date
+      setCurrentWeek(parsedDate);
+      // Clear search query after navigation
+      setSearchQuery('');
+      return;
+    }
+    
+    // Ticker and text filtering will be handled by getFilteredTickerData
+    // The searchQuery state will trigger the filtering automatically
+  };
+
+  // Listen for global search events from GlobalSearch component
+  useEffect(() => {
+    const handleGlobalSearchEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      handleGlobalSearch(customEvent.detail || '');
+    };
+
+    window.addEventListener('global-search', handleGlobalSearchEvent as EventListener);
+    return () => window.removeEventListener('global-search', handleGlobalSearchEvent as EventListener);
+  }, []);
 
   // Handle event filter toggle
   const handleEventFilterToggle = (filter: 'my_events' | 'all_events') => {
@@ -180,25 +362,60 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
   };
 
 
-  // Week navigation handlers
-  const handlePreviousWeek = () => {
-    setCurrentWeek(subWeeks(currentWeek, 1));
+  // Navigation handlers for different view modes
+  const handlePreviousPeriod = () => {
+    if (calendarViewMode === 'week') {
+      setCurrentWeek(subWeeks(currentWeek, 1));
+    } else {
+      setCurrentWeek(subMonths(currentWeek, 1));
+    }
   };
 
-  const handleNextWeek = () => {
-    setCurrentWeek(addWeeks(currentWeek, 1));
+  const handleNextPeriod = () => {
+    if (calendarViewMode === 'week') {
+      setCurrentWeek(addWeeks(currentWeek, 1));
+    } else {
+      setCurrentWeek(addMonths(currentWeek, 1));
+    }
   };
 
-  const getCurrentWeekInfo = () => {
-    const weekNumber = getWeek(currentWeek, { weekStartsOn: 1 });
-    const year = getYear(currentWeek);
-    const month = format(currentWeek, 'MMM');
-    
-    return {
-      weekNumber,
-      year,
-      month
-    };
+  const getCurrentPeriodInfo = () => {
+    if (calendarViewMode === 'week') {
+      const weekNumber = getWeek(currentWeek, { weekStartsOn: 1 });
+      const year = getYear(currentWeek);
+      const month = format(currentWeek, 'MMM');
+      
+      return {
+        label: `Week ${weekNumber}`,
+        subLabel: `${month} ${year}`,
+        type: 'week' as const
+      };
+    } else {
+      const { start, end } = getDateRangeForViewMode(calendarViewMode, currentWeek);
+      const startMonth = format(start, 'MMM');
+      const startYear = format(start, 'yyyy');
+      const endMonth = format(end, 'MMM');
+      const endYear = format(end, 'yyyy');
+      
+      let label = '';
+      if (calendarViewMode === 'month') {
+        label = `${startMonth} ${startYear}`;
+      } else if (calendarViewMode === '2month') {
+        if (startMonth === endMonth && startYear === endYear) {
+          label = `${startMonth} ${startYear}`;
+        } else {
+          label = `${startMonth} ${startYear} - ${endMonth} ${endYear}`;
+        }
+      } else { // 3month
+        label = `${startMonth} ${startYear} - ${endMonth} ${endYear}`;
+      }
+      
+      return {
+        label,
+        subLabel: '',
+        type: 'month' as const
+      };
+    }
   };
 
   // Event interaction handlers
@@ -313,16 +530,16 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
     const maxRowsForViewport = Math.floor(availableHeight / rowHeight);
     
     // Use the larger of: actual companies, minimum 4 rows, or viewport-filling rows
-    const minRows = Math.min(4, orderedCompanies.length); // Reduced minimum for small screens
+    const minRows = Math.min(4, filteredTickerData.length); // Reduced minimum for small screens
     const viewportRows = Math.max(minRows, maxRowsForViewport - 2); // Leave some padding
     
-    return Math.max(viewportRows, orderedCompanies.length);
+    return Math.max(viewportRows, filteredTickerData.length);
   };
 
   // Generate empty rows to maintain consistent layout
   const generateEmptyRows = () => {
     const requiredRows = getRequiredRows();
-    const actualCompanies = orderedCompanies.length;
+    const actualCompanies = filteredTickerData.length;
     const emptyRowsNeeded = Math.max(0, requiredRows - actualCompanies);
     
     return Array.from({ length: emptyRowsNeeded }, (_, index) => ({
@@ -332,7 +549,7 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
   };
 
   const emptyRows = generateEmptyRows();
-  const allRows = [...orderedCompanies, ...emptyRows];
+  const allRows = [...filteredTickerData, ...emptyRows];
 
   // Type guard to check if row is empty
   const isEmptyRow = (row: any): row is { id: string; isEmpty: boolean } => {
@@ -489,7 +706,7 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
               marginRight: '2rem' 
             }}>
               <button
-                onClick={handlePreviousWeek}
+                onClick={handlePreviousPeriod}
                 style={{
                   padding: `${0.5 * parseFloat(dimensions.controlSize)}rem`,
                   backgroundColor: 'var(--tertiary-bg)',
@@ -525,15 +742,17 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
                 transform: `scale(${dimensions.controlSize})`
               }}>
                 <div style={{ fontSize: `${0.875 * parseFloat(dimensions.controlSize)}rem`, fontWeight: '600' }}>
-                  Week {getCurrentWeekInfo().weekNumber}
+                  {getCurrentPeriodInfo().label}
                 </div>
-                <div style={{ fontSize: `${0.75 * parseFloat(dimensions.controlSize)}rem`, fontStyle: 'italic', opacity: 0.8 }}>
-                  {getCurrentWeekInfo().month} {getCurrentWeekInfo().year}
-                </div>
+                {getCurrentPeriodInfo().subLabel && (
+                  <div style={{ fontSize: `${0.75 * parseFloat(dimensions.controlSize)}rem`, fontStyle: 'italic', opacity: 0.8 }}>
+                    {getCurrentPeriodInfo().subLabel}
+                  </div>
+                )}
               </div>
               
               <button
-                onClick={handleNextWeek}
+                onClick={handleNextPeriod}
                 style={{
                   padding: `${0.5 * parseFloat(dimensions.controlSize)}rem`,
                   backgroundColor: 'var(--tertiary-bg)',
@@ -556,6 +775,38 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
               >
                 <ChevronRight size={16} />
               </button>
+            </div>
+
+            {/* View Mode Selector */}
+            <div style={{
+              display: 'flex',
+              backgroundColor: 'var(--tertiary-bg)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '6px',
+              overflow: 'hidden',
+              marginRight: '2rem',
+              transform: `scale(${dimensions.controlSize})`
+            }}>
+              {(['week', 'month', '2month', '3month'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setCalendarViewMode(mode)}
+                  style={{
+                    padding: `${0.5 * parseFloat(dimensions.controlSize)}rem ${1 * parseFloat(dimensions.controlSize)}rem`,
+                    backgroundColor: calendarViewMode === mode 
+                      ? 'var(--accent-bg)' : 'transparent',
+                    color: calendarViewMode === mode 
+                      ? 'var(--primary-bg)' : 'var(--primary-text)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: `${0.875 * parseFloat(dimensions.controlSize)}rem`,
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {mode === 'week' ? 'Week' : mode === 'month' ? '1M' : mode === '2month' ? '2M' : '3M'}
+                </button>
+              ))}
             </div>
 
             {/* Event Filter Toggle and Reorder Button */}
@@ -680,62 +931,151 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
             </div>
           </div>
 
-          {/* Day Headers - 30% smaller, darker, fancy styling */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '150px repeat(7, 1fr)',
-            height: dimensions.headerHeight
-          }}>
-            {/* Company Tickers Header */}
+          {/* Day Headers - Support for scrolling in month views */}
+          {calendarViewMode === 'week' ? (
+            // Week view: Original grid layout
             <div style={{
-              padding: '0.75rem 1rem',
-              background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
-              borderRight: '1px solid #444',
-              fontWeight: '700',
-              fontSize: `${0.8 * parseFloat(dimensions.controlSize)}rem`,
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              borderBottom: '1px solid #444',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)'
+              display: 'grid',
+              gridTemplateColumns: '150px repeat(7, 1fr)',
+              height: dimensions.headerHeight
             }}>
-              Tickers
-            </div>
+              {/* Company Tickers Header */}
+              <div style={{
+                padding: '0.75rem 1rem',
+                background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
+                borderRight: '1px solid #444',
+                fontWeight: '700',
+                fontSize: `${0.8 * parseFloat(dimensions.controlSize)}rem`,
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                borderBottom: '1px solid #444',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)'
+              }}>
+                Tickers
+              </div>
 
-            {/* Day Column Headers - Professional styling */}
-            {dayColumns.map((day, index) => (
-              <div
-                key={`day-header-${index}`}
-                style={{
-                  padding: '0.75rem 0.5rem',
-                  background: 'linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%)',
-                  borderRight: index < dayColumns.length - 1 ? '1px solid #444' : 'none',
-                  textAlign: 'center',
-                  fontWeight: '600',
-                  fontSize: `${0.8 * parseFloat(dimensions.controlSize)}rem`,
-                  color: '#ffffff',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  borderBottom: '1px solid #444',
-                  textShadow: '0 1px 3px rgba(0,0,0,0.8)',
-                  letterSpacing: '0.3px',
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
-                  position: 'relative'
-                }}
-              >
-                <div style={{ fontSize: `${0.75 * parseFloat(dimensions.controlSize)}rem`, fontWeight: '800' }}>
-                  {day.dayName}
+              {/* Day Column Headers */}
+              {dayColumns.map((day, index) => (
+                <div
+                  key={`day-header-${index}`}
+                  style={{
+                    padding: '0.75rem 0.5rem',
+                    background: 'linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%)',
+                    borderRight: index < dayColumns.length - 1 ? '1px solid #444' : 'none',
+                    textAlign: 'center',
+                    fontWeight: '600',
+                    fontSize: `${0.8 * parseFloat(dimensions.controlSize)}rem`,
+                    color: '#ffffff',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    borderBottom: '1px solid #444',
+                    textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+                    letterSpacing: '0.3px',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+                    position: 'relative'
+                  }}
+                >
+                  <div style={{ fontSize: `${0.75 * parseFloat(dimensions.controlSize)}rem`, fontWeight: '800' }}>
+                    {day.dayName}
+                  </div>
+                  <div style={{ fontSize: `${0.6 * parseFloat(dimensions.controlSize)}rem`, opacity: 0.8 }}>
+                    {day.dayNumber}
+                  </div>
                 </div>
-                <div style={{ fontSize: `${0.6 * parseFloat(dimensions.controlSize)}rem`, opacity: 0.8 }}>
-                  {day.dayNumber}
+              ))}
+            </div>
+          ) : (
+            // Month views: Fixed TICKERS column + scrollable day columns
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '150px 1fr',
+              height: dimensions.headerHeight
+            }}>
+              {/* Fixed TICKERS Header */}
+              <div style={{
+                padding: '0.75rem 1rem',
+                background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
+                borderRight: '1px solid #444',
+                fontWeight: '700',
+                fontSize: `${0.8 * parseFloat(dimensions.controlSize)}rem`,
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                borderBottom: '1px solid #444',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
+                position: 'sticky',
+                left: 0,
+                zIndex: 5,
+                backgroundColor: '#1a1a1a'
+              }}>
+                Tickers
+              </div>
+
+              {/* Scrollable Day Headers Container */}
+              <div 
+                ref={headerScrollRef}
+                className="month-view-scrollable"
+                onScroll={(e) => {
+                  // Sync scroll with rows container
+                  const scrollLeft = e.currentTarget.scrollLeft;
+                  rowsScrollRefs.current.forEach((ref) => {
+                    if (ref) ref.scrollLeft = scrollLeft;
+                  });
+                }}
+                style={{
+                  overflowX: 'auto',
+                  overflowY: 'hidden',
+                  scrollbarWidth: 'none', // Firefox - hide scrollbar
+                  msOverflowStyle: 'none' // IE/Edge - hide scrollbar
+                }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${dayColumns.length}, 100px)`,
+                  minWidth: `${dayColumns.length * 100}px`,
+                  height: '100%'
+                }}>
+                  {dayColumns.map((day, index) => (
+                    <div
+                      key={`day-header-${index}`}
+                      style={{
+                        padding: '0.75rem 0.5rem',
+                        background: 'linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%)',
+                        borderRight: index < dayColumns.length - 1 ? '1px solid #444' : 'none',
+                        textAlign: 'center',
+                        fontWeight: '600',
+                        fontSize: `${0.8 * parseFloat(dimensions.controlSize)}rem`,
+                        color: '#ffffff',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        borderBottom: '1px solid #444',
+                        textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+                        letterSpacing: '0.3px',
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+                        position: 'relative',
+                        minWidth: '100px'
+                      }}
+                    >
+                      <div style={{ fontSize: `${0.75 * parseFloat(dimensions.controlSize)}rem`, fontWeight: '800' }}>
+                        {day.dayName}
+                      </div>
+                      <div style={{ fontSize: `${0.6 * parseFloat(dimensions.controlSize)}rem`, opacity: 0.8 }}>
+                        {day.dayNumber}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Scrollable Company Rows - Fill viewport with actual companies + empty rows */}
@@ -752,6 +1092,13 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
             {`
               .calendar-scroll::-webkit-scrollbar {
                 display: none; /* Chrome, Safari, Opera */
+              }
+              
+              /* Hide scrollbars for month view horizontal scrolling - cross-browser support */
+              .month-view-scrollable::-webkit-scrollbar {
+                display: none; /* Chrome, Safari, Opera, newer Edge - hide scrollbars */
+                width: 0;
+                height: 0;
               }
               
               /* Fix ticker text background - ensure no grey background */
@@ -775,13 +1122,15 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
               }
             `}
           </style>
-          <div className="calendar-scroll" style={{
-            display: 'grid',
-            gridTemplateColumns: '150px repeat(7, 1fr)',
-            minHeight: '100%'
-          }}>
-            {/* All Rows - Actual companies + empty rows to fill viewport */}
-            {allRows.map((row, rowIndex) => {
+          {calendarViewMode === 'week' ? (
+            // Week view: Original grid layout
+            <div className="calendar-scroll" style={{
+              display: 'grid',
+              gridTemplateColumns: '150px repeat(7, 1fr)',
+              minHeight: '100%'
+            }}>
+              {/* All Rows - Actual companies + empty rows to fill viewport */}
+              {allRows.map((row, rowIndex) => {
               // Skip if this is an empty row
               if (isEmptyRow(row)) {
                 return (
@@ -903,16 +1252,22 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
                       />
                     ))}
                     
-                    {/* Show message if no events */}
+                    {/* Subtle placeholder if no events - maintains row height */}
                     {getEventsForCell(company.id, day.date).length === 0 && (
                       <div style={{
-                        fontSize: '0.75rem',
-                        color: 'var(--muted-text)',
-                        textAlign: 'center',
-                        marginTop: '1rem',
-                        opacity: 0.3
+                        height: '2rem',
+                        minHeight: '2rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: 0.08
                       }}>
-                        No events
+                        <div style={{
+                          width: '20px',
+                          height: '1px',
+                          backgroundColor: 'var(--primary-text)',
+                          borderRadius: '1px'
+                        }} />
                       </div>
                     )}
                   </div>
@@ -920,7 +1275,194 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
               </React.Fragment>
               );
             })}
-          </div>
+            </div>
+          ) : (
+            // Month views: Fixed TICKERS column + single scrollable container for all rows
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '150px 1fr',
+              minHeight: '100%'
+            }}>
+              {/* Fixed TICKERS Column */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column'
+              }}>
+                {allRows.map((row, rowIndex) => {
+                  if (isEmptyRow(row)) {
+                    return (
+                      <div
+                        key={`empty-ticker-${row.id}`}
+                        style={{
+                          padding: '0.5rem 0.75rem',
+                          backgroundColor: 'transparent',
+                          height: dimensions.rowHeight,
+                          minHeight: dimensions.rowHeight,
+                          borderBottom: rowIndex < allRows.length - 1 ? '1px solid #333' : 'none'
+                        }}
+                      />
+                    );
+                  }
+                  const company = row as CompanyRow;
+                  return (
+                    <div
+                      key={`ticker-${company.id}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCompanyTickerClick(company);
+                      }}
+                      style={{
+                        padding: '0.5rem 0.75rem',
+                        backgroundColor: '#0a0a0a',
+                        borderRight: '1px solid #333',
+                        borderBottom: rowIndex < allRows.length - 1 ? '1px solid #333' : 'none',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        height: dimensions.rowHeight,
+                        minHeight: dimensions.rowHeight,
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.01)'
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.target as HTMLDivElement).style.backgroundColor = '#1a1a1a';
+                        (e.target as HTMLDivElement).style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.3)';
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.target as HTMLDivElement).style.backgroundColor = '#0a0a0a';
+                        (e.target as HTMLDivElement).style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.01)';
+                      }}
+                    >
+                      <div 
+                        className="ticker-text"
+                        style={{
+                          fontSize: '0.85rem',
+                          fontWeight: '700',
+                          color: '#ffffff',
+                          marginBottom: '0.125rem',
+                          letterSpacing: '0.5px'
+                        }}>
+                        {company.ticker_symbol}
+                      </div>
+                      <div 
+                        className="company-name-text"
+                        style={{
+                          fontSize: '0.7rem',
+                          fontStyle: 'italic',
+                          color: '#b0b0b0',
+                          lineHeight: '1.2',
+                          fontWeight: '400'
+                        }}>
+                        {company.company_name}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Single Scrollable Container for All Rows */}
+              <div 
+                ref={(el) => {
+                  if (el) rowsScrollRefs.current.set(0, el);
+                }}
+                className="month-view-scrollable"
+                onScroll={(e) => {
+                  // Sync scroll with header
+                  const scrollLeft = e.currentTarget.scrollLeft;
+                  if (headerScrollRef.current) {
+                    headerScrollRef.current.scrollLeft = scrollLeft;
+                  }
+                }}
+                style={{
+                  overflowX: 'auto',
+                  overflowY: 'auto',
+                  scrollbarWidth: 'none', // Firefox - hide scrollbar
+                  msOverflowStyle: 'none' // IE/Edge - hide scrollbar
+                }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${dayColumns.length}, 100px)`,
+                  gridTemplateRows: `repeat(${allRows.length}, ${dimensions.rowHeight})`,
+                  minWidth: `${dayColumns.length * 100}px`
+                }}>
+                  {allRows.map((row, rowIndex) => {
+                    if (isEmptyRow(row)) {
+                      return dayColumns.map((day, dayIndex) => (
+                        <div
+                          key={`empty-cell-${row.id}-${dayIndex}`}
+                          style={{
+                            height: dimensions.rowHeight,
+                            minHeight: dimensions.rowHeight,
+                            padding: '0.25rem',
+                            background: 'transparent',
+                            position: 'relative',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.25rem',
+                            overflow: 'hidden',
+                            borderRight: dayIndex < dayColumns.length - 1 ? '1px solid #333' : 'none',
+                            borderBottom: rowIndex < allRows.length - 1 ? '1px solid #333' : 'none'
+                          }}
+                        />
+                      ));
+                    }
+
+                    const company = row as CompanyRow;
+                    return dayColumns.map((day, dayIndex) => (
+                      <div
+                        key={`cell-${company.id}-${dayIndex}`}
+                        style={{
+                          height: dimensions.rowHeight,
+                          minHeight: dimensions.rowHeight,
+                          padding: '0.25rem',
+                          background: 'linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%)',
+                          borderRight: dayIndex < dayColumns.length - 1 ? '1px solid #333' : 'none',
+                          borderBottom: rowIndex < allRows.length - 1 ? '1px solid #333' : 'none',
+                          position: 'relative',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.25rem',
+                          overflow: 'hidden',
+                          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02)',
+                          minWidth: '100px'
+                        }}
+                      >
+                        {/* Event Cells */}
+                        {getEventsForCell(company.id, day.date).map((event, eventIndex) => (
+                          <EventCell
+                            key={`event-${event.id}-${eventIndex}`}
+                            event={event}
+                            onEventClick={handleEventClick}
+                            onEventHover={handleEventHover}
+                          />
+                        ))}
+                        
+                        {/* Subtle placeholder if no events - maintains row height */}
+                        {getEventsForCell(company.id, day.date).length === 0 && (
+                          <div style={{
+                            height: '2rem',
+                            minHeight: '2rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            opacity: 0.08
+                          }}>
+                            <div style={{
+                              width: '20px',
+                              height: '1px',
+                              backgroundColor: 'var(--primary-text)',
+                              borderRadius: '1px'
+                            }} />
+                          </div>
+                        )}
+                      </div>
+                    ));
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
