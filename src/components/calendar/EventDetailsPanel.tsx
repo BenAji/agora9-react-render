@@ -30,6 +30,8 @@ import {
 } from 'lucide-react';
 import MiniCalendar from './MiniCalendar';
 import WeatherForecast from './WeatherForecast';
+import { useOfficeContext } from '../../outlook/OfficeContext';
+import { createOutlookEvent, isOutlookCalendarAvailable } from '../../outlook/OutlookCalendarService';
 
 interface EventDetailsPanelProps {
   event: CalendarEvent | null;
@@ -81,6 +83,8 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
   const panelRef = useRef<HTMLDivElement>(null);
   const [hostDetails, setHostDetails] = useState<EventHost[]>([]);
   const [loadingHosts, setLoadingHosts] = useState(false);
+  const [addingToOutlook, setAddingToOutlook] = useState(false);
+  const { isOutlook } = useOfficeContext();
 
   // Fetch host details when panel opens
   const fetchHostDetails = useCallback(async () => {
@@ -746,37 +750,65 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           {/* Row 1: Primary Actions */}
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button 
-              onClick={() => {
-                // Add to calendar functionality
-                const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${event.start_date.toISOString().replace(/[-:]/g, '').split('.')[0]}Z/${event.end_date.toISOString().replace(/[-:]/g, '').split('.')[0]}Z&details=${encodeURIComponent(event.description || '')}`;
-                window.open(calendarUrl, '_blank');
+              onClick={async () => {
+                // If in Outlook, use Outlook API
+                if (isOutlook && isOutlookCalendarAvailable()) {
+                  setAddingToOutlook(true);
+                  try {
+                    const success = await createOutlookEvent(event);
+                    if (success) {
+                      // Success - Outlook compose form opened
+                      // User can review and save
+                    } else {
+                      alert('Could not open Outlook appointment form. Please try again.');
+                    }
+                  } catch (error) {
+                    console.error('Error adding to Outlook:', error);
+                    alert('Error adding event to Outlook calendar.');
+                  } finally {
+                    setAddingToOutlook(false);
+                  }
+                } else {
+                  // Fallback to Google Calendar
+                  const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${event.start_date.toISOString().replace(/[-:]/g, '').split('.')[0]}Z/${event.end_date.toISOString().replace(/[-:]/g, '').split('.')[0]}Z&details=${encodeURIComponent(event.description || '')}`;
+                  window.open(calendarUrl, '_blank');
+                }
               }}
+              disabled={addingToOutlook}
               style={{
                 flex: 1,
                 padding: '0.5rem',
-                backgroundColor: 'var(--accent-bg)',
+                backgroundColor: isOutlook ? 'var(--accent-bg)' : 'var(--accent-bg)',
                 color: 'var(--primary-bg)',
                 border: 'none',
                 borderRadius: '6px',
                 fontSize: '0.75rem',
                 fontWeight: '600',
-                cursor: 'pointer',
+                cursor: addingToOutlook ? 'wait' : 'pointer',
                 minHeight: '44px', // Touch-friendly
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '0.5rem',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                opacity: addingToOutlook ? 0.6 : 1
               }}
               onMouseEnter={(e) => {
-                (e.target as HTMLButtonElement).style.opacity = '0.9';
+                if (!addingToOutlook) {
+                  (e.target as HTMLButtonElement).style.opacity = '0.9';
+                }
               }}
               onMouseLeave={(e) => {
-                (e.target as HTMLButtonElement).style.opacity = '1';
+                (e.target as HTMLButtonElement).style.opacity = addingToOutlook ? '0.6' : '1';
               }}
             >
               <Plus size={14} />
-              Add to Calendar
+              {addingToOutlook 
+                ? 'Opening...' 
+                : isOutlook 
+                  ? 'Add to Outlook' 
+                  : 'Add to Calendar'
+              }
             </button>
             <button 
               onClick={() => {

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <title>AGORA Commands</title>
+    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+</head>
+<body>
+    <!-- This file is required for add-in commands but can be minimal -->
+    <!-- Commands are handled by the manifest, this file just needs to exist -->
+    <script>
+        Office.onReady(function() {
+            // Commands are handled by the manifest
+            // No action needed here
+        }).catch(function(error) {
+            console.error('AGORA: Commands initialization failed', error);
+        });
+    </script>
+</body>
+</html>

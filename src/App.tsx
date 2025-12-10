@@ -15,9 +15,11 @@ import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import SettingsPage from './pages/SettingsPage';
 import UserProfile from './components/UserProfile';
+import { OutlookLayout, HideInOutlook } from './components/OutlookLayout';
 
 // Context
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
+import { useOfficeContext } from './outlook/OfficeContext';
 
 // Utils
 import { supabase } from './lib/supabase';
@@ -31,6 +33,7 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
+  const { isOutlook, isInitialized: officeInitialized } = useOfficeContext();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -137,69 +140,76 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
 
   return (
     <Router>
-      <div className="app-container">
-        <GlobalHeader 
-          currentUser={currentUser} 
-          onLogout={handleLogout}
-          onProfileClick={() => setShowProfile(true)}
-          onManageSubscriptionsClick={() => {
-            // Navigate to subscriptions page
-            window.location.href = '/subscriptions';
-          }}
-        />
-        
-        <SubscriptionProvider>
-          <Routes>
-            <Route path="/" element={<Navigate to="/calendar" replace />} />
-            <Route 
-              path="/subscriptions" 
-              element={
-                <SubscriptionManagementPage 
-                  currentUser={currentUser}
-                />
-              } 
+      <OutlookLayout>
+        <div className="app-container">
+          {/* Hide GlobalHeader in Outlook - Outlook provides its own navigation */}
+          <HideInOutlook>
+            <GlobalHeader 
+              currentUser={currentUser} 
+              onLogout={handleLogout}
+              onProfileClick={() => setShowProfile(true)}
+              onManageSubscriptionsClick={() => {
+                // Navigate to subscriptions page
+                window.location.href = '/subscriptions';
+              }}
             />
-            <Route 
-              path="/settings" 
-              element={
-                <SettingsPage 
-                  currentUser={currentUser}
-                />
-              } 
-            />
-            <Route 
-              path="/calendar" 
-              element={
-                <CalendarPage 
-                  currentUser={currentUser}
-                  onLogout={handleLogout}
-                />
-              } 
-            />
-            <Route 
-              path="/events" 
-              element={
-                <EventsPage 
-                  currentUser={currentUser}
-                  onLogout={handleLogout}
-                />
-              } 
-            />
-            <Route path="/login" element={<LoginPage onLoginSuccess={handleLoginSuccess} onSwitchToSignup={() => {}} />} />
-            <Route path="/signup" element={<SignupPage onSignupSuccess={handleSignupSuccess} onSwitchToLogin={() => {}} />} />
-          </Routes>
-        </SubscriptionProvider>
+          </HideInOutlook>
+          
+          <SubscriptionProvider>
+            <Routes>
+              <Route path="/" element={<Navigate to="/calendar" replace />} />
+              <Route 
+                path="/subscriptions" 
+                element={
+                  <SubscriptionManagementPage 
+                    currentUser={currentUser}
+                  />
+                } 
+              />
+              <Route 
+                path="/settings" 
+                element={
+                  <SettingsPage 
+                    currentUser={currentUser}
+                  />
+                } 
+              />
+              <Route 
+                path="/calendar" 
+                element={
+                  <CalendarPage 
+                    currentUser={currentUser}
+                    onLogout={handleLogout}
+                  />
+                } 
+              />
+              <Route 
+                path="/events" 
+                element={
+                  <EventsPage 
+                    currentUser={currentUser}
+                    onLogout={handleLogout}
+                  />
+                } 
+              />
+              <Route path="/login" element={<LoginPage onLoginSuccess={handleLoginSuccess} onSwitchToSignup={() => {}} />} />
+              <Route path="/signup" element={<SignupPage onSignupSuccess={handleSignupSuccess} onSwitchToLogin={() => {}} />} />
+            </Routes>
+          </SubscriptionProvider>
 
-        {/* User Profile Drawer */}
-        {currentUser && (
-          <UserProfile
-            user={currentUser}
-            isOpen={showProfile}
-            onClose={() => setShowProfile(false)}
-            onUserUpdate={handleUserUpdate}
-          />
-        )}
-      </div>
+          {/* User Profile Drawer - Hide in Outlook */}
+          {currentUser && (
+            <HideInOutlook>
+              <UserProfile
+                user={currentUser}
+                isOpen={showProfile}
+                onClose={() => setShowProfile(false)}
+                onUserUpdate={handleUserUpdate}
+              />
+            </HideInOutlook>
+          )}
+        </div>
+      </OutlookLayout>
     </Router>
   );
 };

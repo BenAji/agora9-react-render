@@ -15,6 +15,7 @@ import {
 } from '../../types/calendar';
 import { CalendarEvent } from '../../types/database';
 import { useCalendarData } from '../../hooks/useCalendarData';
+import { useOutlookCalendarSync } from '../../hooks/useOutlookCalendarSync';
 import { supabase } from '../../lib/supabase';
 import { apiClient } from '../../utils/apiClient';
 import EventCell from './EventCell';
@@ -44,6 +45,23 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
     refreshData
   } = useCalendarData({ 
     enableRealtime: true
+  });
+
+  // Outlook calendar sync hook
+  const {
+    selectedDate: outlookSelectedDate,
+    visibleRange: outlookVisibleRange,
+    isOutlook: isOutlookContext,
+  } = useOutlookCalendarSync({
+    onDateChange: (date) => {
+      // Sync AGORA calendar to Outlook's selected date
+      setCurrentWeek(date);
+    },
+    onDateRangeChange: (range) => {
+      // Optionally adjust view to match Outlook's visible range
+      // This could change the view mode or date range
+    },
+    syncInterval: 5000, // Sync every 5 seconds when in Outlook
   });
 
   // Local state for UI interactions

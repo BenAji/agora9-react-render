@@ -2824,3 +2824,53 @@ textarea:focus-visible {
     width: 100%;
   }
 }
+
+/* ===================================================================================== */
+/* OUTLOOK ADD-IN LAYOUT STYLES */
+/* ===================================================================================== */
+
+/* Outlook Task Pane Layout */
+.outlook-layout {
+  width: 100%;
+  height: 100vh;
+  overflow: auto;
+  background-color: var(--primary-bg);
+}
+
+/* Optimize app container for Outlook Task Pane */
+.outlook-layout .app-container {
+  width: 100%;
+  min-height: 100vh;
+  padding: 0;
+  margin: 0;
+}
+
+/* Ensure calendar and other components work in narrow Task Pane */
+.outlook-layout .calendar-container,
+.outlook-layout .calendar-layout {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Compact spacing for Outlook */
+.outlook-layout .page-container {
+  padding: 0.75rem;
+}
+
+/* Hide scrollbars in Outlook if needed (optional) */
+.outlook-layout::-webkit-scrollbar {
+  width: 6px;
+}
+
+.outlook-layout::-webkit-scrollbar-track {
+  background: var(--secondary-bg);
+}
+
+.outlook-layout::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: 3px;
+}
+
+.outlook-layout::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-text);
+}
