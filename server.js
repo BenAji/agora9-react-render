@@ -27,6 +27,20 @@ app.use('/manifest.json', express.static(path.join(__dirname, 'build/manifest.js
   maxAge: '1h'
 }));
 
+// Serve Outlook Add-in files
+app.use('/manifest.xml', express.static(path.join(__dirname, 'build/manifest.xml'), {
+  maxAge: '1h',
+  type: 'application/xml'
+}));
+
+app.use('/taskpane.html', express.static(path.join(__dirname, 'build/taskpane.html'), {
+  maxAge: '1h'
+}));
+
+app.use('/commands.html', express.static(path.join(__dirname, 'build/commands.html'), {
+  maxAge: '1h'
+}));
+
 app.use('/favicon.ico', express.static(path.join(__dirname, 'build/favicon.ico'), {
   maxAge: '1d'
 }));

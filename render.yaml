@@ -2,7 +2,7 @@ services:
   - type: web
     name: agora-react
     env: node
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && npm run build:outlook
     startCommand: npm run server
     pullRequestPreviewsEnabled: true
     
