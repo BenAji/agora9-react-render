@@ -13,13 +13,13 @@
   <DisplayName DefaultValue="AGORA Investment Calendar"/>
   <Description DefaultValue="Track corporate events, earnings calls, and conferences directly from Outlook. Sync your investment calendar with Outlook."/>
   
-  <IconUrl DefaultValue="https://agora9-react-render.onrender.com/static/media/logo192.png"/>
-  <HighResolutionIconUrl DefaultValue="https://agora9-react-render.onrender.com/static/media/logo512.png"/>
+  <IconUrl DefaultValue="https://agoracalendar.org/static/media/logo192.png"/>
+  <HighResolutionIconUrl DefaultValue="https://agoracalendar.org/static/media/logo512.png"/>
   
-  <SupportUrl DefaultValue="https://agora9-react-render.onrender.com"/>
+  <SupportUrl DefaultValue="https://agoracalendar.org"/>
   
   <AppDomains>
-    <AppDomain>https://agora9-react-render.onrender.com</AppDomain>
+    <AppDomain>https://agoracalendar.org</AppDomain>
   </AppDomains>
   
   <Hosts>
@@ -35,7 +35,7 @@
   <FormSettings>
     <Form xsi:type="ItemRead">
       <DesktopSettings>
-        <SourceLocation DefaultValue="https://agora9-react-render.onrender.com/taskpane.html"/>
+        <SourceLocation DefaultValue="https://agoracalendar.org/taskpane.html"/>
         <RequestedHeight>250</RequestedHeight>
       </DesktopSettings>
     </Form>
@@ -90,14 +90,14 @@
     
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon.16x16" DefaultValue="https://agora9-react-render.onrender.com/static/media/logo192.png"/>
-        <bt:Image id="Icon.32x32" DefaultValue="https://agora9-react-render.onrender.com/static/media/logo192.png"/>
-        <bt:Image id="Icon.80x80" DefaultValue="https://agora9-react-render.onrender.com/static/media/logo512.png"/>
+        <bt:Image id="Icon.16x16" DefaultValue="https://agoracalendar.org/static/media/logo192.png"/>
+        <bt:Image id="Icon.32x32" DefaultValue="https://agoracalendar.org/static/media/logo192.png"/>
+        <bt:Image id="Icon.80x80" DefaultValue="https://agoracalendar.org/static/media/logo512.png"/>
       </bt:Images>
       
       <bt:Urls>
-        <bt:Url id="Commands.Url" DefaultValue="https://agora9-react-render.onrender.com/commands.html"/>
-        <bt:Url id="Taskpane.Url" DefaultValue="https://agora9-react-render.onrender.com/taskpane.html"/>
+        <bt:Url id="Commands.Url" DefaultValue="https://agoracalendar.org/commands.html"/>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://agoracalendar.org/taskpane.html"/>
       </bt:Urls>
       
       <bt:ShortStrings>
