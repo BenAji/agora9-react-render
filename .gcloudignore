@@ -1,0 +1,48 @@
+# .gcloudignore - Files to exclude from Cloud Build uploads
+# This ensures Dockerfile and necessary files are included
+
+# Exclude node_modules (will be installed during build)
+node_modules/
+
+# Exclude build directory (will be created during build)
+build/
+
+# Exclude git files
+.git/
+.gitignore
+
+# Exclude test files
+Test-Agora/
+*.test.js
+*.test.ts
+*.test.tsx
+*.spec.js
+*.spec.ts
+*.spec.tsx
+
+# Exclude development files
+.env.local
+.env.development
+.env.test
+*.log
+
+# Exclude IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Exclude OS files
+.DS_Store
+Thumbs.db
+
+# IMPORTANT: Dockerfile and scripts MUST be included
+# Do NOT exclude:
+# - Dockerfile
+# - scripts/
+# - package.json
+# - package-lock.json
+# - src/
+# - public/
+# - outlook-addin/
