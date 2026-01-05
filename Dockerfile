@@ -1,7 +1,7 @@
 # Multi-stage build for AGORA React App with Outlook Add-in support
 
 # Stage 1: Build the React application
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -9,10 +9,22 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm install
 
 # Copy source code
 COPY . .
+
+# Accept build arguments for environment variables
+ARG REACT_APP_SUPABASE_URL
+ARG REACT_APP_SUPABASE_ANON_KEY
+ARG REACT_APP_ENVIRONMENT=production
+ARG REACT_APP_WEATHER_API_KEY
+
+# Set environment variables for the build
+ENV REACT_APP_SUPABASE_URL=$REACT_APP_SUPABASE_URL
+ENV REACT_APP_SUPABASE_ANON_KEY=$REACT_APP_SUPABASE_ANON_KEY
+ENV REACT_APP_ENVIRONMENT=$REACT_APP_ENVIRONMENT
+ENV REACT_APP_WEATHER_API_KEY=$REACT_APP_WEATHER_API_KEY
 
 # Build the React app and copy Outlook files
 RUN npm run build:outlook
@@ -26,7 +38,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install only production dependencies
-RUN npm ci --only=production
+RUN npm install --only=production
 
 # Copy built files from builder stage
 COPY --from=builder /app/build ./build
