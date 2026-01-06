@@ -16,9 +16,7 @@ steps:
       - '--build-arg'
       - 'REACT_APP_WEATHER_API_KEY=${_REACT_APP_WEATHER_API_KEY}'
       - '-t'
-      - us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:${SHORT_SHA}
-      - '-t'
-      - us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:latest
+      - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:latest'
       - '.'
 
   # Push the image to Artifact Registry
@@ -40,7 +38,7 @@ steps:
       - 'deploy'
       - 'agora-react'
       - '--image'
-      - us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:${SHORT_SHA}
+      - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:latest'
       - '--region'
       - 'us-central1'
       - '--platform'
@@ -60,8 +58,7 @@ steps:
       - 'secure-bolt-482820-s6'
 
 images:
-  - us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:${SHORT_SHA}
-  - us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:latest
+  - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:latest'
 
 substitutions:
   _REACT_APP_SUPABASE_URL: 'https://vermzahfnxjvowompxsa.supabase.co'
