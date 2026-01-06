@@ -214,7 +214,7 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
         )}
       </div>
       </OutlookLayout>
-    </Router>
+    </RouterComponent>
   );
 };
 
