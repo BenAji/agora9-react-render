@@ -1,25 +1,36 @@
 # Google Cloud Build configuration for Cloud Run deployment
+# Project: secure-bolt-482820-s6
+# Artifact Registry: us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo
+
 steps:
-  # Build the Docker image
+  # Build the Docker image with environment variables
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
+      - '--build-arg'
+      - 'REACT_APP_SUPABASE_URL=${_REACT_APP_SUPABASE_URL}'
+      - '--build-arg'
+      - 'REACT_APP_SUPABASE_ANON_KEY=${_REACT_APP_SUPABASE_ANON_KEY}'
+      - '--build-arg'
+      - 'REACT_APP_ENVIRONMENT=production'
+      - '--build-arg'
+      - 'REACT_APP_WEATHER_API_KEY=${_REACT_APP_WEATHER_API_KEY}'
       - '-t'
-      - 'gcr.io/agora-481315/agora-react:$SHORT_SHA'
+      - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:$SHORT_SHA'
       - '-t'
-      - 'gcr.io/agora-481315/agora-react:latest'
+      - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:latest'
       - '.'
 
-  # Push the image to Container Registry
+  # Push the image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'gcr.io/agora-481315/agora-react:$SHORT_SHA'
+      - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:$SHORT_SHA'
 
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'gcr.io/agora-481315/agora-react:latest'
+      - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:latest'
 
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -29,7 +40,7 @@ steps:
       - 'deploy'
       - 'agora-react'
       - '--image'
-      - 'gcr.io/agora-481315/agora-react:$SHORT_SHA'
+      - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:$SHORT_SHA'
       - '--region'
       - 'us-central1'
       - '--platform'
@@ -45,12 +56,17 @@ steps:
       - '300'
       - '--max-instances'
       - '10'
-      - '--set-env-vars'
-      - 'REACT_APP_ENVIRONMENT=production'
+      - '--project'
+      - 'secure-bolt-482820-s6'
 
 images:
-  - 'gcr.io/agora-481315/agora-react:$SHORT_SHA'
-  - 'gcr.io/agora-481315/agora-react:latest'
+  - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:$SHORT_SHA'
+  - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:latest'
+
+substitutions:
+  _REACT_APP_SUPABASE_URL: 'https://vermzahfnxjvowompxsa.supabase.co'
+  _REACT_APP_SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlcm16YWhmbnhqdm93b21weHNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNjE5ODYsImV4cCI6MjA3MjkzNzk4Nn0.LnSFbklmYawaFB31zcjUfVdkXqSB5U7S9YSRcIZkARc'
+  _REACT_APP_WEATHER_API_KEY: ''
 
 options:
   machineType: 'E2_HIGHCPU_8'
