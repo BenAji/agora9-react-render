@@ -16,21 +16,21 @@ steps:
       - '--build-arg'
       - 'REACT_APP_WEATHER_API_KEY=${_REACT_APP_WEATHER_API_KEY}'
       - '-t'
-      - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:$SHORT_SHA'
+      - us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:${SHORT_SHA}
       - '-t'
-      - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:latest'
+      - us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:latest
       - '.'
 
   # Push the image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:$SHORT_SHA'
+      - us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:${SHORT_SHA}
 
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:latest'
+      - us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:latest
 
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -40,7 +40,7 @@ steps:
       - 'deploy'
       - 'agora-react'
       - '--image'
-      - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:$SHORT_SHA'
+      - us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:${SHORT_SHA}
       - '--region'
       - 'us-central1'
       - '--platform'
@@ -60,8 +60,8 @@ steps:
       - 'secure-bolt-482820-s6'
 
 images:
-  - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:$SHORT_SHA'
-  - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:latest'
+  - us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:${SHORT_SHA}
+  - us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:latest
 
 substitutions:
   _REACT_APP_SUPABASE_URL: 'https://vermzahfnxjvowompxsa.supabase.co'
