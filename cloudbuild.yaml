@@ -18,16 +18,16 @@ steps:
       - 'us-central1-docker.pkg.dev/$PROJECT_ID/agora-react-repo/agora-react:latest'
       - '.'
 
-  # Push the image to Container Registry
+  # Push the image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'gcr.io/agora-481315/agora-react:$SHORT_SHA'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/agora-react-repo/agora-react:$SHORT_SHA'
 
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'gcr.io/agora-481315/agora-react:latest'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/agora-react-repo/agora-react:latest'
 
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
