@@ -10,7 +10,7 @@ const root = ReactDOM.createRoot(
 root.render(
   <React.StrictMode>
     <OfficeContextProvider>
-      <AppWithAuth />
+    <AppWithAuth />
     </OfficeContextProvider>
   </React.StrictMode>
 );

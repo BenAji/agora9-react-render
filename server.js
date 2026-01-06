@@ -55,3 +55,4 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Serving static files from: ${path.join(__dirname, 'build')}`);
 });
+

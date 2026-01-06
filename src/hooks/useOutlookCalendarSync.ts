@@ -93,3 +93,4 @@ export const useOutlookCalendarSync = (options: UseOutlookCalendarSyncOptions = 
     isOutlook,
   };
 };
+

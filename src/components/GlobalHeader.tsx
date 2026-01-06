@@ -189,14 +189,6 @@ const GlobalHeader: React.FC<GlobalHeaderProps> = ({
                   <Settings size={16} />
                   Settings
                 </button>
-                <button onClick={handleManageSubscriptionsClick}>
-                  <Settings size={16} />
-                  Manage Subscriptions
-                </button>
-                <button onClick={onLogout}>
-                  <LogOut size={16} />
-                  Sign Out
-                </button>
               </div>
             </div>
           </div>

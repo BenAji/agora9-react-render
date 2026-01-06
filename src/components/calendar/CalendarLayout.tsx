@@ -261,7 +261,7 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
         date,
         fullLabel: `${dayName} ${dayNumber}`
       };
-    });
+      });
   };
 
   const dayColumns = generateDayColumns();
@@ -383,7 +383,7 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
   // Navigation handlers for different view modes
   const handlePreviousPeriod = () => {
     if (calendarViewMode === 'week') {
-      setCurrentWeek(subWeeks(currentWeek, 1));
+    setCurrentWeek(subWeeks(currentWeek, 1));
     } else {
       setCurrentWeek(subMonths(currentWeek, 1));
     }
@@ -391,7 +391,7 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
 
   const handleNextPeriod = () => {
     if (calendarViewMode === 'week') {
-      setCurrentWeek(addWeeks(currentWeek, 1));
+    setCurrentWeek(addWeeks(currentWeek, 1));
     } else {
       setCurrentWeek(addMonths(currentWeek, 1));
     }
@@ -399,11 +399,11 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
 
   const getCurrentPeriodInfo = () => {
     if (calendarViewMode === 'week') {
-      const weekNumber = getWeek(currentWeek, { weekStartsOn: 1 });
-      const year = getYear(currentWeek);
-      const month = format(currentWeek, 'MMM');
-      
-      return {
+    const weekNumber = getWeek(currentWeek, { weekStartsOn: 1 });
+    const year = getYear(currentWeek);
+    const month = format(currentWeek, 'MMM');
+    
+    return {
         label: `Week ${weekNumber}`,
         subLabel: `${month} ${year}`,
         type: 'week' as const
@@ -763,9 +763,9 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
                   {getCurrentPeriodInfo().label}
                 </div>
                 {getCurrentPeriodInfo().subLabel && (
-                  <div style={{ fontSize: `${0.75 * parseFloat(dimensions.controlSize)}rem`, fontStyle: 'italic', opacity: 0.8 }}>
+                <div style={{ fontSize: `${0.75 * parseFloat(dimensions.controlSize)}rem`, fontStyle: 'italic', opacity: 0.8 }}>
                     {getCurrentPeriodInfo().subLabel}
-                  </div>
+                </div>
                 )}
               </div>
               
@@ -952,61 +952,61 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
           {/* Day Headers - Support for scrolling in month views */}
           {calendarViewMode === 'week' ? (
             // Week view: Original grid layout
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '150px repeat(7, 1fr)',
+            height: dimensions.headerHeight
+          }}>
+            {/* Company Tickers Header */}
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: '150px repeat(7, 1fr)',
-              height: dimensions.headerHeight
+              padding: '0.75rem 1rem',
+              background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
+              borderRight: '1px solid #444',
+              fontWeight: '700',
+              fontSize: `${0.8 * parseFloat(dimensions.controlSize)}rem`,
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              borderBottom: '1px solid #444',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)'
             }}>
-              {/* Company Tickers Header */}
-              <div style={{
-                padding: '0.75rem 1rem',
-                background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
-                borderRight: '1px solid #444',
-                fontWeight: '700',
-                fontSize: `${0.8 * parseFloat(dimensions.controlSize)}rem`,
-                color: '#ffffff',
-                display: 'flex',
-                alignItems: 'center',
-                borderBottom: '1px solid #444',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)'
-              }}>
-                Tickers
-              </div>
+              Tickers
+            </div>
 
               {/* Day Column Headers */}
-              {dayColumns.map((day, index) => (
-                <div
-                  key={`day-header-${index}`}
-                  style={{
-                    padding: '0.75rem 0.5rem',
-                    background: 'linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%)',
-                    borderRight: index < dayColumns.length - 1 ? '1px solid #444' : 'none',
-                    textAlign: 'center',
-                    fontWeight: '600',
-                    fontSize: `${0.8 * parseFloat(dimensions.controlSize)}rem`,
-                    color: '#ffffff',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    borderBottom: '1px solid #444',
-                    textShadow: '0 1px 3px rgba(0,0,0,0.8)',
-                    letterSpacing: '0.3px',
-                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
-                    position: 'relative'
-                  }}
-                >
-                  <div style={{ fontSize: `${0.75 * parseFloat(dimensions.controlSize)}rem`, fontWeight: '800' }}>
-                    {day.dayName}
-                  </div>
-                  <div style={{ fontSize: `${0.6 * parseFloat(dimensions.controlSize)}rem`, opacity: 0.8 }}>
-                    {day.dayNumber}
-                  </div>
+            {dayColumns.map((day, index) => (
+              <div
+                key={`day-header-${index}`}
+                style={{
+                  padding: '0.75rem 0.5rem',
+                  background: 'linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%)',
+                  borderRight: index < dayColumns.length - 1 ? '1px solid #444' : 'none',
+                  textAlign: 'center',
+                  fontWeight: '600',
+                  fontSize: `${0.8 * parseFloat(dimensions.controlSize)}rem`,
+                  color: '#ffffff',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  borderBottom: '1px solid #444',
+                  textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+                  letterSpacing: '0.3px',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+                  position: 'relative'
+                }}
+              >
+                <div style={{ fontSize: `${0.75 * parseFloat(dimensions.controlSize)}rem`, fontWeight: '800' }}>
+                  {day.dayName}
                 </div>
-              ))}
-            </div>
+                <div style={{ fontSize: `${0.6 * parseFloat(dimensions.controlSize)}rem`, opacity: 0.8 }}>
+                  {day.dayNumber}
+                </div>
+              </div>
+            ))}
+          </div>
           ) : (
             // Month views: Fixed TICKERS column + scrollable day columns
             <div style={{
@@ -1142,13 +1142,13 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
           </style>
           {calendarViewMode === 'week' ? (
             // Week view: Original grid layout
-            <div className="calendar-scroll" style={{
-              display: 'grid',
-              gridTemplateColumns: '150px repeat(7, 1fr)',
-              minHeight: '100%'
-            }}>
-              {/* All Rows - Actual companies + empty rows to fill viewport */}
-              {allRows.map((row, rowIndex) => {
+          <div className="calendar-scroll" style={{
+            display: 'grid',
+            gridTemplateColumns: '150px repeat(7, 1fr)',
+            minHeight: '100%'
+          }}>
+            {/* All Rows - Actual companies + empty rows to fill viewport */}
+            {allRows.map((row, rowIndex) => {
               // Skip if this is an empty row
               if (isEmptyRow(row)) {
                 return (
@@ -1293,7 +1293,7 @@ const CalendarLayout: React.FC<CalendarLayoutProps> = ({
               </React.Fragment>
               );
             })}
-            </div>
+          </div>
           ) : (
             // Month views: Fixed TICKERS column + single scrollable container for all rows
             <div style={{

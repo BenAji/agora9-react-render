@@ -86,3 +86,4 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser }) => {
 };
 
 export default SettingsPage;
+

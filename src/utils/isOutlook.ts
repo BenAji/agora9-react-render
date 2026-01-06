@@ -37,3 +37,4 @@ export const getOutlookContext = (): any => {
   }
   return null;
 };
+

@@ -270,3 +270,4 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ currentUser
 };
 
 export default SubscriptionSettings;
+

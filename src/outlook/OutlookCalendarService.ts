@@ -250,3 +250,4 @@ export const formatEventForOutlook = (event: CalendarEvent) => {
     body: body,
   };
 };
+

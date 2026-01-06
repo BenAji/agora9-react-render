@@ -189,3 +189,4 @@ const NotificationsSettings: React.FC<NotificationsSettingsProps> = ({ currentUs
 };
 
 export default NotificationsSettings;
+

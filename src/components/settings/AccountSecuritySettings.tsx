@@ -180,3 +180,4 @@ const AccountSecuritySettings: React.FC<AccountSecuritySettingsProps> = ({ curre
 };
 
 export default AccountSecuritySettings;
+

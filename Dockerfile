@@ -8,7 +8,7 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install dependencies (using npm install to handle lock file sync issues)
 RUN npm install
 
 # Copy source code
@@ -26,11 +26,14 @@ ENV REACT_APP_SUPABASE_ANON_KEY=$REACT_APP_SUPABASE_ANON_KEY
 ENV REACT_APP_ENVIRONMENT=$REACT_APP_ENVIRONMENT
 ENV REACT_APP_WEATHER_API_KEY=$REACT_APP_WEATHER_API_KEY
 
+# Disable source maps to avoid CSP violations in Outlook
+ENV GENERATE_SOURCEMAP=false
+
 # Build the React app and copy Outlook files
 RUN npm run build:outlook
 
 # Stage 2: Production server
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 

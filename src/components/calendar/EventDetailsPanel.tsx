@@ -770,8 +770,8 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                   }
                 } else {
                   // Fallback to Google Calendar
-                  const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${event.start_date.toISOString().replace(/[-:]/g, '').split('.')[0]}Z/${event.end_date.toISOString().replace(/[-:]/g, '').split('.')[0]}Z&details=${encodeURIComponent(event.description || '')}`;
-                  window.open(calendarUrl, '_blank');
+                const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${event.start_date.toISOString().replace(/[-:]/g, '').split('.')[0]}Z/${event.end_date.toISOString().replace(/[-:]/g, '').split('.')[0]}Z&details=${encodeURIComponent(event.description || '')}`;
+                window.open(calendarUrl, '_blank');
                 }
               }}
               disabled={addingToOutlook}
@@ -795,7 +795,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
               }}
               onMouseEnter={(e) => {
                 if (!addingToOutlook) {
-                  (e.target as HTMLButtonElement).style.opacity = '0.9';
+                (e.target as HTMLButtonElement).style.opacity = '0.9';
                 }
               }}
               onMouseLeave={(e) => {

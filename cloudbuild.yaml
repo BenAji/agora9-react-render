@@ -4,30 +4,22 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
-      - '--build-arg'
-      - 'REACT_APP_SUPABASE_URL=${_REACT_APP_SUPABASE_URL}'
-      - '--build-arg'
-      - 'REACT_APP_SUPABASE_ANON_KEY=${_REACT_APP_SUPABASE_ANON_KEY}'
-      - '--build-arg'
-      - 'REACT_APP_ENVIRONMENT=${_REACT_APP_ENVIRONMENT}'
-      - '--build-arg'
-      - 'REACT_APP_WEATHER_API_KEY=${_REACT_APP_WEATHER_API_KEY}'
       - '-t'
-      - 'us-central1-docker.pkg.dev/${PROJECT_ID}/agora-react-repo/agora-react:${COMMIT_SHA}'
+      - 'gcr.io/agora-481315/agora-react:$SHORT_SHA'
       - '-t'
-      - 'us-central1-docker.pkg.dev/${PROJECT_ID}/agora-react-repo/agora-react:latest'
+      - 'gcr.io/agora-481315/agora-react:latest'
       - '.'
 
-  # Push the image to Artifact Registry
+  # Push the image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'us-central1-docker.pkg.dev/${PROJECT_ID}/agora-react-repo/agora-react:${COMMIT_SHA}'
+      - 'gcr.io/agora-481315/agora-react:$SHORT_SHA'
 
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'us-central1-docker.pkg.dev/${PROJECT_ID}/agora-react-repo/agora-react:latest'
+      - 'gcr.io/agora-481315/agora-react:latest'
 
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -37,7 +29,7 @@ steps:
       - 'deploy'
       - 'agora-react'
       - '--image'
-      - 'us-central1-docker.pkg.dev/${PROJECT_ID}/agora-react-repo/agora-react:${COMMIT_SHA}'
+      - 'gcr.io/agora-481315/agora-react:$SHORT_SHA'
       - '--region'
       - 'us-central1'
       - '--platform'
@@ -57,15 +49,8 @@ steps:
       - 'REACT_APP_ENVIRONMENT=production'
 
 images:
-  - 'us-central1-docker.pkg.dev/${PROJECT_ID}/agora-react-repo/agora-react:${COMMIT_SHA}'
-  - 'us-central1-docker.pkg.dev/${PROJECT_ID}/agora-react-repo/agora-react:latest'
-
-# Substitutions for environment variables (set these in Cloud Build triggers or via gcloud)
-substitutions:
-  _REACT_APP_SUPABASE_URL: ''
-  _REACT_APP_SUPABASE_ANON_KEY: ''
-  _REACT_APP_ENVIRONMENT: 'production'
-  _REACT_APP_WEATHER_API_KEY: ''
+  - 'gcr.io/agora-481315/agora-react:$SHORT_SHA'
+  - 'gcr.io/agora-481315/agora-react:latest'
 
 options:
   machineType: 'E2_HIGHCPU_8'

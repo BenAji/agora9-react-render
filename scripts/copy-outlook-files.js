@@ -3,7 +3,10 @@
  * 
  * This script is run automatically after `npm run build` when using `npm run build:outlook`
  * It copies manifest.xml, taskpane.html, and commands.html to the build directory
- * and injects React bundle scripts into taskpane.html so the React app loads.
+ * so they're accessible when the app is deployed.
+ * 
+ * For taskpane.html, it injects the React bundle scripts from the built index.html
+ * so the React app can load properly in the Outlook Task Pane.
  * 
  * @module scripts/copy-outlook-files
  */
@@ -14,80 +17,89 @@ const path = require('path');
 const sourceDir = path.join(__dirname, '..', 'outlook-addin');
 const buildDir = path.join(__dirname, '..', 'build');
 
-// Files to copy
-const filesToCopy = [
-  'manifest.xml',
-  'commands.html',
-];
-
 // Ensure build directory exists
 if (!fs.existsSync(buildDir)) {
   console.error('Build directory does not exist. Run "npm run build" first.');
   process.exit(1);
 }
 
-// Copy each file (except taskpane.html which needs special handling)
-filesToCopy.forEach((file) => {
-  const sourcePath = path.join(sourceDir, file);
-  const destPath = path.join(buildDir, file);
-
-  if (fs.existsSync(sourcePath)) {
-    fs.copyFileSync(sourcePath, destPath);
-    console.log(`✓ Copied ${file} to build directory`);
-  } else {
-    console.warn(`⚠ File not found: ${sourcePath}`);
-  }
-});
-
-// Special handling for taskpane.html - inject React bundle scripts
-const indexHtmlPath = path.join(buildDir, 'index.html');
-const taskpaneSourcePath = path.join(sourceDir, 'taskpane.html');
-const taskpaneDestPath = path.join(buildDir, 'taskpane.html');
-
-if (!fs.existsSync(indexHtmlPath)) {
-  console.error('index.html not found in build directory. React build may have failed.');
-  process.exit(1);
+// Copy manifest.xml
+const manifestSource = path.join(sourceDir, 'manifest.xml');
+const manifestDest = path.join(buildDir, 'manifest.xml');
+if (fs.existsSync(manifestSource)) {
+  fs.copyFileSync(manifestSource, manifestDest);
+  console.log('✓ Copied manifest.xml to build directory');
+} else {
+  console.warn(`⚠ File not found: ${manifestSource}`);
 }
 
-if (!fs.existsSync(taskpaneSourcePath)) {
-  console.warn(`⚠ taskpane.html not found: ${taskpaneSourcePath}`);
+// Copy commands.html
+const commandsSource = path.join(sourceDir, 'commands.html');
+const commandsDest = path.join(buildDir, 'commands.html');
+if (fs.existsSync(commandsSource)) {
+  fs.copyFileSync(commandsSource, commandsDest);
+  console.log('✓ Copied commands.html to build directory');
+} else {
+  console.warn(`⚠ File not found: ${commandsSource}`);
+}
+
+// For taskpane.html, we need to inject React bundle scripts
+const taskpaneSource = path.join(sourceDir, 'taskpane.html');
+const taskpaneDest = path.join(buildDir, 'taskpane.html');
+const indexHtmlPath = path.join(buildDir, 'index.html');
+
+if (!fs.existsSync(taskpaneSource)) {
+  console.warn(`⚠ File not found: ${taskpaneSource}`);
+} else if (!fs.existsSync(indexHtmlPath)) {
+  console.warn(`⚠ Built index.html not found: ${indexHtmlPath}`);
+  // Fallback: just copy the taskpane.html as-is
+  fs.copyFileSync(taskpaneSource, taskpaneDest);
+  console.log('✓ Copied taskpane.html to build directory (without React bundles)');
 } else {
   // Read the built index.html to extract script and link tags
   const indexHtml = fs.readFileSync(indexHtmlPath, 'utf8');
   
-  // Extract script tags (both regular and module scripts)
-  const scriptRegex = /<script[^>]*><\/script>|<script[^>]*>[\s\S]*?<\/script>/gi;
-  const scripts = indexHtml.match(scriptRegex) || [];
+  // Extract script tags (for JS bundles only)
+  const scriptMatches = indexHtml.match(/<script[^>]*><\/script>|<script[^>]*>[\s\S]*?<\/script>/gi) || [];
+  const scripts = scriptMatches.filter(script => 
+    script.includes('static/js/')
+  );
   
-  // Extract link tags for CSS
-  const linkRegex = /<link[^>]*rel=["']stylesheet["'][^>]*>/gi;
-  const links = indexHtml.match(linkRegex) || [];
+  // Extract link tags (for CSS)
+  const linkMatches = indexHtml.match(/<link[^>]*rel=["']stylesheet["'][^>]*>/gi) || [];
   
-  // Read taskpane.html
-  let taskpaneHtml = fs.readFileSync(taskpaneSourcePath, 'utf8');
+  // Read the taskpane.html template
+  let taskpaneHtml = fs.readFileSync(taskpaneSource, 'utf8');
   
   // Find where to inject scripts (before closing </body> tag)
   const bodyCloseIndex = taskpaneHtml.lastIndexOf('</body>');
   
-  if (bodyCloseIndex === -1) {
-    console.error('taskpane.html does not have a </body> tag');
-    process.exit(1);
+  if (bodyCloseIndex !== -1) {
+    // Build the script and link tags to inject
+    let injectContent = '\n    <!-- React app bundles -->\n';
+    
+    // Add CSS links first
+    linkMatches.forEach(link => {
+      injectContent += `    ${link}\n`;
+    });
+    
+    // Add JS scripts
+    scripts.forEach(script => {
+      injectContent += `    ${script}\n`;
+    });
+    
+    // Inject before </body>
+    taskpaneHtml = taskpaneHtml.slice(0, bodyCloseIndex) + injectContent + taskpaneHtml.slice(bodyCloseIndex);
+    
+    // Write the updated taskpane.html
+    fs.writeFileSync(taskpaneDest, taskpaneHtml, 'utf8');
+    console.log('✓ Created taskpane.html with React bundles injected');
+  } else {
+    // Fallback: just copy as-is
+    fs.copyFileSync(taskpaneSource, taskpaneDest);
+    console.log('✓ Copied taskpane.html to build directory (could not inject bundles)');
   }
-  
-  // Inject CSS links before </head> if it exists, otherwise before </body>
-  const headCloseIndex = taskpaneHtml.lastIndexOf('</head>');
-  if (headCloseIndex !== -1) {
-    const cssInjection = '\n    ' + links.join('\n    ') + '\n';
-    taskpaneHtml = taskpaneHtml.slice(0, headCloseIndex) + cssInjection + taskpaneHtml.slice(headCloseIndex);
-  }
-  
-  // Inject script tags before </body>
-  const scriptsInjection = '\n    ' + scripts.join('\n    ') + '\n';
-  taskpaneHtml = taskpaneHtml.slice(0, bodyCloseIndex) + scriptsInjection + taskpaneHtml.slice(bodyCloseIndex);
-  
-  // Write the updated taskpane.html
-  fs.writeFileSync(taskpaneDestPath, taskpaneHtml, 'utf8');
-  console.log(`✓ Copied and injected React scripts into taskpane.html`);
 }
 
 console.log('Outlook Add-in files copied successfully!');
+
