@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Components
 import GlobalHeader from './components/GlobalHeader';
@@ -124,9 +124,13 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
     return <div className="loading-state">Loading user session...</div>;
   }
 
+  // Use HashRouter in Outlook (iframe context) to avoid History API restrictions
+  // BrowserRouter works fine in regular web context
+  const RouterComponent = isOutlook ? HashRouter : BrowserRouter;
+
   if (!currentUser) {
     return (
-      <Router>
+      <RouterComponent>
         <div className="app-container">
           <Routes>
             <Route path="/login" element={<LoginPage onLoginSuccess={handleLoginSuccess} onSwitchToSignup={() => {}} />} />
@@ -134,12 +138,12 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </div>
-      </Router>
+      </RouterComponent>
     );
   }
 
   return (
-    <Router>
+    <RouterComponent>
       <OutlookLayout>
       <div className="app-container">
           {/* Hide GlobalHeader in Outlook - Outlook provides its own navigation */}

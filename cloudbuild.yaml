@@ -1,9 +1,6 @@
 # Google Cloud Build configuration for Cloud Run deployment
-# Project: secure-bolt-482820-s6
-# Artifact Registry: us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo
-
 steps:
-  # Build the Docker image with environment variables
+  # 1. Build the Docker image
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
@@ -19,18 +16,13 @@ steps:
       - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:latest'
       - '.'
 
-  # Push the image to Artifact Registry
+  # 2. Push to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:${SHORT_SHA}
+      - 'us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:latest'
 
-  - name: 'gcr.io/cloud-builders/docker'
-    args:
-      - 'push'
-      - us-central1-docker.pkg.dev/secure-bolt-482820-s6/agora-react-repo/agora-react:latest
-
-  # Deploy to Cloud Run
+  # 3. Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -46,14 +38,6 @@ steps:
       - '--allow-unauthenticated'
       - '--port'
       - '8080'
-      - '--memory'
-      - '512Mi'
-      - '--cpu'
-      - '1'
-      - '--timeout'
-      - '300'
-      - '--max-instances'
-      - '10'
       - '--project'
       - 'secure-bolt-482820-s6'
 
@@ -66,7 +50,4 @@ substitutions:
   _REACT_APP_WEATHER_API_KEY: ''
 
 options:
-  machineType: 'E2_HIGHCPU_8'
   logging: CLOUD_LOGGING_ONLY
-
-timeout: '1200s'
