@@ -13,9 +13,9 @@ steps:
       - '--build-arg'
       - 'REACT_APP_WEATHER_API_KEY=${_REACT_APP_WEATHER_API_KEY}'
       - '-t'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/agora-react-repo/agora-react:$SHORT_SHA'
+      - 'us-central1-docker.pkg.dev/${PROJECT_ID}/agora-react-repo/agora-react:${SHORT_SHA}'
       - '-t'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/agora-react-repo/agora-react:latest'
+      - 'us-central1-docker.pkg.dev/${PROJECT_ID}/agora-react-repo/agora-react:latest'
       - '.'
 
   # Push the image to Artifact Registry
@@ -37,7 +37,7 @@ steps:
       - 'deploy'
       - 'agora-react'
       - '--image'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/agora-react-repo/agora-react:$SHORT_SHA'
+      - 'us-central1-docker.pkg.dev/${PROJECT_ID}/agora-react-repo/agora-react:${SHORT_SHA}'
       - '--region'
       - 'us-central1'
       - '--platform'
@@ -57,8 +57,8 @@ steps:
       - 'REACT_APP_ENVIRONMENT=production'
 
 images:
-  - 'us-central1-docker.pkg.dev/$PROJECT_ID/agora-react-repo/agora-react:$SHORT_SHA'
-  - 'us-central1-docker.pkg.dev/$PROJECT_ID/agora-react-repo/agora-react:latest'
+  - 'us-central1-docker.pkg.dev/${PROJECT_ID}/agora-react-repo/agora-react:${SHORT_SHA}'
+  - 'us-central1-docker.pkg.dev/${PROJECT_ID}/agora-react-repo/agora-react:latest'
 
 # Substitutions for environment variables (set these in Cloud Build triggers or via gcloud)
 substitutions:
