@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, MemoryRouter, Routes, Route } from 'react-router-dom';
 
 // Components
 import GlobalHeader from './components/GlobalHeader';
@@ -83,10 +83,14 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
 
   const redirectToCalendar = () => {
     // Always land on calendar after auth
-    // Always use hash-based navigation since we're using HashRouter
-    if (window.location.hash !== '#/calendar') {
-      window.location.hash = '#/calendar';
+    // For MemoryRouter in Outlook, we'll handle this via route state
+    // For HashRouter in web, use hash navigation
+    if (!isOutlook) {
+      if (window.location.hash !== '#/calendar') {
+        window.location.hash = '#/calendar';
+      }
     }
+    // MemoryRouter navigation is handled by React Router internally
   };
 
   const handleLoginSuccess = (user: any) => {
@@ -125,27 +129,50 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
     return <div className="loading-state">Loading user session...</div>;
   }
 
-  // Always use HashRouter to avoid History API restrictions in Outlook iframe context
-  // HashRouter works perfectly fine in regular browsers too (just uses #/path instead of /path)
-  // This is the safest approach for Outlook add-ins - no need to detect context
-  const RouterComponent = HashRouter;
+  // Use MemoryRouter in Outlook (no History API usage, perfect for iframes)
+  // Use HashRouter for regular web browsers (still works without History API issues)
+  // MemoryRouter stores routes in memory only, no URL changes, perfect for Outlook
+  const RouterComponent = isOutlook ? MemoryRouter : HashRouter;
+
+  // Custom redirect component that uses hash navigation (avoids Navigate which may use replaceState)
+  const HashRedirect: React.FC<{ to: string }> = ({ to }) => {
+    useEffect(() => {
+      // Remove leading # if present, then add it back to ensure consistent format
+      const cleanPath = to.startsWith('#') ? to.slice(1) : to;
+      const targetHash = `#${cleanPath}`;
+      if (window.location.hash !== targetHash) {
+        window.location.hash = targetHash;
+      }
+    }, [to]);
+    return null;
+  };
 
   if (!currentUser) {
-    return (
-      <RouterComponent>
+    return isOutlook ? (
+      <MemoryRouter initialEntries={['/login']} initialIndex={0}>
         <div className="app-container">
           <Routes>
             <Route path="/login" element={<LoginPage onLoginSuccess={handleLoginSuccess} onSwitchToSignup={() => {}} />} />
             <Route path="/signup" element={<SignupPage onSignupSuccess={handleSignupSuccess} onSwitchToLogin={() => {}} />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<HashRedirect to="/login" />} />
           </Routes>
         </div>
-      </RouterComponent>
+      </MemoryRouter>
+    ) : (
+      <HashRouter>
+        <div className="app-container">
+          <Routes>
+            <Route path="/login" element={<LoginPage onLoginSuccess={handleLoginSuccess} onSwitchToSignup={() => {}} />} />
+            <Route path="/signup" element={<SignupPage onSignupSuccess={handleSignupSuccess} onSwitchToLogin={() => {}} />} />
+            <Route path="*" element={<HashRedirect to="/login" />} />
+          </Routes>
+        </div>
+      </HashRouter>
     );
   }
 
-  return (
-    <RouterComponent>
+  return isOutlook ? (
+    <MemoryRouter initialEntries={['/calendar']} initialIndex={0}>
       <OutlookLayout>
       <div className="app-container">
           {/* Hide GlobalHeader in Outlook - Outlook provides its own navigation */}
@@ -155,15 +182,18 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
           onLogout={handleLogout}
           onProfileClick={() => setShowProfile(true)}
           onManageSubscriptionsClick={() => {
-            // Navigate to subscriptions page using hash routing
-            window.location.hash = '#/subscriptions';
+            // Navigate to subscriptions page
+            if (!isOutlook) {
+              window.location.hash = '#/subscriptions';
+            }
+            // For MemoryRouter in Outlook, this will need to use navigate hook
           }}
         />
           </HideInOutlook>
         
         <SubscriptionProvider>
           <Routes>
-            <Route path="/" element={<Navigate to="/calendar" replace />} />
+            <Route path="/" element={<HashRedirect to="/calendar" />} />
             <Route 
               path="/subscriptions" 
               element={
@@ -216,7 +246,83 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
         )}
       </div>
       </OutlookLayout>
-    </RouterComponent>
+    </MemoryRouter>
+  ) : (
+    <HashRouter>
+      <OutlookLayout>
+      <div className="app-container">
+          {/* Hide GlobalHeader in Outlook - Outlook provides its own navigation */}
+          <HideInOutlook>
+        <GlobalHeader 
+          currentUser={currentUser} 
+          onLogout={handleLogout}
+          onProfileClick={() => setShowProfile(true)}
+          onManageSubscriptionsClick={() => {
+            // Navigate to subscriptions page
+            if (!isOutlook) {
+              window.location.hash = '#/subscriptions';
+            }
+            // For MemoryRouter in Outlook, this will need to use navigate hook
+          }}
+        />
+          </HideInOutlook>
+        
+        <SubscriptionProvider>
+          <Routes>
+            <Route path="/" element={<HashRedirect to="/calendar" />} />
+            <Route 
+              path="/subscriptions" 
+              element={
+                <SubscriptionManagementPage 
+                  currentUser={currentUser}
+                />
+              } 
+            />
+              <Route 
+                path="/settings" 
+                element={
+                  <SettingsPage 
+                    currentUser={currentUser}
+                  />
+                } 
+              />
+            <Route 
+              path="/calendar" 
+              element={
+                <CalendarPage 
+                  currentUser={currentUser}
+                  onLogout={handleLogout}
+                />
+              } 
+            />
+            <Route 
+              path="/events" 
+              element={
+                <EventsPage 
+                  currentUser={currentUser}
+                  onLogout={handleLogout}
+                />
+              } 
+            />
+            <Route path="/login" element={<LoginPage onLoginSuccess={handleLoginSuccess} onSwitchToSignup={() => {}} />} />
+            <Route path="/signup" element={<SignupPage onSignupSuccess={handleSignupSuccess} onSwitchToLogin={() => {}} />} />
+          </Routes>
+        </SubscriptionProvider>
+
+          {/* User Profile Drawer - Hide in Outlook */}
+        {currentUser && (
+            <HideInOutlook>
+          <UserProfile
+            user={currentUser}
+            isOpen={showProfile}
+            onClose={() => setShowProfile(false)}
+            onUserUpdate={handleUserUpdate}
+          />
+            </HideInOutlook>
+        )}
+      </div>
+      </OutlookLayout>
+    </HashRouter>
   );
 };
 
