@@ -83,8 +83,15 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
 
   const redirectToCalendar = () => {
     // Always land on calendar after auth
-    if (window.location.pathname !== '/calendar') {
-      window.location.replace('/calendar');
+    // Use hash-based navigation when in Outlook (HashRouter)
+    if (isOutlook) {
+      if (window.location.hash !== '#/calendar') {
+        window.location.hash = '#/calendar';
+      }
+    } else {
+      if (window.location.pathname !== '/calendar') {
+        window.location.replace('/calendar');
+      }
     }
   };
 
@@ -154,7 +161,11 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
           onProfileClick={() => setShowProfile(true)}
           onManageSubscriptionsClick={() => {
             // Navigate to subscriptions page
-            window.location.href = '/subscriptions';
+            if (isOutlook) {
+              window.location.hash = '#/subscriptions';
+            } else {
+              window.location.href = '/subscriptions';
+            }
           }}
         />
           </HideInOutlook>
