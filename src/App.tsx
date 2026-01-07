@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Components
 import GlobalHeader from './components/GlobalHeader';
@@ -83,15 +83,9 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
 
   const redirectToCalendar = () => {
     // Always land on calendar after auth
-    // Use hash-based navigation when in Outlook (HashRouter)
-    if (isOutlook) {
-      if (window.location.hash !== '#/calendar') {
-        window.location.hash = '#/calendar';
-      }
-    } else {
-      if (window.location.pathname !== '/calendar') {
-        window.location.replace('/calendar');
-      }
+    // Always use hash-based navigation since we're using HashRouter
+    if (window.location.hash !== '#/calendar') {
+      window.location.hash = '#/calendar';
     }
   };
 
@@ -131,9 +125,10 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
     return <div className="loading-state">Loading user session...</div>;
   }
 
-  // Use HashRouter in Outlook (iframe context) to avoid History API restrictions
-  // BrowserRouter works fine in regular web context
-  const RouterComponent = isOutlook ? HashRouter : BrowserRouter;
+  // Always use HashRouter to avoid History API restrictions in Outlook iframe context
+  // HashRouter works perfectly fine in regular browsers too (just uses #/path instead of /path)
+  // This is the safest approach for Outlook add-ins - no need to detect context
+  const RouterComponent = HashRouter;
 
   if (!currentUser) {
     return (
@@ -160,12 +155,8 @@ const App: React.FC<AppProps> = ({ authUser, onLogout }) => {
           onLogout={handleLogout}
           onProfileClick={() => setShowProfile(true)}
           onManageSubscriptionsClick={() => {
-            // Navigate to subscriptions page
-            if (isOutlook) {
-              window.location.hash = '#/subscriptions';
-            } else {
-              window.location.href = '/subscriptions';
-            }
+            // Navigate to subscriptions page using hash routing
+            window.location.hash = '#/subscriptions';
           }}
         />
           </HideInOutlook>
