@@ -24,31 +24,31 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser }) => {
   return (
     <div>
       <h2 style={{
-        fontSize: '1.5rem',
+        fontSize: '16px',
         fontWeight: '600',
         color: 'var(--primary-text)',
-        marginBottom: '1.5rem'
-      }}>Profile Information</h2>
+        marginBottom: '1rem'
+      }}>Profile information</h2>
 
       <div style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '1.5rem'
+        gap: '1rem'
       }}>
         <div style={{
-          padding: '1.25rem',
+          padding: '1rem',
           backgroundColor: 'var(--tertiary-bg)',
           borderRadius: '8px',
           border: '1px solid var(--border-color)'
         }}>
           <label style={{
             display: 'block',
-            fontSize: '0.875rem',
+            fontSize: '13px',
             fontWeight: '600',
             color: 'var(--primary-text)',
-            marginBottom: '0.5rem'
+            marginBottom: '0.375rem'
           }}>
-            Full Name
+            Full name
           </label>
           <input
             type="text"
@@ -57,12 +57,12 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser }) => {
             placeholder="Enter your full name"
             style={{
               width: '100%',
-              padding: '0.75rem',
+              padding: '0.625rem',
               backgroundColor: 'var(--primary-bg)',
               color: 'var(--primary-text)',
               border: '1px solid var(--border-color)',
               borderRadius: '6px',
-              fontSize: '0.9375rem',
+              fontSize: '13px',
               outline: 'none'
             }}
             onFocus={(e) => {
@@ -76,19 +76,19 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser }) => {
 
         {/* Address Section */}
         <div style={{
-          padding: '1.25rem',
+          padding: '1rem',
           backgroundColor: 'var(--tertiary-bg)',
           borderRadius: '8px',
           border: '1px solid var(--border-color)'
         }}>
           <label style={{
             display: 'block',
-            fontSize: '0.875rem',
+            fontSize: '13px',
             fontWeight: '600',
             color: 'var(--primary-text)',
-            marginBottom: '0.5rem'
+            marginBottom: '0.375rem'
           }}>
-            Street Address
+            Street address
           </label>
           <input
             type="text"
@@ -97,14 +97,14 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser }) => {
             placeholder="Enter street address"
             style={{
               width: '100%',
-              padding: '0.75rem',
+              padding: '0.625rem',
               backgroundColor: 'var(--primary-bg)',
               color: 'var(--primary-text)',
               border: '1px solid var(--border-color)',
               borderRadius: '6px',
-              fontSize: '0.9375rem',
+              fontSize: '13px',
               outline: 'none',
-              marginBottom: '1rem'
+              marginBottom: '0.875rem'
             }}
             onFocus={(e) => {
               e.target.style.borderColor = 'var(--accent-bg)';
@@ -113,14 +113,14 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser }) => {
               e.target.style.borderColor = 'var(--border-color)';
             }}
           />
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '0.875rem', flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 200px' }}>
               <label style={{
                 display: 'block',
-                fontSize: '0.875rem',
+                fontSize: '13px',
                 fontWeight: '600',
                 color: 'var(--primary-text)',
-                marginBottom: '0.5rem'
+                marginBottom: '0.375rem'
               }}>
                 City
               </label>
@@ -131,12 +131,12 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser }) => {
                 placeholder="Enter city"
                 style={{
                   width: '100%',
-                  padding: '0.75rem',
+                  padding: '0.625rem',
                   backgroundColor: 'var(--primary-bg)',
                   color: 'var(--primary-text)',
                   border: '1px solid var(--border-color)',
                   borderRadius: '6px',
-                  fontSize: '0.9375rem',
+                  fontSize: '13px',
                   outline: 'none'
                 }}
                 onFocus={(e) => {
@@ -150,10 +150,10 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser }) => {
             <div style={{ flex: '1 1 150px' }}>
               <label style={{
                 display: 'block',
-                fontSize: '0.875rem',
+                fontSize: '13px',
                 fontWeight: '600',
                 color: 'var(--primary-text)',
-                marginBottom: '0.5rem'
+                marginBottom: '0.375rem'
               }}>
                 State/Province
               </label>
@@ -164,12 +164,12 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser }) => {
                 placeholder="Enter state or province"
                 style={{
                   width: '100%',
-                  padding: '0.75rem',
+                  padding: '0.625rem',
                   backgroundColor: 'var(--primary-bg)',
                   color: 'var(--primary-text)',
                   border: '1px solid var(--border-color)',
                   borderRadius: '6px',
-                  fontSize: '0.9375rem',
+                  fontSize: '13px',
                   outline: 'none'
                 }}
                 onFocus={(e) => {
@@ -183,12 +183,12 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser }) => {
             <div style={{ flex: '1 1 120px' }}>
               <label style={{
                 display: 'block',
-                fontSize: '0.875rem',
+                fontSize: '13px',
                 fontWeight: '600',
                 color: 'var(--primary-text)',
-                marginBottom: '0.5rem'
+                marginBottom: '0.375rem'
               }}>
-                Postal Code
+                Postal code
               </label>
               <input
                 type="text"
@@ -197,12 +197,12 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser }) => {
                 placeholder="Enter postal code"
                 style={{
                   width: '100%',
-                  padding: '0.75rem',
+                  padding: '0.625rem',
                   backgroundColor: 'var(--primary-bg)',
                   color: 'var(--primary-text)',
                   border: '1px solid var(--border-color)',
                   borderRadius: '6px',
-                  fontSize: '0.9375rem',
+                  fontSize: '13px',
                   outline: 'none'
                 }}
                 onFocus={(e) => {
@@ -219,7 +219,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser }) => {
         <div style={{
           display: 'flex',
           justifyContent: 'flex-end',
-          gap: '1rem'
+          gap: '0.875rem'
         }}>
           <button
             onClick={handleSave}
@@ -227,13 +227,13 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser }) => {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.75rem 1.5rem',
+              gap: '0.375rem',
+              padding: '0.625rem 1.25rem',
               backgroundColor: isSaving ? 'var(--disabled-bg)' : 'var(--accent-bg)',
               color: isSaving ? 'var(--disabled-text)' : 'var(--primary-bg)',
               border: 'none',
               borderRadius: '6px',
-              fontSize: '0.9375rem',
+              fontSize: '13px',
               fontWeight: '600',
               cursor: isSaving ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s ease'
@@ -249,8 +249,8 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser }) => {
               }
             }}
           >
-            <Save size={16} />
-            {isSaving ? 'Saving...' : 'Save Changes'}
+            <Save size={14} />
+            {isSaving ? 'Saving...' : 'Save changes'}
           </button>
         </div>
       </div>

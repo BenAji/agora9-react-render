@@ -96,8 +96,8 @@ const EventCard: React.FC<EventCardProps> = ({
       style={{
         backgroundColor: 'var(--secondary-bg)',
         border: '1px solid var(--border-color)',
-        borderRadius: '12px',
-        padding: '16px',
+        borderRadius: '8px',
+        padding: '1rem',
         marginBottom: '12px',
         transition: 'all 0.2s ease',
         cursor: 'pointer',

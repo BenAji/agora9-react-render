@@ -147,17 +147,17 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
     }}>
       <div style={{
         width: '100%',
-        maxWidth: '480px',
+        maxWidth: '320px',
         backgroundColor: 'var(--secondary-bg)',
         borderRadius: '12px',
-        padding: '2rem',
+        padding: '1.25rem',
         border: '1px solid var(--border-color)',
         boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
       }}>
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
           <div style={{
-            fontSize: '2rem',
+            fontSize: '1.25rem',
             fontWeight: 'bold',
             color: 'var(--accent-color)',
             marginBottom: '0.5rem'
@@ -165,16 +165,16 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
             AGORA
           </div>
           <h1 style={{
-            fontSize: '1.5rem',
+            fontSize: '14px',
             fontWeight: '600',
             color: 'var(--primary-text)',
             margin: '0 0 0.5rem 0'
           }}>
-            Create Your Account
+            Create your account
           </h1>
           <p style={{
             color: 'var(--secondary-text)',
-            fontSize: '0.875rem',
+            fontSize: '11px',
             margin: 0
           }}>
             Join AGORA to access premium investment events and insights
@@ -186,10 +186,10 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
           <div style={{
             backgroundColor: 'var(--error-bg)',
             color: 'var(--error-color)',
-            padding: '0.75rem',
+            padding: '0.625rem',
             borderRadius: '6px',
-            marginBottom: '1.5rem',
-            fontSize: '0.875rem',
+            marginBottom: '1rem',
+            fontSize: '12px',
             border: '1px solid var(--error-color)'
           }}>
             {error}
@@ -199,22 +199,22 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
         {/* Signup Form */}
         <form onSubmit={handleSignup}>
           {/* Full Name */}
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '1rem' }}>
             <label style={{
               display: 'block',
-              fontSize: '0.875rem',
+              fontSize: '13px',
               fontWeight: '500',
               color: 'var(--primary-text)',
-              marginBottom: '0.5rem'
+              marginBottom: '0.375rem'
             }}>
-              Full Name
+              Full name
             </label>
             <div style={{ position: 'relative' }}>
               <User
-                size={20}
+                size={16}
                 style={{
                   position: 'absolute',
-                  left: '12px',
+                  left: '10px',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   color: 'var(--secondary-text)'
@@ -227,12 +227,12 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
                 placeholder="Enter your full name"
                 style={{
                   width: '100%',
-                  padding: '0.75rem 0.75rem 0.75rem 2.75rem',
+                  padding: '0.625rem 0.625rem 0.625rem 2.25rem',
                   border: `1px solid ${validationErrors.fullName ? 'var(--error-color)' : 'var(--border-color)'}`,
                   borderRadius: '6px',
                   backgroundColor: 'var(--tertiary-bg)',
                   color: 'var(--primary-text)',
-                  fontSize: '0.875rem',
+                  fontSize: '13px',
                   outline: 'none',
                   transition: 'border-color 0.2s ease'
                 }}
@@ -251,7 +251,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
             {validationErrors.fullName && (
               <p style={{
                 color: 'var(--error-color)',
-                fontSize: '0.75rem',
+                fontSize: '11px',
                 marginTop: '0.25rem',
                 margin: '0.25rem 0 0 0'
               }}>
@@ -261,22 +261,22 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
           </div>
 
           {/* Email */}
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '1rem' }}>
             <label style={{
               display: 'block',
-              fontSize: '0.875rem',
+              fontSize: '13px',
               fontWeight: '500',
               color: 'var(--primary-text)',
-              marginBottom: '0.5rem'
+              marginBottom: '0.375rem'
             }}>
-              Email Address
+              Email address
             </label>
             <div style={{ position: 'relative' }}>
               <Mail
-                size={20}
+                size={16}
                 style={{
                   position: 'absolute',
-                  left: '12px',
+                  left: '10px',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   color: 'var(--secondary-text)'
@@ -289,12 +289,12 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
                 placeholder="Enter your email"
                 style={{
                   width: '100%',
-                  padding: '0.75rem 0.75rem 0.75rem 2.75rem',
+                  padding: '0.625rem 0.625rem 0.625rem 2.25rem',
                   border: `1px solid ${validationErrors.email ? 'var(--error-color)' : 'var(--border-color)'}`,
                   borderRadius: '6px',
                   backgroundColor: 'var(--tertiary-bg)',
                   color: 'var(--primary-text)',
-                  fontSize: '0.875rem',
+                  fontSize: '13px',
                   outline: 'none',
                   transition: 'border-color 0.2s ease'
                 }}
@@ -313,7 +313,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
             {validationErrors.email && (
               <p style={{
                 color: 'var(--error-color)',
-                fontSize: '0.75rem',
+                fontSize: '11px',
                 marginTop: '0.25rem',
                 margin: '0.25rem 0 0 0'
               }}>
@@ -323,22 +323,22 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
           </div>
 
           {/* Role Selection */}
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '1rem' }}>
             <label style={{
               display: 'block',
-              fontSize: '0.875rem',
+              fontSize: '13px',
               fontWeight: '500',
               color: 'var(--primary-text)',
-              marginBottom: '0.5rem'
+              marginBottom: '0.375rem'
             }}>
               Role
             </label>
             <div style={{ position: 'relative' }}>
               <Briefcase
-                size={20}
+                size={16}
                 style={{
                   position: 'absolute',
-                  left: '12px',
+                  left: '10px',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   color: 'var(--secondary-text)',
@@ -350,40 +350,40 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
                 onChange={(e) => handleInputChange('role', e.target.value as 'investment_analyst' | 'executive_assistant')}
                 style={{
                   width: '100%',
-                  padding: '0.75rem 0.75rem 0.75rem 2.75rem',
+                  padding: '0.625rem 0.625rem 0.625rem 2.25rem',
                   border: '1px solid var(--border-color)',
                   borderRadius: '6px',
                   backgroundColor: 'var(--tertiary-bg)',
                   color: 'var(--primary-text)',
-                  fontSize: '0.875rem',
+                  fontSize: '13px',
                   outline: 'none',
                   appearance: 'none',
                   cursor: 'pointer'
                 }}
               >
-                <option value="investment_analyst">Investment Analyst</option>
-                <option value="executive_assistant">Executive Assistant</option>
+                <option value="investment_analyst">Investment analyst</option>
+                <option value="executive_assistant">Executive assistant</option>
               </select>
             </div>
           </div>
 
           {/* Password */}
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '1rem' }}>
             <label style={{
               display: 'block',
-              fontSize: '0.875rem',
+              fontSize: '13px',
               fontWeight: '500',
               color: 'var(--primary-text)',
-              marginBottom: '0.5rem'
+              marginBottom: '0.375rem'
             }}>
               Password
             </label>
             <div style={{ position: 'relative' }}>
               <Lock
-                size={20}
+                size={16}
                 style={{
                   position: 'absolute',
-                  left: '12px',
+                  left: '10px',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   color: 'var(--secondary-text)'
@@ -396,12 +396,12 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
                 placeholder="Create a password"
                 style={{
                   width: '100%',
-                  padding: '0.75rem 2.75rem 0.75rem 2.75rem',
+                  padding: '0.625rem 2.25rem 0.625rem 2.25rem',
                   border: `1px solid ${validationErrors.password ? 'var(--error-color)' : 'var(--border-color)'}`,
                   borderRadius: '6px',
                   backgroundColor: 'var(--tertiary-bg)',
                   color: 'var(--primary-text)',
-                  fontSize: '0.875rem',
+                  fontSize: '13px',
                   outline: 'none',
                   transition: 'border-color 0.2s ease'
                 }}
@@ -421,7 +421,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
                 onClick={() => setShowPassword(!showPassword)}
                 style={{
                   position: 'absolute',
-                  right: '12px',
+                  right: '10px',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   background: 'none',
@@ -433,13 +433,13 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
                   alignItems: 'center'
                 }}
               >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
             {validationErrors.password && (
               <p style={{
                 color: 'var(--error-color)',
-                fontSize: '0.75rem',
+                fontSize: '11px',
                 marginTop: '0.25rem',
                 margin: '0.25rem 0 0 0'
               }}>
@@ -449,22 +449,22 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
           </div>
 
           {/* Confirm Password */}
-          <div style={{ marginBottom: '2rem' }}>
+          <div style={{ marginBottom: '1.25rem' }}>
             <label style={{
               display: 'block',
-              fontSize: '0.875rem',
+              fontSize: '13px',
               fontWeight: '500',
               color: 'var(--primary-text)',
-              marginBottom: '0.5rem'
+              marginBottom: '0.375rem'
             }}>
-              Confirm Password
+              Confirm password
             </label>
             <div style={{ position: 'relative' }}>
               <Lock
-                size={20}
+                size={16}
                 style={{
                   position: 'absolute',
-                  left: '12px',
+                  left: '10px',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   color: 'var(--secondary-text)'
@@ -477,12 +477,12 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
                 placeholder="Confirm your password"
                 style={{
                   width: '100%',
-                  padding: '0.75rem 2.75rem 0.75rem 2.75rem',
+                  padding: '0.625rem 2.25rem 0.625rem 2.25rem',
                   border: `1px solid ${validationErrors.confirmPassword ? 'var(--error-color)' : 'var(--border-color)'}`,
                   borderRadius: '6px',
                   backgroundColor: 'var(--tertiary-bg)',
                   color: 'var(--primary-text)',
-                  fontSize: '0.875rem',
+                  fontSize: '13px',
                   outline: 'none',
                   transition: 'border-color 0.2s ease'
                 }}
@@ -502,7 +502,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 style={{
                   position: 'absolute',
-                  right: '12px',
+                  right: '10px',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   background: 'none',
@@ -514,13 +514,13 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
                   alignItems: 'center'
                 }}
               >
-                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
             {validationErrors.confirmPassword && (
               <p style={{
                 color: 'var(--error-color)',
-                fontSize: '0.75rem',
+                fontSize: '11px',
                 marginTop: '0.25rem',
                 margin: '0.25rem 0 0 0'
               }}>
@@ -535,19 +535,19 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
             disabled={loading}
             style={{
               width: '100%',
-              padding: '0.875rem',
+              padding: '0.625rem',
               backgroundColor: loading ? 'var(--disabled-bg)' : 'var(--accent-color)',
               color: loading ? 'var(--disabled-text)' : 'var(--primary-bg)',
               border: 'none',
               borderRadius: '6px',
-              fontSize: '0.875rem',
+              fontSize: '13px',
               fontWeight: '600',
               cursor: loading ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s ease',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '0.5rem'
+              gap: '0.375rem'
             }}
             onMouseEnter={(e) => {
               if (!loading) {
@@ -563,19 +563,19 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
             {loading ? (
               <>
                 <div style={{
-                  width: '16px',
-                  height: '16px',
+                  width: '14px',
+                  height: '14px',
                   border: '2px solid transparent',
                   borderTop: '2px solid currentColor',
                   borderRadius: '50%',
                   animation: 'spin 1s linear infinite'
                 }} />
-                Creating Account...
+                Creating account...
               </>
             ) : (
               <>
-                <CheckCircle size={16} />
-                Create Account
+                <CheckCircle size={14} />
+                Create account
               </>
             )}
           </button>
@@ -584,8 +584,8 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onSwitchToLogi
         {/* Login Link */}
         <div style={{
           textAlign: 'center',
-          marginTop: '1.5rem',
-          fontSize: '0.875rem'
+          marginTop: '1rem',
+          fontSize: '12px'
         }}>
           <span style={{ color: 'var(--secondary-text)' }}>
             Already have an account?{' '}

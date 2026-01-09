@@ -41,3 +41,4 @@ Write-Host ""
 
 # Start the server
 npm start
+

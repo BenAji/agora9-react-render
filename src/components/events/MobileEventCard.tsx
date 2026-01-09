@@ -128,7 +128,7 @@ const MobileEventCard: React.FC<MobileEventCardProps> = ({
       <div
         onClick={() => setIsExpanded(!isExpanded)}
         style={{
-          padding: '12px',
+          padding: '1rem',
           cursor: 'pointer',
           userSelect: 'none'
         }}
@@ -220,7 +220,7 @@ const MobileEventCard: React.FC<MobileEventCardProps> = ({
       {isExpanded && (
         <div style={{
           borderTop: '1px solid #333333',
-          padding: '12px',
+          padding: '1rem',
           backgroundColor: '#0f0f0f'
         }}>
           {/* Detailed Host Information */}

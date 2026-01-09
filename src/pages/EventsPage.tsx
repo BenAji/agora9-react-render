@@ -106,30 +106,46 @@ const EventsPage: React.FC<EventsPageProps> = ({ currentUser, onLogout }) => {
   if (error) {
     return (
       <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem',
-        color: 'var(--error-color)',
-        textAlign: 'center'
+        minHeight: '100vh',
+        backgroundColor: '#000000',
+        color: '#FFFFFF',
+        position: 'relative'
       }}>
-        <h2>Error Loading Events</h2>
-        <p>{error}</p>
-        <button
-          onClick={() => refreshData()}
-          style={{
-            backgroundColor: 'var(--accent-bg)',
-            color: 'var(--primary-bg)',
-            border: 'none',
-            padding: '12px 24px',
+        <div style={{ 
+          maxWidth: '1400px', 
+          margin: '0 auto', 
+          padding: '1.25rem' 
+        }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+            color: 'var(--error-color)',
+            textAlign: 'center',
+            backgroundColor: 'var(--secondary-bg)',
             borderRadius: '8px',
-            cursor: 'pointer',
-            marginTop: '1rem'
-          }}
-        >
-          Try Again
-        </button>
+            border: '1px solid var(--border-color)'
+          }}>
+            <h2>Error Loading Events</h2>
+            <p>{error}</p>
+            <button
+              onClick={() => refreshData()}
+              style={{
+                backgroundColor: 'var(--accent-bg)',
+                color: 'var(--primary-bg)',
+                border: 'none',
+                padding: '0.625rem 1.25rem',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                marginTop: '1rem'
+              }}
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -155,18 +171,25 @@ const EventsPage: React.FC<EventsPageProps> = ({ currentUser, onLogout }) => {
         availableSubsectors={availableSubsectors}
       />
 
-      {/* Events Table */}
-      <EventsTable
-        events={events}
-        onViewEvent={handleViewDetails}
-        onRSVPUpdate={handleRSVPUpdate}
-        searchQuery={searchQuery}
-        filterBy={filterBy}
-        subsectorFilter={subsectorFilter}
-        sortBy={sortBy}
-        onSortChange={setSortBy}
-        isLoading={loading}
-      />
+      {/* Content Container */}
+      <div style={{ 
+        maxWidth: '1200px', 
+        margin: '0 auto', 
+        padding: '0 2rem' 
+      }}>
+        {/* Events Table */}
+        <EventsTable
+          events={events}
+          onViewEvent={handleViewDetails}
+          onRSVPUpdate={handleRSVPUpdate}
+          searchQuery={searchQuery}
+          filterBy={filterBy}
+          subsectorFilter={subsectorFilter}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          isLoading={loading}
+        />
+      </div>
 
       {/* Event Details Panel */}
       {isEventDetailsVisible && selectedEvent && (

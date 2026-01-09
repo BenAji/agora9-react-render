@@ -9,21 +9,21 @@ interface SettingsSideNavProps {
 const SettingsSideNav: React.FC<SettingsSideNavProps> = ({ activeSection, onSectionChange }) => {
   const navItems = [
     { id: 'profile' as const, label: 'Profile', icon: User },
-    { id: 'account' as const, label: 'Account & Security', icon: Shield },
+    { id: 'account' as const, label: 'Account & security', icon: Shield },
     { id: 'notifications' as const, label: 'Notifications', icon: Bell },
-    { id: 'subscriptions' as const, label: 'Billing and Subscriptions', icon: Building2 },
+    { id: 'subscriptions' as const, label: 'Billing and subscriptions', icon: Building2 },
   ];
 
   return (
     <nav style={{
-      width: '240px',
+      width: '200px',
       backgroundColor: 'var(--secondary-bg)',
       borderRadius: '12px',
-      padding: '1rem',
+      padding: '0.875rem',
       border: '1px solid var(--border-color)',
       boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
       position: 'sticky',
-      top: '2rem'
+      top: '1.25rem'
     }}>
       {navItems.map((item) => {
         const Icon = item.icon;
@@ -37,15 +37,15 @@ const SettingsSideNav: React.FC<SettingsSideNavProps> = ({ activeSection, onSect
               width: '100%',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.75rem',
-              padding: '0.75rem 1rem',
-              marginBottom: '0.5rem',
+              gap: '0.625rem',
+              padding: '0.625rem 0.875rem',
+              marginBottom: '0.375rem',
               backgroundColor: isActive ? 'var(--accent-bg)' : 'transparent',
               color: isActive ? 'var(--primary-bg)' : 'var(--primary-text)',
               border: 'none',
               borderRadius: '6px',
               cursor: 'pointer',
-              fontSize: '0.9375rem',
+              fontSize: '13px',
               fontWeight: isActive ? '600' : '400',
               transition: 'all 0.2s ease',
               textAlign: 'left'
@@ -61,7 +61,7 @@ const SettingsSideNav: React.FC<SettingsSideNavProps> = ({ activeSection, onSect
               }
             }}
           >
-            <Icon size={18} />
+            <Icon size={16} />
             <span>{item.label}</span>
           </button>
         );

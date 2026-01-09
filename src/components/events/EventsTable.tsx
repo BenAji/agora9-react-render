@@ -278,27 +278,27 @@ const EventsTable: React.FC<EventsTableProps> = ({
           backgroundColor: '#1A1A1A',
           borderRadius: '8px',
           overflow: 'hidden',
-          border: '1px solid #333333',
+          border: 'none',
           tableLayout: 'fixed'
         }}>
           <thead>
-            <tr style={{ backgroundColor: '#333333' }}>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700', width: '18%' }}>
+            <tr style={{ backgroundColor: '#1A1A1A' }}>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '1px solid #323130', width: '20%' }}>
                 Event
               </th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700', width: '22%' }}>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '1px solid #323130', width: '25%' }}>
                 Host / Type
               </th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700', width: '12%' }}>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '1px solid #323130', width: '15%' }}>
                 Date/Time
               </th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700', width: '16%' }}>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '1px solid #323130', width: '18%' }}>
                 Location
               </th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700', width: '14%' }}>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '1px solid #323130', width: '15%' }}>
                 Status
               </th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '2px solid #FFD700', width: '18%' }}>
+              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#FFFFFF', borderBottom: '1px solid #323130', width: '7%' }}>
                 Actions
               </th>
             </tr>
@@ -336,15 +336,15 @@ const EventsTable: React.FC<EventsTableProps> = ({
               return (
                 <tr 
                   key={row.id}
+                  onClick={() => onViewEvent(events.find(e => e.id === row.id)!)}
                   style={{
-                    borderBottom: '1px solid #333333',
+                    borderBottom: '1px solid #323130',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     backgroundColor: '#1A1A1A'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = '#2A2A2A';
-                    e.currentTarget.style.borderColor = '#FFD700';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = '#1A1A1A';
@@ -434,127 +434,38 @@ const EventsTable: React.FC<EventsTableProps> = ({
 
                   {/* Column 6: Actions */}
                   <td style={{ padding: '12px 16px', verticalAlign: 'top' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onViewEvent(events.find(e => e.id === row.id)!);
-                        }}
-                        style={{
-                          backgroundColor: 'transparent',
-                          color: '#FFD700',
-                          border: '1px solid #FFD700',
-                          padding: '6px 12px',
-                          borderRadius: '6px',
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '4px',
-                          width: '100%'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#FFD700';
-                          e.currentTarget.style.color = '#000000';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                          e.currentTarget.style.color = '#FFD700';
-                        }}
-                      >
-                        <Eye size={12} />
-                        View
-                      </button>
-                      {row.rsvpStatus === 'pending' && (
-                        <>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onRSVPUpdate(row.id, 'accepted');
-                            }}
-                            style={{
-                              backgroundColor: '#28a745',
-                              color: '#FFFFFF',
-                              border: 'none',
-                              padding: '6px 12px',
-                              borderRadius: '6px',
-                              fontSize: '0.7rem',
-                              fontWeight: '600',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease',
-                              width: '100%'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = '#218838';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = '#28a745';
-                            }}
-                          >
-                            ✓ Accept
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onRSVPUpdate(row.id, 'declined');
-                            }}
-                            style={{
-                              backgroundColor: '#dc3545',
-                              color: '#FFFFFF',
-                              border: 'none',
-                              padding: '6px 12px',
-                              borderRadius: '6px',
-                              fontSize: '0.7rem',
-                              fontWeight: '600',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease',
-                              width: '100%'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = '#c82333';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = '#dc3545';
-                            }}
-                          >
-                            ✗ Decline
-                          </button>
-                        </>
-                      )}
-                      {row.rsvpStatus !== 'pending' && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onRSVPUpdate(row.id, 'pending');
-                          }}
-                          style={{
-                            backgroundColor: '#333333',
-                            color: '#FFFFFF',
-                            border: '1px solid #555555',
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            fontSize: '0.7rem',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            width: '100%'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#444444';
-                            e.currentTarget.style.borderColor = '#FFD700';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#333333';
-                            e.currentTarget.style.borderColor = '#555555';
-                          }}
-                        >
-                          Change RSVP
-                        </button>
-                      )}
-                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewEvent(events.find(e => e.id === row.id)!);
+                      }}
+                      style={{
+                        backgroundColor: 'transparent',
+                        color: '#888888',
+                        border: 'none',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '0.75rem',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#2A2A2A';
+                        e.currentTarget.style.color = '#FFFFFF';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.color = '#888888';
+                      }}
+                    >
+                      <Eye size={14} />
+                      View
+                    </button>
                   </td>
                 </tr>
               );
@@ -565,7 +476,7 @@ const EventsTable: React.FC<EventsTableProps> = ({
 
       {/* Mobile Condensed Table */}
       <div style={{ display: 'block' }} className="mobile-table">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
           {eventRows.map((row) => {
             const rsvpDisplay = getRSVPDisplay(row.status, row.rsvpStatus);
             return (
@@ -573,14 +484,13 @@ const EventsTable: React.FC<EventsTableProps> = ({
                 key={row.id}
                 style={{
                   backgroundColor: '#1A1A1A',
-                  border: '1px solid #333333',
-                  borderRadius: '8px',
-                  padding: '16px',
+                  borderBottom: '1px solid #323130',
+                  padding: '1rem',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#333333';
+                  e.currentTarget.style.backgroundColor = '#2A2A2A';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = '#1A1A1A';
@@ -673,12 +583,12 @@ const EventsTable: React.FC<EventsTableProps> = ({
                     }}
                     style={{
                       backgroundColor: 'transparent',
-                      color: '#FFD700',
-                      border: '1px solid #FFD700',
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      fontSize: '0.8rem',
-                      fontWeight: '600',
+                      color: '#888888',
+                      border: 'none',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      fontWeight: '500',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease',
                       display: 'flex',
@@ -688,12 +598,12 @@ const EventsTable: React.FC<EventsTableProps> = ({
                       justifyContent: 'center'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#FFD700';
-                      e.currentTarget.style.color = '#000000';
+                      e.currentTarget.style.backgroundColor = '#2A2A2A';
+                      e.currentTarget.style.color = '#FFFFFF';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.color = '#FFD700';
+                      e.currentTarget.style.color = '#888888';
                     }}
                   >
                     <Eye size={14} />

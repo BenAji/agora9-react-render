@@ -6,3 +6,4 @@ echo.
 echo Starting server on port 3000...
 set PORT=3000
 call npm start
+

@@ -22,16 +22,10 @@ import {
   Shield,
   CheckCircle,
   XCircle,
-  AlertCircle,
-  Share2,
-  Plus,
-  Link,
-  Mail
+  AlertCircle
 } from 'lucide-react';
 import MiniCalendar from './MiniCalendar';
 import WeatherForecast from './WeatherForecast';
-import { useOfficeContext } from '../../outlook/OfficeContext';
-import { createOutlookEvent, isOutlookCalendarAvailable } from '../../outlook/OutlookCalendarService';
 
 interface EventDetailsPanelProps {
   event: CalendarEvent | null;
@@ -83,8 +77,6 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
   const panelRef = useRef<HTMLDivElement>(null);
   const [hostDetails, setHostDetails] = useState<EventHost[]>([]);
   const [loadingHosts, setLoadingHosts] = useState(false);
-  const [addingToOutlook, setAddingToOutlook] = useState(false);
-  const { isOutlook } = useOfficeContext();
 
   // Fetch host details when panel opens
   const fetchHostDetails = useCallback(async () => {
@@ -248,7 +240,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         padding: '1rem',
         display: 'flex',
         flexDirection: 'column',
-        fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif'
+        fontFamily: '"Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif'
       }}
     >
       {/* Header Section */}
@@ -320,17 +312,18 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
             borderRadius: '8px'
           }}>
             <h4 style={{
-              color: '#FFD700',
+              color: '#FFFFFF',
               fontSize: '0.875rem',
               fontWeight: '600',
               marginBottom: '0.5rem',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem'
+              gap: '0.5rem',
+              fontFamily: '"Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif'
             }}>
               {event.hosts && event.hosts.length > 0 
-                ? `${getHostTypeIcon(event.primary_host?.host_type || event.hosts[0]?.host_type)} Hosting Information`
-                : '🏢 Participating Companies'
+                ? `${getHostTypeIcon(event.primary_host?.host_type || event.hosts[0]?.host_type)} Hosting information`
+                : '🏢 Participating companies'
               }
             </h4>
             
@@ -349,14 +342,11 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                   marginBottom: '0.25rem'
                 }}>
                   <span style={{
-                    background: getHostTypeColor(host.host_type),
-                    color: '#000000',
-                    padding: '0.125rem 0.5rem',
-                    borderRadius: '12px',
+                    color: '#ADADAD',
                     fontSize: '0.75rem',
-                    fontWeight: '600'
+                    fontWeight: '400'
                   }}>
-                    {host.primary_company_id === host.host_id ? 'Primary Host' : 'Co-Host'}
+                    {host.primary_company_id === host.host_id ? 'Primary host' : 'Co-host'}
                   </span>
                   <span style={{
                     fontWeight: '600',
@@ -367,12 +357,9 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                   </span>
                   {host.host_ticker && (
                     <span style={{
-                      background: '#333',
-                      color: '#FFD700',
-                      padding: '0.125rem 0.5rem',
-                      borderRadius: '8px',
+                      color: '#ADADAD',
                       fontSize: '0.75rem',
-                      fontWeight: '500'
+                      fontWeight: '400'
                     }}>
                       {host.host_ticker}
                     </span>
@@ -412,29 +399,28 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                     <div style={{
                       fontSize: '0.75rem',
                       color: '#b0b0b0',
-                      marginBottom: '0.25rem'
+                      marginBottom: '0.25rem',
+                      fontFamily: '"Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif'
                     }}>
                       Co-hosting with:
                     </div>
                     <div style={{
                       display: 'flex',
                       flexWrap: 'wrap',
-                      gap: '0.25rem'
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      fontSize: '0.75rem',
+                      color: '#ADADAD'
                     }}>
-                      {host.companies_jsonb.map((comp, compIndex) => (
-                        <span
-                          key={compIndex}
-                          style={{
-                            background: comp.is_primary ? '#FFD700' : '#333',
-                            color: comp.is_primary ? '#000000' : '#ffffff',
-                            padding: '0.125rem 0.5rem',
-                            borderRadius: '8px',
-                            fontSize: '0.75rem',
-                            fontWeight: '500'
-                          }}
-                        >
-                          {comp.ticker} {comp.is_primary && '(Primary)'}
-                        </span>
+                      {host.companies_jsonb.map((comp, compIndex, array) => (
+                        <React.Fragment key={compIndex}>
+                          <span style={{ fontWeight: comp.is_primary ? '600' : '400' }}>
+                            {comp.ticker} {comp.is_primary && '(Primary)'}
+                          </span>
+                          {compIndex < array.length - 1 && (
+                            <span style={{ color: '#666666' }}>|</span>
+                          )}
+                        </React.Fragment>
                       ))}
                     </div>
                   </div>
@@ -460,22 +446,18 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                 <div style={{
                   display: 'flex',
                   flexWrap: 'wrap',
-                  gap: '0.25rem'
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontSize: '0.75rem',
+                  color: '#ADADAD'
                 }}>
                   {event.companies.map((company, compIndex) => (
-                    <span
-                      key={compIndex}
-                      style={{
-                        background: '#333',
-                        color: '#FFD700',
-                        padding: '0.125rem 0.5rem',
-                        borderRadius: '8px',
-                        fontSize: '0.75rem',
-                        fontWeight: '500'
-                      }}
-                    >
-                      {company.ticker_symbol}
-                    </span>
+                    <React.Fragment key={compIndex}>
+                      <span>{company.ticker_symbol}</span>
+                      {compIndex < event.companies.length - 1 && (
+                        <span style={{ color: '#666666' }}>|</span>
+                      )}
+                    </React.Fragment>
                   ))}
                 </div>
                 {event.companies[0]?.gics_sector && (
@@ -527,8 +509,13 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
               if (host.host_type === 'single_corp') {
                 return (
                   <div key={host.id} style={{ marginBottom: index < hostDetails.length - 1 ? '0.5rem' : '0' }}>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem' }}>
-                      Host Company
+                    <div style={{ 
+                      fontSize: '0.75rem', 
+                      color: 'var(--muted-text)', 
+                      marginBottom: '0.25rem',
+                      fontFamily: '"Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif'
+                    }}>
+                      Host company
                     </div>
                     <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
                       {host.host_ticker} - {host.host_name}
@@ -547,17 +534,22 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                 
                 return (
                   <div key={host.id} style={{ marginBottom: index < hostDetails.length - 1 ? '0.5rem' : '0' }}>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem' }}>
-                      Co-Hosted by Multiple Companies
+                    <div style={{ 
+                      fontSize: '0.75rem', 
+                      color: 'var(--muted-text)', 
+                      marginBottom: '0.25rem',
+                      fontFamily: '"Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif'
+                    }}>
+                      Co-hosted by multiple companies
                     </div>
                     {primaryHost && (
                       <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
-                        Primary Host: {primaryHost.ticker} - {primaryHost.name}
+                        Primary host: {primaryHost.ticker} - {primaryHost.name}
                       </div>
                     )}
                     {otherHosts.length > 0 && (
                       <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginTop: '0.25rem' }}>
-                        Co-Hosts: {otherHosts.map((c: any) => c.ticker).join(', ')}
+                        Co-hosts: {otherHosts.map((c: any) => c.ticker).join(', ')}
                       </div>
                     )}
                   </div>
@@ -565,8 +557,13 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
               } else if (host.host_type === 'non_company') {
                 return (
                   <div key={host.id} style={{ marginBottom: index < hostDetails.length - 1 ? '0.5rem' : '0' }}>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--muted-text)', marginBottom: '0.25rem' }}>
-                      Host Organization
+                    <div style={{ 
+                      fontSize: '0.75rem', 
+                      color: 'var(--muted-text)', 
+                      marginBottom: '0.25rem',
+                      fontFamily: '"Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif'
+                    }}>
+                      Host organization
                     </div>
                     <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
                       {host.host_name}
@@ -588,7 +585,7 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                 textAlign: 'center',
                 padding: '1rem'
               }}>
-                Host Information Not Available
+                Host information not available
               </div>
             )}
           </div>
@@ -606,9 +603,14 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           marginBottom: '0.75rem'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <CalendarIcon size={14} color="var(--accent-color)" />
-            <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
-              Date & Time
+            <CalendarIcon size={14} color="#ADADAD" />
+            <span style={{ 
+              fontSize: '0.875rem', 
+              fontWeight: '600', 
+              color: 'var(--primary-text)',
+              fontFamily: '"Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif'
+            }}>
+              Date & time
             </span>
           </div>
           <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)', marginBottom: '0.25rem' }}>
@@ -629,7 +631,12 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
             {React.cloneElement(getLocationTypeIcon(event.location_type), { size: 14 })}
-            <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
+            <span style={{ 
+              fontSize: '0.875rem', 
+              fontWeight: '600', 
+              color: 'var(--primary-text)',
+              fontFamily: '"Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif'
+            }}>
               Location
             </span>
           </div>
@@ -650,8 +657,13 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           border: '1px solid var(--border-color)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <Users size={14} color="var(--accent-color)" />
-            <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
+            <Users size={14} color="#ADADAD" />
+            <span style={{ 
+              fontSize: '0.875rem', 
+              fontWeight: '600', 
+              color: 'var(--primary-text)',
+              fontFamily: '"Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif'
+            }}>
               Attendees
             </span>
           </div>
@@ -670,9 +682,14 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         marginBottom: '1.5rem'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-          <Shield size={14} color="var(--accent-color)" />
-          <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)' }}>
-            Your Response
+          <Shield size={14} color="#ADADAD" />
+          <span style={{ 
+            fontSize: '0.875rem', 
+            fontWeight: '600', 
+            color: 'var(--primary-text)',
+            fontFamily: '"Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif'
+          }}>
+            Your response
           </span>
         </div>
         
@@ -735,198 +752,6 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         </div>
       </div>
 
-      {/* Quick Actions - Enhanced */}
-      <div style={{
-        padding: '1rem',
-        backgroundColor: 'var(--tertiary-bg)',
-        borderRadius: '8px',
-        border: '1px solid var(--border-color)',
-        marginBottom: '1.5rem'
-      }}>
-        <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--primary-text)', marginBottom: '0.75rem' }}>
-          Quick Actions
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {/* Row 1: Primary Actions */}
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button 
-              onClick={async () => {
-                // If in Outlook, use Outlook API
-                if (isOutlook && isOutlookCalendarAvailable()) {
-                  setAddingToOutlook(true);
-                  try {
-                    const success = await createOutlookEvent(event);
-                    if (success) {
-                      // Success - Outlook compose form opened
-                      // User can review and save
-                    } else {
-                      alert('Could not open Outlook appointment form. Please try again.');
-                    }
-                  } catch (error) {
-                    console.error('Error adding to Outlook:', error);
-                    alert('Error adding event to Outlook calendar.');
-                  } finally {
-                    setAddingToOutlook(false);
-                  }
-                } else {
-                  // Fallback to Google Calendar
-                const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${event.start_date.toISOString().replace(/[-:]/g, '').split('.')[0]}Z/${event.end_date.toISOString().replace(/[-:]/g, '').split('.')[0]}Z&details=${encodeURIComponent(event.description || '')}`;
-                window.open(calendarUrl, '_blank');
-                }
-              }}
-              disabled={addingToOutlook}
-              style={{
-                flex: 1,
-                padding: '0.5rem',
-                backgroundColor: isOutlook ? 'var(--accent-bg)' : 'var(--accent-bg)',
-                color: 'var(--primary-bg)',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                cursor: addingToOutlook ? 'wait' : 'pointer',
-                minHeight: '44px', // Touch-friendly
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-                transition: 'all 0.2s ease',
-                opacity: addingToOutlook ? 0.6 : 1
-              }}
-              onMouseEnter={(e) => {
-                if (!addingToOutlook) {
-                (e.target as HTMLButtonElement).style.opacity = '0.9';
-                }
-              }}
-              onMouseLeave={(e) => {
-                (e.target as HTMLButtonElement).style.opacity = addingToOutlook ? '0.6' : '1';
-              }}
-            >
-              <Plus size={14} />
-              {addingToOutlook 
-                ? 'Opening...' 
-                : isOutlook 
-                  ? 'Add to Outlook' 
-                  : 'Add to Calendar'
-              }
-            </button>
-            <button 
-              onClick={() => {
-                // Share functionality
-                if (navigator.share) {
-                  navigator.share({
-                    title: event.title,
-                    text: event.description || '',
-                    url: window.location.href
-                  });
-                } else {
-                  // Fallback: copy to clipboard
-                  navigator.clipboard.writeText(`${event.title}\n${event.description || ''}\n${window.location.href}`);
-                }
-              }}
-              style={{
-                flex: 1,
-                padding: '0.5rem',
-                backgroundColor: 'var(--tertiary-bg)',
-                color: 'var(--primary-text)',
-                border: '1px solid var(--border-color)',
-                borderRadius: '6px',
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                minHeight: '44px', // Touch-friendly
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)';
-              }}
-              onMouseLeave={(e) => {
-                (e.target as HTMLButtonElement).style.backgroundColor = 'var(--tertiary-bg)';
-              }}
-            >
-              <Share2 size={14} />
-              Share
-            </button>
-          </div>
-          
-          {/* Row 2: Secondary Actions */}
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {event.virtual_details?.join_url && (
-              <button 
-                onClick={() => {
-                  if (event.virtual_details?.join_url) {
-                    window.open(event.virtual_details.join_url, '_blank');
-                  }
-                }}
-                style={{
-                  flex: 1,
-                  padding: '0.5rem',
-                  backgroundColor: 'var(--info-bg, var(--tertiary-bg))',
-                  color: 'var(--info-text, var(--accent-color))',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '6px',
-                  fontSize: '0.75rem',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  minHeight: '44px', // Touch-friendly
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)';
-                }}
-                onMouseLeave={(e) => {
-                  (e.target as HTMLButtonElement).style.backgroundColor = 'var(--info-bg, var(--tertiary-bg))';
-                }}
-              >
-                <Link size={14} />
-                Join Virtual
-              </button>
-            )}
-            {event.companies[0]?.ticker_symbol && (
-              <button 
-                onClick={() => {
-                  // Email company or contact
-                  window.location.href = `mailto:?subject=${encodeURIComponent(`Question about ${event.title}`)}&body=${encodeURIComponent(`I have a question about the event: ${event.title}\n\nCompany: ${event.companies[0]?.company_name}`)}`;
-                }}
-                style={{
-                  flex: 1,
-                  padding: '0.5rem',
-                  backgroundColor: 'var(--tertiary-bg)',
-                  color: 'var(--primary-text)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '6px',
-                  fontSize: '0.75rem',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  minHeight: '44px', // Touch-friendly
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  (e.target as HTMLButtonElement).style.backgroundColor = 'var(--hover-bg)';
-                }}
-                onMouseLeave={(e) => {
-                  (e.target as HTMLButtonElement).style.backgroundColor = 'var(--tertiary-bg)';
-                }}
-              >
-                <Mail size={14} />
-                Contact
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
 
 
       {/* Mini Calendar - As per PRD Step 3.2 */}
@@ -935,9 +760,10 @@ const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
           fontSize: '1rem', 
           fontWeight: '600', 
           color: 'var(--primary-text)', 
-          marginBottom: '0.75rem' 
+          marginBottom: '0.75rem',
+          fontFamily: '"Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif'
         }}>
-          Calendar Navigation
+          Calendar navigation
         </h3>
         <MiniCalendar
           selectedDate={event.start_date}

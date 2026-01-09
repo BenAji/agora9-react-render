@@ -34,32 +34,31 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser }) => {
     <div style={{ 
       backgroundColor: 'var(--primary-bg)', 
       minHeight: '100vh', 
-      color: 'var(--primary-text)',
-      fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif'
+      color: 'var(--primary-text)'
     }}>
       <div style={{ 
         maxWidth: '1400px', 
         margin: '0 auto', 
-        padding: '2rem' 
+        padding: '1.25rem' 
       }}>
         {/* Header */}
-        <div style={{ marginBottom: '2rem' }}>
+        <div style={{ marginBottom: '1.25rem' }}>
           <h1 style={{ 
-            fontSize: '2.25rem', 
-            fontWeight: 'bold', 
+            fontSize: '18px', 
+            fontWeight: '600', 
             color: 'var(--primary-text)', 
-            marginBottom: '0.5rem' 
+            marginBottom: '0.375rem' 
           }}>Settings</h1>
           <p style={{ 
             color: 'var(--muted-text)', 
-            fontSize: '1.125rem'
+            fontSize: '12px'
           }}>Manage your account settings and preferences</p>
         </div>
 
         {/* Settings Layout */}
         <div style={{
           display: 'flex',
-          gap: '2rem',
+          gap: '1.25rem',
           alignItems: 'flex-start'
         }}>
           {/* Side Navigation */}
@@ -73,7 +72,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser }) => {
             flex: 1,
             backgroundColor: 'var(--secondary-bg)',
             borderRadius: '12px',
-            padding: '2rem',
+            padding: '1.25rem',
             border: '1px solid var(--border-color)',
             boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
           }}>

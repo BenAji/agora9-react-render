@@ -151,8 +151,8 @@ const MobileEventsPage: React.FC<MobileEventsPageProps> = ({
         <div style={{
           textAlign: 'center',
           backgroundColor: '#1a1a1a',
-          padding: '2rem',
-          borderRadius: '12px',
+          padding: '1rem',
+          borderRadius: '8px',
           border: '1px solid #333333'
         }}>
           <div style={{
@@ -405,9 +405,9 @@ const MobileEventsPage: React.FC<MobileEventsPageProps> = ({
         ) : (
           <div style={{
             textAlign: 'center',
-            padding: '3rem 1rem',
+            padding: '1rem',
             backgroundColor: '#1a1a1a',
-            borderRadius: '12px',
+            borderRadius: '8px',
             border: '1px solid #333333'
           }}>
             <div style={{

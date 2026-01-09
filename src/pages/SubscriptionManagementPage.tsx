@@ -338,20 +338,21 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
         color: 'var(--error-color)',
         textAlign: 'center'
       }}>
-        <p style={{ fontSize: '1.125rem', marginBottom: '1rem' }}>{error}</p>
+        <p style={{ fontSize: '13px', marginBottom: '1rem' }}>{error}</p>
         <button
           onClick={loadSubscriptionData}
           style={{
-            padding: '0.75rem 1.5rem',
+            padding: '0.625rem 1.25rem',
             backgroundColor: 'var(--accent-bg)',
             color: 'var(--primary-bg)',
             border: 'none',
             borderRadius: '6px',
             cursor: 'pointer',
+            fontSize: '13px',
             fontWeight: '600'
           }}
         >
-          Try Again
+          Try again
         </button>
       </div>
     );
@@ -361,26 +362,25 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
     <div style={{ 
       backgroundColor: 'var(--primary-bg)', 
       minHeight: '100vh', 
-      color: 'var(--primary-text)',
-      fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif'
+      color: 'var(--primary-text)'
     }}>
       <div style={{ 
-        maxWidth: '1400px', 
+        maxWidth: '1200px', 
         margin: '0 auto', 
-        padding: '2rem' 
+        padding: '1.25rem 2rem' 
       }}>
         {/* Header */}
-        <div style={{ marginBottom: '2rem' }}>
+        <div style={{ marginBottom: '1.25rem' }}>
           <h1 style={{ 
-            fontSize: '2.25rem', 
-            fontWeight: 'bold', 
+            fontSize: '18px', 
+            fontWeight: '600', 
             color: 'var(--primary-text)', 
-            marginBottom: '0.5rem' 
-          }}>Manage Subscriptions</h1>
+            marginBottom: '0.375rem' 
+          }}>Manage subscriptions</h1>
           <p style={{ 
             color: 'var(--muted-text)', 
-            fontSize: '1.125rem',
-            marginBottom: '2rem'
+            fontSize: '12px',
+            marginBottom: '1.25rem'
           }}>View and manage your current subscriptions below</p>
         </div>
 
@@ -388,13 +388,13 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
         <div style={{
           display: 'flex',
           gap: '0.5rem',
-          marginBottom: '2rem'
+          marginBottom: '1.25rem'
         }}>
           <button
             onClick={() => setActiveTab('view')}
             style={{
-              padding: '0.75rem 1.5rem',
-              fontSize: '1rem',
+              padding: '0.625rem 1.25rem',
+              fontSize: '13px',
               fontWeight: '600',
               color: activeTab === 'view' ? 'var(--primary-bg)' : 'var(--primary-text)',
               backgroundColor: activeTab === 'view' ? 'var(--accent-bg)' : 'var(--tertiary-bg)',
@@ -417,13 +417,13 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
               }
             }}
           >
-            View Subscriptions
+            View subscriptions
           </button>
           <button
             onClick={() => setActiveTab('add')}
             style={{
-              padding: '0.75rem 1.5rem',
-              fontSize: '1rem',
+              padding: '0.625rem 1.25rem',
+              fontSize: '13px',
               fontWeight: '600',
               color: activeTab === 'add' ? 'var(--primary-bg)' : 'var(--primary-text)',
               backgroundColor: activeTab === 'add' ? 'var(--accent-bg)' : 'var(--tertiary-bg)',
@@ -446,7 +446,7 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
               }
             }}
           >
-            Add Subscriptions
+            Add subscriptions
           </button>
         </div>
 
@@ -454,70 +454,70 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
         {activeTab === 'view' ? (
           <div>
             {/* View Subscriptions Tab Content */}
-            <div style={{ marginBottom: '2rem' }}>
+            <div style={{ marginBottom: '1.25rem' }}>
               <h2 style={{
-                fontSize: '1.5rem',
+                fontSize: '16px',
                 fontWeight: '600',
                 color: 'var(--primary-text)',
-                marginBottom: '1rem'
-              }}>Current Subscriptions</h2>
+                marginBottom: '0.875rem'
+              }}>Current subscriptions</h2>
               
               {/* Statistics Cards */}
               <div style={{ 
                 display: 'grid', 
                 gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-                gap: '1rem', 
-                marginBottom: '2rem' 
+                gap: '0.875rem', 
+                marginBottom: '1.25rem' 
               }}>
                 <div style={{ 
                   backgroundColor: 'var(--tertiary-bg)', 
-                  padding: '1.5rem', 
+                  padding: '1rem', 
                   borderRadius: '8px',
                   border: '1px solid var(--border-color)'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                    <Building2 style={{ color: 'var(--accent-bg)', width: '1.5rem', height: '1.5rem' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.375rem' }}>
+                    <Building2 style={{ color: 'var(--accent-bg)', width: '1.25rem', height: '1.25rem' }} />
                     <span style={{ 
-                      fontSize: '1.5rem', 
+                      fontSize: '18px', 
                       fontWeight: 'bold', 
                       color: 'var(--primary-text)' 
                     }}>{stats.subscribedCompanies}</span>
                   </div>
-                  <p style={{ color: 'var(--muted-text)' }}>Subscribed Companies</p>
+                  <p style={{ color: 'var(--muted-text)', fontSize: '12px' }}>Subscribed companies</p>
                 </div>
                 
                 <div style={{ 
                   backgroundColor: 'var(--tertiary-bg)', 
-                  padding: '1.5rem', 
+                  padding: '1rem', 
                   borderRadius: '8px',
                   border: '1px solid var(--border-color)'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                    <BarChart3 style={{ color: 'var(--accent-bg)', width: '1.5rem', height: '1.5rem' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.375rem' }}>
+                    <BarChart3 style={{ color: 'var(--accent-bg)', width: '1.25rem', height: '1.25rem' }} />
                     <span style={{ 
-                      fontSize: '1.5rem', 
+                      fontSize: '18px', 
                       fontWeight: 'bold', 
                       color: 'var(--primary-text)' 
                     }}>{stats.subscribedSectors}</span>
                   </div>
-                  <p style={{ color: 'var(--muted-text)' }}>Sectors</p>
+                  <p style={{ color: 'var(--muted-text)', fontSize: '12px' }}>Sectors</p>
                 </div>
                 
                 <div style={{ 
                   backgroundColor: 'var(--tertiary-bg)', 
-                  padding: '1.5rem', 
+                  padding: '1rem', 
                   borderRadius: '8px',
                   border: '1px solid var(--border-color)'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                    <Check style={{ color: 'var(--accent-bg)', width: '1.5rem', height: '1.5rem' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.375rem' }}>
+                    <Check style={{ color: 'var(--accent-bg)', width: '1.25rem', height: '1.25rem' }} />
                     <span style={{ 
-                      fontSize: '1.5rem', 
+                      fontSize: '18px', 
                       fontWeight: 'bold', 
                       color: 'var(--primary-text)' 
                     }}>{stats.subscribedSubsectors}</span>
                   </div>
-                  <p style={{ color: 'var(--muted-text)' }}>Subsectors</p>
+                  <p style={{ color: 'var(--muted-text)', fontSize: '12px' }}>Subsectors</p>
                 </div>
               </div>
             </div>
@@ -525,16 +525,16 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
             {/* Filters for View Tab */}
             <div style={{ 
               display: 'flex', 
-              gap: '1rem', 
-              marginBottom: '2rem',
+              gap: '0.875rem', 
+              marginBottom: '1.25rem',
               flexWrap: 'wrap'
             }}>
               <div style={{ position: 'relative', flex: '1', minWidth: '300px' }}>
                 <Search 
-                  size={20} 
+                  size={16} 
                   style={{ 
                     position: 'absolute', 
-                    left: '1rem', 
+                    left: '0.875rem', 
                     top: '50%', 
                     transform: 'translateY(-50%)', 
                     color: 'var(--muted-text)' 
@@ -547,12 +547,12 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '0.75rem 1rem 0.75rem 3rem',
+                    padding: '0.625rem 0.875rem 0.625rem 2.5rem',
                     backgroundColor: 'var(--tertiary-bg)',
                     border: '1px solid var(--border-color)',
                     borderRadius: '6px',
                     color: 'var(--primary-text)',
-                    fontSize: '1rem'
+                    fontSize: '13px'
                   }}
                 />
               </div>
@@ -561,16 +561,16 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
                 value={selectedSector}
                 onChange={(e) => setSelectedSector(e.target.value)}
                 style={{
-                  padding: '0.75rem 1rem',
+                  padding: '0.625rem 0.875rem',
                   backgroundColor: 'var(--tertiary-bg)',
                   border: '1px solid var(--border-color)',
                   borderRadius: '6px',
                   color: 'var(--primary-text)',
-                  fontSize: '1rem',
+                  fontSize: '13px',
                   minWidth: '150px'
                 }}
               >
-                <option value="all">All Sectors</option>
+                <option value="all">All sectors</option>
                 {availableSectors.map(sector => (
                   <option key={sector} value={sector}>{sector}</option>
                 ))}
@@ -581,13 +581,13 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
             {filteredSubsectors.length === 0 ? (
               <div style={{ 
                 textAlign: 'center', 
-                padding: '3rem',
+                padding: '2rem',
                 color: 'var(--muted-text)',
                 backgroundColor: 'var(--tertiary-bg)',
                 borderRadius: '8px',
                 border: '1px solid var(--border-color)'
               }}>
-                <p style={{ fontSize: '1.125rem' }}>
+                <p style={{ fontSize: '13px' }}>
                   {subscriptions.length === 0 
                     ? "You don't have any subscriptions yet" 
                     : "No subscriptions match your search criteria"
@@ -595,12 +595,12 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
                 </p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                 {filteredSubsectors.map(subsector => (
                   <div 
                     key={subsector.name}
                     style={{ 
-                      padding: '1.5rem', 
+                      padding: '1rem', 
                       borderRadius: '8px', 
                       border: '1px solid var(--status-accepted)', 
                       transition: 'all 0.2s ease',
@@ -612,29 +612,29 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
                       alignItems: 'center', 
                       justifyContent: 'space-between' 
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
                         <div style={{ 
-                          width: '2rem', 
-                          height: '2rem', 
+                          width: '1.75rem', 
+                          height: '1.75rem', 
                           backgroundColor: 'var(--status-accepted)', 
                           borderRadius: '4px', 
                           display: 'flex', 
                           alignItems: 'center', 
                           justifyContent: 'center' 
                         }}>
-                          <Check style={{ width: '1.25rem', height: '1.25rem', color: 'white' }} />
+                          <Check style={{ width: '1rem', height: '1rem', color: 'white' }} />
                         </div>
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
                             <h4 style={{ 
                               color: 'var(--primary-text)', 
                               fontWeight: '600',
-                              fontSize: '1rem',
+                              fontSize: '14px',
                               margin: 0
                             }}>{subsector.name}</h4>
                             <span style={{ 
                               color: 'var(--muted-text)', 
-                              fontSize: '0.75rem',
+                              fontSize: '11px',
                               backgroundColor: 'var(--quaternary-bg)',
                               padding: '0.25rem 0.5rem',
                               borderRadius: '4px'
@@ -642,7 +642,7 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
                           </div>
                           <p style={{ 
                             color: 'var(--muted-text)', 
-                            fontSize: '0.875rem',
+                            fontSize: '12px',
                             margin: 0
                           }}>
                             {subsector.companyCount} companies
@@ -658,13 +658,13 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
                               marginTop: '0.25rem' 
                             }}>
                               <Calendar style={{ 
-                                width: '0.875rem', 
-                                height: '0.875rem', 
+                                width: '0.75rem', 
+                                height: '0.75rem', 
                                 color: formatExpirationDate(subsector.subscriptionDetails.expires_at).color 
                               }} />
                               <span style={{ 
                                 color: formatExpirationDate(subsector.subscriptionDetails.expires_at).color,
-                                fontSize: '0.75rem',
+                                fontSize: '11px',
                                 fontWeight: '500'
                               }}>
                                 {formatExpirationDate(subsector.subscriptionDetails.expires_at).text}
@@ -673,29 +673,29 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
                           )}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
                         <span style={{ 
                           display: 'flex', 
                           alignItems: 'center', 
                           gap: '0.25rem', 
                           color: 'var(--status-accepted)', 
-                          fontSize: '0.875rem',
+                          fontSize: '12px',
                           fontWeight: '500'
                         }}>
-                          <Check style={{ width: '1rem', height: '1rem' }} />
+                          <Check style={{ width: '0.875rem', height: '0.875rem' }} />
                           Subscribed
                         </span>
                         <button
                           onClick={() => handleUnsubscribe(subsector.subscriptionId!)}
                           disabled={loading}
                           style={{
-                            padding: '0.5rem 1rem',
+                            padding: '0.5rem 0.875rem',
                             backgroundColor: 'var(--error-color)',
                             color: 'white',
                             border: 'none',
                             borderRadius: '6px',
                             cursor: loading ? 'not-allowed' : 'pointer',
-                            fontSize: '0.875rem',
+                            fontSize: '12px',
                             fontWeight: '500',
                             transition: 'all 0.2s ease',
                             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
@@ -728,33 +728,33 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
         ) : (
           <div>
             {/* Add Subscriptions Tab Content */}
-            <div style={{ marginBottom: '2rem' }}>
+            <div style={{ marginBottom: '1.25rem' }}>
               <h2 style={{
-                fontSize: '1.5rem',
+                fontSize: '16px',
                 fontWeight: '600',
                 color: 'var(--primary-text)',
-                marginBottom: '1rem'
-              }}>Available Subscriptions</h2>
+                marginBottom: '0.875rem'
+              }}>Available subscriptions</h2>
               <p style={{ 
                 color: 'var(--muted-text)', 
-                fontSize: '1rem',
-                marginBottom: '2rem'
+                fontSize: '12px',
+                marginBottom: '1.25rem'
               }}>Browse and subscribe to new subsectors to receive their company events</p>
             </div>
 
             {/* Filters for Add Tab */}
             <div style={{ 
               display: 'flex', 
-              gap: '1rem', 
-              marginBottom: '2rem',
+              gap: '0.875rem', 
+              marginBottom: '1.25rem',
               flexWrap: 'wrap'
             }}>
               <div style={{ position: 'relative', flex: '1', minWidth: '300px' }}>
                 <Search 
-                  size={20} 
+                  size={16} 
                   style={{ 
                     position: 'absolute', 
-                    left: '1rem', 
+                    left: '0.875rem', 
                     top: '50%', 
                     transform: 'translateY(-50%)', 
                     color: 'var(--muted-text)' 
@@ -767,12 +767,12 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '0.75rem 1rem 0.75rem 3rem',
+                    padding: '0.625rem 0.875rem 0.625rem 2.5rem',
                     backgroundColor: 'var(--tertiary-bg)',
                     border: '1px solid var(--border-color)',
                     borderRadius: '6px',
                     color: 'var(--primary-text)',
-                    fontSize: '1rem'
+                    fontSize: '13px'
                   }}
                 />
               </div>
@@ -781,16 +781,16 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
                 value={selectedSector}
                 onChange={(e) => setSelectedSector(e.target.value)}
                 style={{
-                  padding: '0.75rem 1rem',
+                  padding: '0.625rem 0.875rem',
                   backgroundColor: 'var(--tertiary-bg)',
                   border: '1px solid var(--border-color)',
                   borderRadius: '6px',
                   color: 'var(--primary-text)',
-                  fontSize: '1rem',
+                  fontSize: '13px',
                   minWidth: '150px'
                 }}
               >
-                <option value="all">All Sectors</option>
+                <option value="all">All sectors</option>
                 {availableSectors.map(sector => (
                   <option key={sector} value={sector}>{sector}</option>
                 ))}
@@ -801,13 +801,13 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
             {filteredSubsectors.length === 0 ? (
               <div style={{ 
                 textAlign: 'center', 
-                padding: '3rem',
+                padding: '2rem',
                 color: 'var(--muted-text)',
                 backgroundColor: 'var(--tertiary-bg)',
                 borderRadius: '8px',
                 border: '1px solid var(--border-color)'
               }}>
-                <p style={{ fontSize: '1.125rem' }}>
+                <p style={{ fontSize: '13px' }}>
                   {subsectors.filter(s => !s.isSubscribed).length === 0 
                     ? "You're subscribed to all available subsectors!" 
                     : "No available subsectors match your search criteria"
@@ -815,7 +815,7 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
                 </p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                 {filteredSubsectors.map(subsector => {
                   // Check if this subsector has an expired subscription
                   const hasExpiredSubscription = subsector.subscriptionId !== undefined && !subsector.isSubscribed;
@@ -824,7 +824,7 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
                   <div 
                     key={subsector.name}
                     style={{ 
-                      padding: '1.5rem', 
+                      padding: '1rem', 
                       borderRadius: '8px', 
                       border: hasExpiredSubscription ? '1px solid var(--warning-color)' : '1px solid var(--border-color)', 
                       transition: 'all 0.2s ease',
@@ -836,29 +836,29 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
                       alignItems: 'center', 
                       justifyContent: 'space-between' 
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
                         <div style={{ 
-                          width: '2rem', 
-                          height: '2rem', 
+                          width: '1.75rem', 
+                          height: '1.75rem', 
                           backgroundColor: 'var(--accent-bg)', 
                           borderRadius: '4px', 
                           display: 'flex', 
                           alignItems: 'center', 
                           justifyContent: 'center' 
                         }}>
-                          <Building2 style={{ width: '1.25rem', height: '1.25rem', color: 'var(--primary-bg)' }} />
+                          <Building2 style={{ width: '1rem', height: '1rem', color: 'var(--primary-bg)' }} />
                         </div>
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
                             <h4 style={{ 
                               color: 'var(--primary-text)', 
                               fontWeight: '600',
-                              fontSize: '1rem',
+                              fontSize: '14px',
                               margin: 0
                             }}>{subsector.name}</h4>
                             <span style={{ 
                               color: 'var(--muted-text)', 
-                              fontSize: '0.75rem',
+                              fontSize: '11px',
                               backgroundColor: 'var(--quaternary-bg)',
                               padding: '0.25rem 0.5rem',
                               borderRadius: '4px'
@@ -866,17 +866,17 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
                           </div>
                           <p style={{ 
                             color: 'var(--muted-text)', 
-                            fontSize: '0.875rem',
+                            fontSize: '12px',
                             margin: 0
                           }}>
                             {subsector.companyCount} companies • {subsector.companies.map(c => c.ticker_symbol).join(', ')}
                           </p>
                         </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
                         <span style={{ 
                           color: 'var(--muted-text)', 
-                          fontSize: '0.875rem' 
+                          fontSize: '12px' 
                         }}>
                           Available
                         </span>
@@ -884,13 +884,13 @@ const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({
                           onClick={() => handleSubscribe(subsector.name)}
                           disabled={loading}
                           style={{
-                            padding: '0.5rem 1rem',
+                            padding: '0.5rem 0.875rem',
                             backgroundColor: 'var(--accent-bg)',
                             color: 'var(--primary-bg)',
                             border: 'none',
                             borderRadius: '6px',
                             cursor: loading ? 'not-allowed' : 'pointer',
-                            fontSize: '0.875rem',
+                            fontSize: '12px',
                             fontWeight: '600',
                             transition: 'all 0.2s ease',
                             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',

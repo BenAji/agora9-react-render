@@ -22,32 +22,32 @@ const AccountSecuritySettings: React.FC<AccountSecuritySettingsProps> = ({ curre
   return (
     <div>
       <h2 style={{
-        fontSize: '1.5rem',
+        fontSize: '16px',
         fontWeight: '600',
         color: 'var(--primary-text)',
-        marginBottom: '1.5rem'
-      }}>Account & Security</h2>
+        marginBottom: '1rem'
+      }}>Account & security</h2>
 
       <div style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '1.5rem'
+        gap: '1rem'
       }}>
         {/* Update Email */}
         <div style={{
-          padding: '1.25rem',
+          padding: '1rem',
           backgroundColor: 'var(--tertiary-bg)',
           borderRadius: '8px',
           border: '1px solid var(--border-color)'
         }}>
           <label style={{
             display: 'block',
-            fontSize: '0.875rem',
+            fontSize: '13px',
             fontWeight: '600',
             color: 'var(--primary-text)',
-            marginBottom: '0.5rem'
+            marginBottom: '0.375rem'
           }}>
-            Update Email
+            Update email
           </label>
           <input
             type="email"
@@ -56,12 +56,12 @@ const AccountSecuritySettings: React.FC<AccountSecuritySettingsProps> = ({ curre
             placeholder="Enter your email address"
             style={{
               width: '100%',
-              padding: '0.75rem',
+              padding: '0.625rem',
               backgroundColor: 'var(--primary-bg)',
               color: 'var(--primary-text)',
               border: '1px solid var(--border-color)',
               borderRadius: '6px',
-              fontSize: '0.9375rem',
+              fontSize: '13px',
               outline: 'none'
             }}
             onFocus={(e) => {
@@ -75,19 +75,19 @@ const AccountSecuritySettings: React.FC<AccountSecuritySettingsProps> = ({ curre
 
         {/* Change Password */}
         <div style={{
-          padding: '1.25rem',
+          padding: '1rem',
           backgroundColor: 'var(--tertiary-bg)',
           borderRadius: '8px',
           border: '1px solid var(--border-color)'
         }}>
           <label style={{
             display: 'block',
-            fontSize: '0.875rem',
+            fontSize: '13px',
             fontWeight: '600',
             color: 'var(--primary-text)',
-            marginBottom: '0.5rem'
+            marginBottom: '0.375rem'
           }}>
-            New Password
+            New password
           </label>
           <input
             type="password"
@@ -96,13 +96,13 @@ const AccountSecuritySettings: React.FC<AccountSecuritySettingsProps> = ({ curre
             placeholder="Enter new password"
             style={{
               width: '100%',
-              padding: '0.75rem',
+              padding: '0.625rem',
               backgroundColor: 'var(--primary-bg)',
               color: 'var(--primary-text)',
               border: '1px solid var(--border-color)',
               borderRadius: '6px',
-              fontSize: '0.9375rem',
-              marginBottom: '0.75rem',
+              fontSize: '13px',
+              marginBottom: '0.625rem',
               outline: 'none'
             }}
             onFocus={(e) => {
@@ -119,12 +119,12 @@ const AccountSecuritySettings: React.FC<AccountSecuritySettingsProps> = ({ curre
             placeholder="Confirm new password"
             style={{
               width: '100%',
-              padding: '0.75rem',
+              padding: '0.625rem',
               backgroundColor: 'var(--primary-bg)',
               color: 'var(--primary-text)',
               border: '1px solid var(--border-color)',
               borderRadius: '6px',
-              fontSize: '0.9375rem',
+              fontSize: '13px',
               outline: 'none'
             }}
             onFocus={(e) => {
@@ -140,7 +140,7 @@ const AccountSecuritySettings: React.FC<AccountSecuritySettingsProps> = ({ curre
         <div style={{
           display: 'flex',
           justifyContent: 'flex-end',
-          gap: '1rem'
+          gap: '0.875rem'
         }}>
           <button
             onClick={handleSave}
@@ -148,13 +148,13 @@ const AccountSecuritySettings: React.FC<AccountSecuritySettingsProps> = ({ curre
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.75rem 1.5rem',
+              gap: '0.375rem',
+              padding: '0.625rem 1.25rem',
               backgroundColor: isSaving ? 'var(--disabled-bg)' : 'var(--accent-bg)',
               color: isSaving ? 'var(--disabled-text)' : 'var(--primary-bg)',
               border: 'none',
               borderRadius: '6px',
-              fontSize: '0.9375rem',
+              fontSize: '13px',
               fontWeight: '600',
               cursor: isSaving ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s ease'
@@ -170,8 +170,8 @@ const AccountSecuritySettings: React.FC<AccountSecuritySettingsProps> = ({ curre
               }
             }}
           >
-            <Save size={16} />
-            {isSaving ? 'Saving...' : 'Save Changes'}
+            <Save size={14} />
+            {isSaving ? 'Saving...' : 'Save changes'}
           </button>
         </div>
       </div>

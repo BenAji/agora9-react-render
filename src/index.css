@@ -85,7 +85,7 @@ html {
 }
 
 body {
-  font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  font-family: "Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
   background-color: var(--primary-bg);
   color: var(--primary-text);
   font-size: 14px;
@@ -142,7 +142,7 @@ strong {
   display: flex;
   flex-direction: column;
   background-color: var(--primary-bg);
-  font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  font-family: "Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
 }
 
 .header {
@@ -363,9 +363,10 @@ strong {
 .nav-link {
   background: none;
   border: none;
-  color: #ffffff;
-  font-size: 1.25rem;
-  font-weight: 700;
+  color: #ADADAD;
+  font-family: "Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
   padding: 1rem 1.5rem;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -375,28 +376,27 @@ strong {
   align-items: center;
   justify-content: center;
   min-width: 120px;
+  text-decoration: none;
 }
 
 .nav-link:hover {
-  color: #ffd700;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 215, 0, 0.2);
+  color: #ffffff;
 }
 
 .nav-link.active {
-  color: #ffd700;
-  background: rgba(255, 215, 0, 0.1);
-  border: 1px solid rgba(255, 215, 0, 0.3);
-  font-weight: 700;
+  color: #ffffff;
+  background: none;
+  border: none;
+  font-weight: 600;
 }
 
 .nav-link.active::after {
   content: '';
   position: absolute;
-  bottom: -1px;
+  bottom: 0;
   left: 0;
   right: 0;
-  height: 2px;
+  height: 3px;
   background: #ffd700;
 }
 
@@ -1835,16 +1835,16 @@ textarea:focus-visible {
   position: relative;
   display: flex;
   align-items: center;
-  background: #2d2d2d;
-  border: 1px solid #404040;
-  border-radius: 8px;
+  background: #1a1a1a;
+  border: 1px solid #323130;
+  border-radius: 6px;
   padding: 0.5rem 0.75rem;
   transition: all 0.2s ease;
 }
 
 .search-input-container:focus-within {
-  border-color: #ffd700;
-  box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.1);
+  border-color: #323130;
+  box-shadow: none;
 }
 
 .search-icon {
@@ -1857,6 +1857,7 @@ textarea:focus-visible {
   background: transparent;
   border: none;
   color: #ffffff;
+  font-family: "Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
   font-size: 0.875rem;
   outline: none;
 }
@@ -1866,12 +1867,13 @@ textarea:focus-visible {
 }
 
 .search-shortcut {
-  background: #404040;
-  color: #9ca3af;
-  font-size: 0.625rem;
+  background: transparent;
+  color: #666666;
+  font-size: 11px;
   padding: 0.125rem 0.375rem;
   border-radius: 4px;
-  font-family: monospace;
+  font-family: "Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+  font-weight: 400;
 }
 
 .search-dropdown {

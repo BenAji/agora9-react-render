@@ -52,7 +52,7 @@ const GlobalHeader: React.FC<GlobalHeaderProps> = ({
 
   const handleSettingsClick = () => {
     setShowProfileDropdown(false);
-    window.location.href = '/settings';
+    window.location.hash = '#/settings';
   };
 
   const handleManageSubscriptionsClick = () => {

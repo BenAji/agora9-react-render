@@ -23,38 +23,39 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ currentUser
   return (
     <div>
       <h2 style={{
-        fontSize: '1.5rem',
+        fontSize: '16px',
         fontWeight: '600',
         color: 'var(--primary-text)',
-        marginBottom: '0.75rem'
+        marginBottom: '0.5rem'
       }}>Billing</h2>
       <p style={{
         color: 'var(--muted-text)',
-        marginBottom: '1.5rem'
+        fontSize: '12px',
+        marginBottom: '1rem'
       }}>
         Add or update your billing credentials used for subscriptions.
       </p>
 
       {/* Billing Credentials Card */}
       <div style={{
-        padding: '1.5rem',
+        padding: '1rem',
         backgroundColor: 'var(--tertiary-bg)',
         borderRadius: '10px',
         border: '1px solid var(--border-color)',
-        marginBottom: '1.5rem',
+        marginBottom: '1rem',
         display: 'flex',
         flexDirection: 'column',
-        gap: '1rem'
+        gap: '0.875rem'
       }}>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.875rem', flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 240px' }}>
             <label style={{
               display: 'block',
-              fontSize: '0.875rem',
+              fontSize: '13px',
               fontWeight: '600',
               color: 'var(--primary-text)',
-              marginBottom: '0.4rem'
-            }}>Cardholder Name</label>
+              marginBottom: '0.375rem'
+            }}>Cardholder name</label>
             <input
               type="text"
               value={cardholderName}
@@ -62,12 +63,12 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ currentUser
               placeholder="Name on card"
               style={{
                 width: '100%',
-                padding: '0.75rem',
+                padding: '0.625rem',
                 backgroundColor: 'var(--primary-bg)',
                 color: 'var(--primary-text)',
                 border: '1px solid var(--border-color)',
                 borderRadius: '6px',
-                fontSize: '0.9375rem',
+                fontSize: '13px',
                 outline: 'none'
               }}
               onFocus={(e) => { e.target.style.borderColor = 'var(--accent-bg)'; }}
@@ -78,11 +79,11 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ currentUser
           <div style={{ flex: '1 1 240px' }}>
             <label style={{
               display: 'block',
-              fontSize: '0.875rem',
+              fontSize: '13px',
               fontWeight: '600',
               color: 'var(--primary-text)',
-              marginBottom: '0.4rem'
-            }}>Card Number</label>
+              marginBottom: '0.375rem'
+            }}>Card number</label>
             <input
               type="text"
               inputMode="numeric"
@@ -91,12 +92,12 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ currentUser
               placeholder="•••• •••• •••• ••••"
               style={{
                 width: '100%',
-                padding: '0.75rem',
+                padding: '0.625rem',
                 backgroundColor: 'var(--primary-bg)',
                 color: 'var(--primary-text)',
                 border: '1px solid var(--border-color)',
                 borderRadius: '6px',
-                fontSize: '0.9375rem',
+                fontSize: '13px',
                 outline: 'none'
               }}
               onFocus={(e) => { e.target.style.borderColor = 'var(--accent-bg)'; }}
@@ -105,14 +106,14 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ currentUser
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.875rem', flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 140px' }}>
             <label style={{
               display: 'block',
-              fontSize: '0.875rem',
+              fontSize: '13px',
               fontWeight: '600',
               color: 'var(--primary-text)',
-              marginBottom: '0.4rem'
+              marginBottom: '0.375rem'
             }}>Expiry</label>
             <input
               type="text"
@@ -122,12 +123,12 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ currentUser
               placeholder="MM/YY"
               style={{
                 width: '100%',
-                padding: '0.75rem',
+                padding: '0.625rem',
                 backgroundColor: 'var(--primary-bg)',
                 color: 'var(--primary-text)',
                 border: '1px solid var(--border-color)',
                 borderRadius: '6px',
-                fontSize: '0.9375rem',
+                fontSize: '13px',
                 outline: 'none'
               }}
               onFocus={(e) => { e.target.style.borderColor = 'var(--accent-bg)'; }}
@@ -138,10 +139,10 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ currentUser
           <div style={{ flex: '1 1 120px' }}>
             <label style={{
               display: 'block',
-              fontSize: '0.875rem',
+              fontSize: '13px',
               fontWeight: '600',
               color: 'var(--primary-text)',
-              marginBottom: '0.4rem'
+              marginBottom: '0.375rem'
             }}>CVC</label>
             <input
               type="text"
@@ -151,12 +152,12 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ currentUser
               placeholder="123"
               style={{
                 width: '100%',
-                padding: '0.75rem',
+                padding: '0.625rem',
                 backgroundColor: 'var(--primary-bg)',
                 color: 'var(--primary-text)',
                 border: '1px solid var(--border-color)',
                 borderRadius: '6px',
-                fontSize: '0.9375rem',
+                fontSize: '13px',
                 outline: 'none'
               }}
               onFocus={(e) => { e.target.style.borderColor = 'var(--accent-bg)'; }}
@@ -167,11 +168,11 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ currentUser
           <div style={{ flex: '1 1 220px' }}>
             <label style={{
               display: 'block',
-              fontSize: '0.875rem',
+              fontSize: '13px',
               fontWeight: '600',
               color: 'var(--primary-text)',
-              marginBottom: '0.4rem'
-            }}>Billing Email</label>
+              marginBottom: '0.375rem'
+            }}>Billing email</label>
             <input
               type="email"
               value={billingEmail}
@@ -179,12 +180,12 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ currentUser
               placeholder="billing@email.com"
               style={{
                 width: '100%',
-                padding: '0.75rem',
+                padding: '0.625rem',
                 backgroundColor: 'var(--primary-bg)',
                 color: 'var(--primary-text)',
                 border: '1px solid var(--border-color)',
                 borderRadius: '6px',
-                fontSize: '0.9375rem',
+                fontSize: '13px',
                 outline: 'none'
               }}
               onFocus={(e) => { e.target.style.borderColor = 'var(--accent-bg)'; }}
@@ -200,13 +201,13 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ currentUser
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.75rem 1.5rem',
+              gap: '0.375rem',
+              padding: '0.625rem 1.25rem',
               backgroundColor: isSaving ? 'var(--disabled-bg)' : 'var(--accent-bg)',
               color: isSaving ? 'var(--disabled-text)' : 'var(--primary-bg)',
               border: 'none',
               borderRadius: '6px',
-              fontSize: '0.9375rem',
+              fontSize: '13px',
               fontWeight: '600',
               cursor: isSaving ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s ease'
@@ -222,15 +223,15 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ currentUser
               }
             }}
           >
-            <Save size={16} />
-            {isSaving ? 'Saving...' : 'Save Billing'}
+            <Save size={14} />
+            {isSaving ? 'Saving...' : 'Save billing'}
           </button>
         </div>
       </div>
 
       {/* Link to existing subscriptions page */}
       <div style={{
-        padding: '1.25rem',
+        padding: '1rem',
         backgroundColor: 'var(--tertiary-bg)',
         borderRadius: '8px',
         border: '1px solid var(--border-color)',
@@ -238,7 +239,8 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ currentUser
       }}>
         <p style={{
           color: 'var(--muted-text)',
-          marginBottom: '1.5rem'
+          fontSize: '12px',
+          marginBottom: '1rem'
         }}>
           Need to manage subscription plans and preferences?
         </p>
@@ -246,12 +248,12 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ currentUser
           to="/subscriptions"
           style={{
             display: 'inline-block',
-            padding: '0.75rem 1.5rem',
+            padding: '0.625rem 1.25rem',
             backgroundColor: 'var(--accent-bg)',
             color: 'var(--primary-bg)',
             textDecoration: 'none',
             borderRadius: '6px',
-            fontSize: '0.9375rem',
+            fontSize: '13px',
             fontWeight: '600',
             transition: 'opacity 0.2s ease'
           }}
@@ -262,7 +264,7 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ currentUser
             e.currentTarget.style.opacity = '1';
           }}
         >
-          Go to Subscriptions
+          Go to subscriptions
         </Link>
       </div>
     </div>

@@ -81,7 +81,7 @@ const WeatherForecast: React.FC<WeatherForecastProps> = ({
         border: '1px solid var(--border-color)',
         borderRadius: '8px',
         padding: '1rem',
-        fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif',
+        fontFamily: '"Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif',
         width: '100%',
         display: 'flex',
         alignItems: 'center',
@@ -104,7 +104,7 @@ const WeatherForecast: React.FC<WeatherForecastProps> = ({
         border: '1px solid var(--border-color)',
         borderRadius: '8px',
         padding: '1rem',
-        fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif',
+        fontFamily: '"Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif',
         width: '100%'
       }}>
         <div style={{
@@ -118,9 +118,10 @@ const WeatherForecast: React.FC<WeatherForecastProps> = ({
             <div style={{
               fontSize: '0.875rem',
               fontWeight: '600',
-              color: 'var(--primary-text)'
+              color: 'var(--primary-text)',
+              fontFamily: '"Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif'
             }}>
-              Weather Forecast
+              Weather forecast
             </div>
             <div style={{
               fontSize: '0.75rem',
@@ -163,9 +164,10 @@ const WeatherForecast: React.FC<WeatherForecastProps> = ({
           <div style={{
             fontSize: '0.875rem',
             fontWeight: '600',
-            color: 'var(--primary-text)'
+            color: 'var(--primary-text)',
+            fontFamily: '"Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif'
           }}>
-            Weather Forecast
+            Weather forecast
           </div>
           <div style={{
             fontSize: '0.75rem',
@@ -176,80 +178,65 @@ const WeatherForecast: React.FC<WeatherForecastProps> = ({
         </div>
       </div>
 
-      {/* 4-Day Forecast Grid */}
+      {/* Horizontal Forecast Row */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)',
-        gap: '0.75rem'
+        display: 'flex',
+        gap: '0.5rem',
+        overflowX: 'auto',
+        paddingBottom: '0.25rem'
       }}>
         {weatherData.map((day, index) => (
           <div
             key={index}
             style={{
-              padding: '0.75rem',
+              padding: '0.5rem',
               backgroundColor: isEventDay(day.date) 
-                ? 'var(--accent-bg-light)' 
-                : 'var(--tertiary-bg)',
+                ? 'var(--tertiary-bg)' 
+                : 'transparent',
               border: isEventDay(day.date) 
-                ? '2px solid var(--accent-bg)' 
-                : '1px solid var(--border-color)',
+                ? '1px solid var(--border-color)' 
+                : 'none',
               borderRadius: '6px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               textAlign: 'center',
-              position: 'relative'
+              position: 'relative',
+              minWidth: '60px',
+              flex: '0 0 auto'
             }}
           >
-            {/* Event Day Badge */}
-            {isEventDay(day.date) && (
-              <div style={{
-                position: 'absolute',
-                top: '-8px',
-                right: '-8px',
-                backgroundColor: 'var(--accent-bg)',
-                color: 'var(--primary-bg)',
-                fontSize: '0.625rem',
-                fontWeight: '600',
-                padding: '0.125rem 0.375rem',
-                borderRadius: '8px',
-                textTransform: 'uppercase'
-              }}>
-                Event Day
-              </div>
-            )}
-
             {/* Date */}
             <div style={{
-              fontSize: '0.75rem',
+              fontSize: '0.7rem',
               fontWeight: '600',
-              color: isEventDay(day.date) ? 'var(--accent-text)' : 'var(--primary-text)',
-              marginBottom: '0.5rem'
+              color: isEventDay(day.date) ? 'var(--primary-text)' : 'var(--muted-text)',
+              marginBottom: '0.25rem'
             }}>
               {format(day.date, 'MMM d')}
             </div>
 
-            {/* Weather Icon */}
-            <div style={{ marginBottom: '0.5rem' }}>
-              {getWeatherIcon(day.condition, 24)}
+            {/* Weather Icon - Smaller */}
+            <div style={{ marginBottom: '0.25rem' }}>
+              {getWeatherIcon(day.condition, 14)}
             </div>
 
             {/* Temperature */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.25rem',
-              marginBottom: '0.25rem'
+              gap: '0.125rem',
+              marginBottom: '0.125rem'
             }}>
               <span style={{
-                fontSize: '0.875rem',
+                fontSize: '0.75rem',
                 fontWeight: '600',
                 color: 'var(--primary-text)'
               }}>
                 {day.temperature.max}°
               </span>
               <span style={{
-                fontSize: '0.75rem',
+                fontSize: '0.65rem',
                 color: 'var(--muted-text)'
               }}>
                 {day.temperature.min}°
@@ -258,9 +245,8 @@ const WeatherForecast: React.FC<WeatherForecastProps> = ({
 
             {/* Condition */}
             <div style={{
-              fontSize: '0.625rem',
-              color: 'var(--muted-text)',
-              marginBottom: '0.25rem'
+              fontSize: '0.6rem',
+              color: 'var(--muted-text)'
             }}>
               {day.description}
             </div>
@@ -282,7 +268,7 @@ const WeatherForecast: React.FC<WeatherForecastProps> = ({
           color: 'var(--primary-text)',
           marginBottom: '0.5rem'
         }}>
-          Travel Information
+          Travel information
         </div>
         
         <div style={{

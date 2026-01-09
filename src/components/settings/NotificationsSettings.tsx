@@ -26,36 +26,36 @@ const NotificationsSettings: React.FC<NotificationsSettingsProps> = ({ currentUs
   return (
     <div>
       <h2 style={{
-        fontSize: '1.5rem',
+        fontSize: '16px',
         fontWeight: '600',
         color: 'var(--primary-text)',
-        marginBottom: '1.5rem'
-      }}>Notification Preferences</h2>
+        marginBottom: '1rem'
+      }}>Notification preferences</h2>
 
       <div style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '1.5rem'
+        gap: '1rem'
       }}>
         {/* Daily Email Toggle */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '1.25rem',
+          padding: '1rem',
           backgroundColor: 'var(--tertiary-bg)',
           borderRadius: '8px',
           border: '1px solid var(--border-color)'
         }}>
           <div>
             <div style={{
-              fontSize: '1rem',
+              fontSize: '14px',
               fontWeight: '600',
               color: 'var(--primary-text)',
               marginBottom: '0.25rem'
-            }}>Daily Email</div>
+            }}>Daily email</div>
             <div style={{
-              fontSize: '0.875rem',
+              fontSize: '12px',
               color: 'var(--muted-text)'
             }}>Receive daily email updates about your events</div>
           </div>
@@ -91,20 +91,20 @@ const NotificationsSettings: React.FC<NotificationsSettingsProps> = ({ currentUs
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '1.25rem',
+          padding: '1rem',
           backgroundColor: 'var(--tertiary-bg)',
           borderRadius: '8px',
           border: '1px solid var(--border-color)'
         }}>
           <div>
             <div style={{
-              fontSize: '1rem',
+              fontSize: '14px',
               fontWeight: '600',
               color: 'var(--primary-text)',
               marginBottom: '0.25rem'
-            }}>Weekly Summary Email</div>
+            }}>Weekly summary email</div>
             <div style={{
-              fontSize: '0.875rem',
+              fontSize: '12px',
               color: 'var(--muted-text)'
             }}>Receive a weekly summary of all events</div>
           </div>
@@ -140,20 +140,20 @@ const NotificationsSettings: React.FC<NotificationsSettingsProps> = ({ currentUs
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '1.25rem',
+          padding: '1rem',
           backgroundColor: 'var(--tertiary-bg)',
           borderRadius: '8px',
           border: '1px solid var(--border-color)'
         }}>
           <div>
             <div style={{
-              fontSize: '1rem',
+              fontSize: '14px',
               fontWeight: '600',
               color: 'var(--primary-text)',
               marginBottom: '0.25rem'
-            }}>Text/SMS Alerts</div>
+            }}>Text/SMS alerts</div>
             <div style={{
-              fontSize: '0.875rem',
+              fontSize: '12px',
               color: 'var(--muted-text)'
             }}>Receive text message alerts for important events</div>
           </div>
